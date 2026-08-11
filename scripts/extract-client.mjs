@@ -10,7 +10,15 @@ for (const file of chunkFiles) {
   if (!fs.existsSync(file)) throw new Error(`Missing canonical client archive chunk: ${path.basename(file)}`);
 }
 
-const base64 = chunkFiles.map((file) => fs.readFileSync(file, 'utf8').trim()).join('');
+const base64 = chunkFiles
+  .map((file) => fs.readFileSync(file, 'utf8').replace(/\s+/g, ''))
+  .join('');
+
+const EXPECTED_BASE64_LENGTH = 30656;
+if (base64.length !== EXPECTED_BASE64_LENGTH) {
+  throw new Error(`Canonical client archive text has unexpected length ${base64.length}; expected ${EXPECTED_BASE64_LENGTH}`);
+}
+
 const archiveBuffer = Buffer.from(base64, 'base64');
 const EXPECTED_SIZE = 22992;
 if (archiveBuffer.length !== EXPECTED_SIZE) {
