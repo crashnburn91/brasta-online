@@ -1,72 +1,44 @@
-# Brasta Online v0.4.0 — Vercel Edition
+# Brasta Online v0.4.3 — Vercel Edition
 
 Standalone, server-authoritative Brasta with 1v1 and 2v2 private online rooms.
 
 ## Vercel architecture
 
 - **Next.js shell + static Brasta UI** on Vercel
-- **`/api/ws` WebSocket Vercel Function** using `experimental_upgradeWebSocket`
-- **Redis (Upstash recommended through the Vercel Marketplace)** for durable room/game state
-- **Redis Pub/Sub** to relay room updates between Vercel Function instances
-- **Automatic browser reconnect** when a Vercel Function reaches its maximum lifetime
+- **`/api/ws` WebSocket Vercel Function**
+- **Redis (Upstash recommended)** for durable room/game state
+- **Redis Pub/Sub** for cross-instance room updates
+- **Automatic browser reconnects**
 - Full hands/deck remain server-side; each player only receives their own card identities
 
-The canonical browser sources are packaged in `vendor/brasta-client-source.zip` and extracted during the build; the canonical rules engine remains `src/game.ts` after extraction. `scripts/sync-server-engine.mjs` generates the server-importable `lib/game-engine.ts` from the same source before each build, so browser and server rules stay in sync.
+## v0.4.3 build fix
+
+The browser source archive is reconstructed from four verified Base64 text chunks during the Vercel build. This avoids Git transport/binary corruption of the previously committed ZIP file. The reconstructed archive is validated to exactly 22,992 bytes before extraction.
+
+The project now targets **Node.js 24.x** on Vercel.
+
+## Recent gameplay improvements
+
+- Big 2 and Big 10 captures are announced like Brastas and Jack Sweeps.
+- A persistent Last Move banner above the board shows only the most recent play.
+- Invite URLs such as `/?room=ABCDE` show a simplified name + Join Room screen.
+- Match target can be first to 110 or 220.
 
 ## Deploy on Vercel
 
 1. Import the GitHub repository into Vercel.
-2. In the Vercel project, open **Storage / Marketplace** and add **Upstash Redis**.
-3. Make sure the integration provides a `REDIS_URL` environment variable.
-4. Redeploy after Redis is connected.
+2. Add Upstash Redis through Storage / Marketplace.
+3. Confirm the project has a `REDIS_URL` environment variable.
+4. Redeploy.
 
-No custom build command should be necessary: Vercel uses `npm run build` from `package.json`.
-
-### Local Vercel-compatible development
-
-Install dependencies and the Vercel CLI:
-
-```bash
-npm install
-npm install -g vercel
-```
-
-Create `.env.local` with `REDIS_URL`, or connect Upstash through Vercel and run:
-
-```bash
-vercel link
-vercel env pull
-vercel dev
-```
-
-Use `vercel dev` for the WebSocket route; the Vercel WebSocket upgrade API is injected by the Vercel runtime.
+Vercel uses the repository's `npm run build` command automatically.
 
 ## Health check
 
-`/api/health` reports whether Redis is configured and reachable.
-
-## Match rules implemented
-
-- 1v1 and 2v2
-- first to 110 (default) or 220
-- clockwise rotating round starter
-- Keep / Put opening
-- opening Jacks returned, shuffled, and replaced until the board has no Jack
-- loose captures, Jack sweeps/burns, Brastas, last pickup, scoring
-- numeric builds, Q/K builds, add-to-build, raise-build, build capture
-- server-authoritative commands with seat spoof prevention
-- reconnect tokens and private opponent hands
+Visit `/api/health` after deployment to confirm Redis status.
 
 ## Tests
-
-Rules regression suite:
 
 ```bash
 npm run test:rules
 ```
-
-## Notes
-
-The Vercel deployment uses the WebSocket Function in `app/api/ws/route.ts`; there is no long-running Node server process to manage.
-
-For production online rooms, configure Redis. The no-Redis fallback is intended only for a single local `vercel dev` process and is not durable across Vercel Function instances.
