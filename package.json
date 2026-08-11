@@ -1,6 +1,6 @@
 {
   "name": "brasta-online",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "description": "Server-authoritative online Brasta for Vercel WebSockets + Redis",
   "scripts": {
@@ -12,7 +12,7 @@
     "extract:client": "node scripts/extract-client.mjs"
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "dependencies": {
     "@vercel/functions": "latest",
