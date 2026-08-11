@@ -4,7 +4,9 @@ import path from 'node:path';
 
 const root = process.cwd();
 const vendor = path.join(root, 'vendor');
-const chunks = [1, 2, 3].map((n) => path.join(vendor, `brasta-client-source.zip.b64.${n}`));
+const chunks = ['1a', '1b', '2', '3'].map((part) =>
+  path.join(vendor, `brasta-client-source.zip.b64.${part}`)
+);
 
 let archiveBuffer;
 if (chunks.every((file) => fs.existsSync(file))) {
