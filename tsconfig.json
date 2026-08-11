@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "none",
+    "outDir": "public/dist",
+    "strict": true,
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
+    "skipLibCheck": true,
+    "noEmitOnError": true
+  },
+  "include": [
+    "src/game.ts",
+    "src/network.ts",
+    "src/app.ts"
+  ]
+}

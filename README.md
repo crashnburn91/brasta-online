@@ -1,66 +1,72 @@
-# Brasta Online v0.3.0
+# Brasta Online v0.4.0 — Vercel Edition
 
-Standalone, server-authoritative Brasta for local hot-seat or private online rooms.
+Standalone, server-authoritative Brasta with 1v1 and 2v2 private online rooms.
 
-## What changed in v0.3.0
+## Vercel architecture
 
-### Build display fix
-Builds are no longer rendered as a `<button>` containing card `<button>` elements. Nested buttons are invalid HTML and browsers were moving the build cards outside the build frame. The build is now an interactive `<div>`, so all cards stay inside the frame.
+- **Next.js shell + static Brasta UI** on Vercel
+- **`/api/ws` WebSocket Vercel Function** using `experimental_upgradeWebSocket`
+- **Redis (Upstash recommended through the Vercel Marketplace)** for durable room/game state
+- **Redis Pub/Sub** to relay room updates between Vercel Function instances
+- **Automatic browser reconnect** when a Vercel Function reaches its maximum lifetime
+- Full hands/deck remain server-side; each player only receives their own card identities
 
-Build cards also have clipping/stacking protection so larger builds remain contained visually.
+The canonical browser sources are packaged in `vendor/brasta-client-source.zip` and extracted during the build; the canonical rules engine remains `src/game.ts` after extraction. `scripts/sync-server-engine.mjs` generates the server-importable `lib/game-engine.ts` from the same source before each build, so browser and server rules stay in sync.
 
-### First to 110 / 220
-Every match now has a target score:
+## Deploy on Vercel
 
-- **110 points** — default
-- **220 points** — optional long game
+1. Import the GitHub repository into Vercel.
+2. In the Vercel project, open **Storage / Marketplace** and add **Upstash Redis**.
+3. Make sure the integration provides a `REDIS_URL` environment variable.
+4. Redeploy after Redis is connected.
 
-The target is selected when creating an online room or starting a local hot-seat match. Online rooms store the target on the server and all clients receive the same setting.
+No custom build command should be necessary: Vercel uses `npm run build` from `package.json`.
 
-At the end of each round:
+### Local Vercel-compatible development
 
-- if one team has reached or passed the target and has the higher score, that team wins the match;
-- if both teams are tied at or above the target, the match continues until a later round breaks the tie.
-
-The current target is shown in the room lobby and in the match header.
-
-## Run locally
-
-Requires Node.js 20+.
-
-Windows: double-click `start-brasta.bat`.
-
-Or from a terminal:
+Install dependencies and the Vercel CLI:
 
 ```bash
-npm run build
-npm start
+npm install
+npm install -g vercel
 ```
 
-Then open:
+Create `.env.local` with `REDIS_URL`, or connect Upstash through Vercel and run:
 
-```text
-http://localhost:3000
+```bash
+vercel link
+vercel env pull
+vercel dev
 ```
 
-For another device on the same network, browse to the host computer's LAN IP using port 3000.
+Use `vercel dev` for the WebSocket route; the Vercel WebSocket upgrade API is injected by the Vercel runtime.
+
+## Health check
+
+`/api/health` reports whether Redis is configured and reachable.
+
+## Match rules implemented
+
+- 1v1 and 2v2
+- first to 110 (default) or 220
+- clockwise rotating round starter
+- Keep / Put opening
+- opening Jacks returned, shuffled, and replaced until the board has no Jack
+- loose captures, Jack sweeps/burns, Brastas, last pickup, scoring
+- numeric builds, Q/K builds, add-to-build, raise-build, build capture
+- server-authoritative commands with seat spoof prevention
+- reconnect tokens and private opponent hands
 
 ## Tests
 
 Rules regression suite:
 
 ```bash
-npm run build
-node dist/tests-bundle.js
+npm run test:rules
 ```
 
-Online integration suite:
+## Notes
 
-```bash
-npm test
-```
+The Vercel deployment uses the WebSocket Function in `app/api/ws/route.ts`; there is no long-running Node server process to manage.
 
-v0.3.0 passes:
-
-- **14/14 rules/engine regression tests**
-- **15/15 online room integration checks**
+For production online rooms, configure Redis. The no-Redis fallback is intended only for a single local `vercel dev` process and is not durable across Vercel Function instances.
