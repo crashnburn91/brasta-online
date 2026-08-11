@@ -8,6 +8,7 @@
       "ES2020",
       "DOM"
     ],
+    "types": [],
     "skipLibCheck": true,
     "noEmitOnError": true
   },
