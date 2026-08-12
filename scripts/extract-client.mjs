@@ -4,13 +4,15 @@ import path from 'node:path';
 
 const root = process.cwd();
 const vendor = path.join(root, 'vendor');
-const chunkFiles = [1, 2, 3, 4].map((n) => path.join(vendor, `brasta-client-source.zip.b64.${n}`));
+const partFiles = Array.from({ length: 12 }, (_, i) =>
+  path.join(vendor, `brasta-client-source.part${String(i + 1).padStart(2, '0')}`)
+);
 
-for (const file of chunkFiles) {
-  if (!fs.existsSync(file)) throw new Error(`Missing canonical client archive chunk: ${path.basename(file)}`);
+for (const file of partFiles) {
+  if (!fs.existsSync(file)) throw new Error(`Missing canonical client archive part: ${path.basename(file)}`);
 }
 
-const base64 = chunkFiles
+const base64 = partFiles
   .map((file) => fs.readFileSync(file, 'utf8').replace(/\s+/g, ''))
   .join('');
 
@@ -26,6 +28,5 @@ if (archiveBuffer.length !== EXPECTED_SIZE) {
 }
 
 console.log(`Reconstructed canonical browser archive (${archiveBuffer.length} bytes)`);
-const zip = new AdmZip(archiveBuffer);
-zip.extractAllTo(root, true);
+new AdmZip(archiveBuffer).extractAllTo(root, true);
 console.log('Extracted canonical browser sources');
