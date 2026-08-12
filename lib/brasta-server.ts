@@ -16,6 +16,7 @@ export type WireSocket = {
 };
 
 type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number };
+type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
 type StoredRoom = {
   code: string;
   mode: Brasta.Mode;
@@ -26,9 +27,19 @@ type StoredRoom = {
   revision: number;
   hostToken: string;
   seats: Record<string, Participant>;
+  spectators: Record<string, Spectator>;
   gameState: Brasta.GameState | null;
 };
-export type Connection = { id: string; ws: WireSocket; closed: boolean; roomCode: string | null; seat: Brasta.Seat | null; token: string | null };
+export type ConnectionRole = 'player' | 'spectator' | null;
+export type Connection = {
+  id: string;
+  ws: WireSocket;
+  closed: boolean;
+  roomCode: string | null;
+  seat: Brasta.Seat | null;
+  token: string | null;
+  role: ConnectionRole;
+};
 
 const cleanName = (v: unknown) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
 const cleanCode = (v: unknown) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -38,9 +49,16 @@ const lockKey = (code: string) => `brasta:lock:${code}`;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
+function normalizeRoom(room: StoredRoom): StoredRoom {
+  if (!room.spectators) room.spectators = {};
+  return room;
+}
 function activeSeats(room: StoredRoom): Brasta.Seat[] { return Brasta.activeSeats(room.mode); }
 function participantForToken(room: StoredRoom, token: string): Participant | null {
   return Object.values(room.seats).find((p) => p.token === token) || null;
+}
+function spectatorForToken(room: StoredRoom, token: string): Spectator | null {
+  return room.spectators?.[token] || null;
 }
 function hostParticipant(room: StoredRoom): Participant | null { return participantForToken(room, room.hostToken); }
 function visibleStateForSeat(gameState: Brasta.GameState, seat: Brasta.Seat): Brasta.GameState {
@@ -49,7 +67,14 @@ function visibleStateForSeat(gameState: Brasta.GameState, seat: Brasta.Seat): Br
   view.players = gameState.players.map((p) => ({ ...clone(p), hand: p.seat === seat ? [...p.hand] : p.hand.map((_, i) => `hidden-seat-${p.seat}-${i}`) }));
   return view;
 }
+function visibleStateForSpectator(gameState: Brasta.GameState): Brasta.GameState {
+  const view = clone(gameState);
+  view.deck = gameState.deck.map((_, i) => `hidden-deck-${i}`);
+  view.players = gameState.players.map((p) => ({ ...clone(p), hand: p.hand.map((_, i) => `hidden-seat-${p.seat}-${i}`) }));
+  return view;
+}
 function roomSnapshot(room: StoredRoom) {
+  normalizeRoom(room);
   const now = Date.now();
   const seats = activeSeats(room);
   const host = hostParticipant(room);
@@ -59,7 +84,21 @@ function roomSnapshot(room: StoredRoom) {
       ? { seat, name: p.name, connected: now - p.lastSeen < PRESENCE_MS, occupied: true }
       : { seat, name: '', connected: false, occupied: false };
   });
-  return { code: room.code, mode: room.mode, targetScore: room.targetScore, started: room.started, revision: room.revision, hostSeat: host?.seat || seats[0], players, full: seats.every((s) => !!room.seats[String(s)]) };
+  const spectators = Object.values(room.spectators)
+    .map((s) => ({ name: s.name, connected: now - s.lastSeen < PRESENCE_MS }))
+    .filter((s) => s.connected);
+  return {
+    code: room.code,
+    mode: room.mode,
+    targetScore: room.targetScore,
+    started: room.started,
+    revision: room.revision,
+    hostSeat: host?.seat || seats[0],
+    players,
+    spectators,
+    spectatorCount: spectators.length,
+    full: seats.every((s) => !!room.seats[String(s)]),
+  };
 }
 function applyNames(room: StoredRoom) {
   if (!room.gameState) return;
@@ -70,17 +109,22 @@ function applyNames(room: StoredRoom) {
 }
 
 async function loadRoom(code: string): Promise<StoredRoom | null> {
-  if (!redis) return memoryRooms.get(code) || null;
+  if (!redis) {
+    const room = memoryRooms.get(code) || null;
+    return room ? normalizeRoom(room) : null;
+  }
   const raw = await redis.get(roomKey(code));
   if (!raw) return null;
-  try { return JSON.parse(raw) as StoredRoom; } catch { return null; }
+  try { return normalizeRoom(JSON.parse(raw) as StoredRoom); } catch { return null; }
 }
 async function saveRoom(room: StoredRoom): Promise<void> {
+  normalizeRoom(room);
   room.lastActivity = Date.now();
   if (!redis) { memoryRooms.set(room.code, clone(room)); return; }
   await redis.set(roomKey(room.code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
 }
 async function createRoomIfAbsent(room: StoredRoom): Promise<boolean> {
+  normalizeRoom(room);
   if (!redis) {
     if (memoryRooms.has(room.code)) return false;
     memoryRooms.set(room.code, clone(room));
@@ -130,17 +174,33 @@ const sendError = (conn: Connection, message: string) => sendJson(conn, { type: 
 async function broadcastLocalRoom(code: string): Promise<void> {
   const room = await loadRoom(code);
   for (const conn of localConnections) {
-    if (conn.closed || conn.roomCode !== code || !conn.seat || !conn.token) continue;
+    if (conn.closed || conn.roomCode !== code || !conn.token || !conn.role) continue;
     if (!room) { sendError(conn, 'That room no longer exists.'); continue; }
-    const p = room.seats[String(conn.seat)];
-    if (!p || p.token !== conn.token || p.connectionId !== conn.id) continue;
     const snapshot = roomSnapshot(room);
+
+    if (conn.role === 'player') {
+      if (!conn.seat) continue;
+      const p = room.seats[String(conn.seat)];
+      if (!p || p.token !== conn.token || p.connectionId !== conn.id) continue;
+      sendJson(conn, {
+        type: 'ROOM_STATE',
+        update: {
+          room: snapshot,
+          you: { seat: p.seat, name: p.name, isHost: p.token === room.hostToken, role: 'player' },
+          state: room.gameState ? visibleStateForSeat(room.gameState, p.seat) : null,
+        },
+      });
+      continue;
+    }
+
+    const spectator = spectatorForToken(room, conn.token);
+    if (!spectator || spectator.connectionId !== conn.id) continue;
     sendJson(conn, {
       type: 'ROOM_STATE',
       update: {
         room: snapshot,
-        you: { seat: p.seat, name: p.name, isHost: p.token === room.hostToken },
-        state: room.gameState ? visibleStateForSeat(room.gameState, p.seat) : null,
+        you: { seat: null, name: spectator.name, isHost: false, role: 'spectator' },
+        state: room.gameState ? visibleStateForSpectator(room.gameState) : null,
       },
     });
   }
@@ -151,8 +211,8 @@ async function ensureSubscriber(): Promise<void> {
   subscriberStarted = true;
   const sub = duplicateRedis();
   if (!sub) return;
-  sub.on('message', (_channel, code) => { void broadcastLocalRoom(code); });
-  sub.on('error', (err) => console.error('[brasta redis subscriber]', err));
+  sub.on('message', (_channel: string, code: string) => { void broadcastLocalRoom(code); });
+  sub.on('error', (err: unknown) => console.error('[brasta redis subscriber]', err));
   await sub.subscribe(EVENT_CHANNEL);
 }
 async function publishRoom(code: string): Promise<void> {
@@ -169,30 +229,54 @@ async function makeRoomCode(): Promise<string> {
   throw new Error('Could not allocate room code');
 }
 
-async function attach(conn: Connection, room: StoredRoom, p: Participant): Promise<void> {
-  // Supersede any socket for the same seat on this Function instance.
+async function supersedeLocalSocket(conn: Connection, roomCode: string, token: string, role: 'player' | 'spectator'): Promise<void> {
   for (const old of localConnections) {
-    if (old !== conn && !old.closed && old.roomCode === room.code && old.token === p.token) {
-      sendJson(old, { type: 'NOTICE', message: 'This seat was reconnected from another browser.' });
+    if (old !== conn && !old.closed && old.roomCode === roomCode && old.token === token && old.role === role) {
+      sendJson(old, { type: 'NOTICE', message: role === 'player' ? 'This seat was reconnected from another browser.' : 'This spectator session was reconnected from another browser.' });
       old.closed = true;
       try { old.ws.close(4001, 'Reconnected elsewhere'); } catch {}
     }
   }
+}
+async function attachPlayer(conn: Connection, room: StoredRoom, p: Participant): Promise<void> {
+  await supersedeLocalSocket(conn, room.code, p.token, 'player');
   p.connectionId = conn.id;
   p.lastSeen = Date.now();
   conn.roomCode = room.code;
   conn.seat = p.seat;
   conn.token = p.token;
-  sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: p.seat, token: p.token, name: p.name, isHost: p.token === room.hostToken } });
+  conn.role = 'player';
+  sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: p.seat, token: p.token, name: p.name, isHost: p.token === room.hostToken, role: 'player' } });
+}
+async function attachSpectator(conn: Connection, room: StoredRoom, spectator: Spectator): Promise<void> {
+  await supersedeLocalSocket(conn, room.code, spectator.token, 'spectator');
+  spectator.connectionId = conn.id;
+  spectator.lastSeen = Date.now();
+  conn.roomCode = room.code;
+  conn.seat = null;
+  conn.token = spectator.token;
+  conn.role = 'spectator';
+  sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: null, token: spectator.token, name: spectator.name, isHost: false, role: 'spectator' } });
 }
 
 async function detach(conn: Connection, intentional = false): Promise<void> {
   const code = conn.roomCode;
   const seat = conn.seat;
   const token = conn.token;
-  conn.roomCode = null; conn.seat = null; conn.token = null;
-  if (!code || !seat || !token) return;
+  const role = conn.role;
+  conn.roomCode = null; conn.seat = null; conn.token = null; conn.role = null;
+  if (!code || !token || !role) return;
+
   const updated = await mutateRoom(code, (room) => {
+    if (role === 'spectator') {
+      const s = spectatorForToken(room, token);
+      if (!s || s.connectionId !== conn.id) return;
+      if (intentional) delete room.spectators[token];
+      else s.lastSeen = 0;
+      return;
+    }
+
+    if (!seat) return;
     const p = room.seats[String(seat)];
     if (!p || p.token !== token || p.connectionId !== conn.id) return;
     p.lastSeen = 0;
@@ -208,8 +292,9 @@ async function detach(conn: Connection, intentional = false): Promise<void> {
   if (updated && Object.keys(updated.room.seats).length === 0) await deleteRoom(code);
 }
 
-async function requireSession(conn: Connection): Promise<{ room: StoredRoom; p: Participant } | null> {
-  if (!conn.roomCode || !conn.seat || !conn.token) { sendError(conn, 'Join or create a room first.'); return null; }
+async function requirePlayerSession(conn: Connection): Promise<{ room: StoredRoom; p: Participant } | null> {
+  if (conn.role === 'spectator') { sendError(conn, 'Spectators can watch the game but cannot make moves.'); return null; }
+  if (!conn.roomCode || !conn.seat || !conn.token || conn.role !== 'player') { sendError(conn, 'Join or create a room first.'); return null; }
   const room = await loadRoom(conn.roomCode);
   if (!room) { sendError(conn, 'That room no longer exists.'); return null; }
   const p = room.seats[String(conn.seat)];
@@ -223,10 +308,17 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
   if (!msg || typeof msg.type !== 'string') { sendError(conn, 'Message type is required.'); return; }
   try {
     if (msg.type === 'PING') {
-      if (conn.roomCode && conn.seat && conn.token) {
+      if (conn.roomCode && conn.token && conn.role) {
         await mutateRoom(conn.roomCode, (room) => {
-          const p = room.seats[String(conn.seat!)];
-          if (p && p.token === conn.token && p.connectionId === conn.id) p.lastSeen = Date.now();
+          if (conn.role === 'spectator') {
+            const s = spectatorForToken(room, conn.token!);
+            if (s && s.connectionId === conn.id) s.lastSeen = Date.now();
+            return;
+          }
+          if (conn.seat) {
+            const p = room.seats[String(conn.seat)];
+            if (p && p.token === conn.token && p.connectionId === conn.id) p.lastSeen = Date.now();
+          }
         }, false);
       }
       sendJson(conn, { type: 'PONG' });
@@ -245,12 +337,12 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       for (let i = 0; i < 25 && !room; i++) {
         const code = await makeRoomCode();
         const p: Participant = { seat: 1, name, token, connectionId: conn.id, lastSeen: Date.now() };
-        const candidate: StoredRoom = { code, mode, targetScore, createdAt: Date.now(), lastActivity: Date.now(), started: false, revision: 0, hostToken: token, seats: { '1': p }, gameState: null };
+        const candidate: StoredRoom = { code, mode, targetScore, createdAt: Date.now(), lastActivity: Date.now(), started: false, revision: 0, hostToken: token, seats: { '1': p }, spectators: {}, gameState: null };
         if (await createRoomIfAbsent(candidate)) room = candidate;
       }
       if (!room) return sendError(conn, 'Could not create a room. Try again.');
       const p = room.seats['1'];
-      await attach(conn, room, p);
+      await attachPlayer(conn, room, p);
       await saveRoom(room);
       await publishRoom(room.code);
       return;
@@ -272,16 +364,45 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
             return existing;
           }
         }
-        if (room.started) throw new Error('This game has already started. Reconnect from the browser that originally joined the room.');
+        if (room.started) throw new Error('This game has already started. Reconnect from the browser that originally joined the room, or use the Spectate link.');
         if (!name) throw new Error('Enter a display name.');
         const seat = activeSeats(room).find((s) => !room.seats[String(s)]);
-        if (!seat) throw new Error('That room is full.');
+        if (!seat) throw new Error('That room is full. You can still spectate it.');
         const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now() };
         room.seats[String(seat)] = p;
         return p;
       });
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
-      await attach(conn, changed.room, changed.result);
+      await attachPlayer(conn, changed.room, changed.result);
+      await saveRoom(changed.room);
+      await publishRoom(changed.room.code);
+      return;
+    }
+
+    if (msg.type === 'SPECTATE_ROOM') {
+      await detach(conn, false);
+      const code = cleanCode(msg.code);
+      const name = cleanName(msg.name);
+      const reconnectToken = typeof msg.token === 'string' ? msg.token : '';
+      const changed = await mutateRoom(code, (room) => {
+        normalizeRoom(room);
+        if (reconnectToken) {
+          const existing = spectatorForToken(room, reconnectToken);
+          if (existing) {
+            if (name) existing.name = name;
+            existing.connectionId = conn.id;
+            existing.lastSeen = Date.now();
+            return existing;
+          }
+        }
+        if (!name) throw new Error('Enter a display name.');
+        const token = makeToken();
+        const spectator: Spectator = { name, token, connectionId: conn.id, lastSeen: Date.now() };
+        room.spectators[token] = spectator;
+        return spectator;
+      });
+      if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
+      await attachSpectator(conn, changed.room, changed.result);
       await saveRoom(changed.room);
       await publishRoom(changed.room.code);
       return;
@@ -293,7 +414,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       return;
     }
 
-    const current = await requireSession(conn);
+    const current = await requirePlayerSession(conn);
     if (!current) return;
     const code = current.room.code;
     const changed = await mutateRoom(code, (room) => {
@@ -345,7 +466,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
 
 export async function registerSocket(ws: WireSocket): Promise<Connection> {
   await ensureSubscriber();
-  const conn: Connection = { id: crypto.randomUUID(), ws, closed: false, roomCode: null, seat: null, token: null };
+  const conn: Connection = { id: crypto.randomUUID(), ws, closed: false, roomCode: null, seat: null, token: null, role: null };
   localConnections.add(conn);
   sendJson(conn, { type: 'NOTICE', message: redis ? 'Connected to Brasta.' : 'Connected to Brasta (local memory mode).' });
   return conn;
