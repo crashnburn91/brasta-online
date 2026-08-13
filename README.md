@@ -1,10 +1,37 @@
-# Brasta Online v0.4.4 — Spectator Mode
+# Brasta Online v0.4.5 — Startup Diagnostics
 
-Standalone, server-authoritative Brasta with 1v1 and 2v2 private online rooms.
+Standalone, server-authoritative Brasta with 1v1, 2v2, and spectator support.
+
+## v0.4.5 startup hardening
+
+This milestone adds diagnostics without changing Brasta gameplay or the realtime reconnect policy.
+
+- The server-rendered page now shows a real **Loading Brasta…** screen immediately instead of an empty app container.
+- If the client does not render within 8 seconds, the loading screen becomes a retry/error screen instead of remaining blank.
+- Startup diagnostics record:
+  - DOM ready and window load
+  - `game.js`, `network.js`, and `app.js` resource timing
+  - Brasta and BrastaNet bundle readiness
+  - first successful app render
+  - JavaScript errors and unhandled promise rejections
+  - browser online/offline state
+  - `pageshow`, `pagehide`, and visibility changes for iPhone/Safari lifecycle testing
+  - WebSocket request, open, error, close code/reason, session receipt, and first room-state receipt
+- The most recent five startup attempts are retained locally in the browser so a failed first attempt can still be inspected after a successful reload.
+- Use `?debug=1` on any Brasta URL to show a **Boot diagnostics** button.
+- The failure screen also provides **Diagnostics** and **Copy Diagnostics** controls.
+- Static client URLs are versioned with `v=0.4.5` to reduce stale mixed-version browser caching during deployment testing.
+- The mobile viewport explicitly uses `viewport-fit=cover` for iPhone safe-area behavior.
+
+Example diagnostic URLs:
+
+- Homepage: `/?debug=1`
+- Player invite: `/?room=ABCDE&debug=1`
+- Spectator invite: `/?spectate=ABCDE&debug=1`
 
 ## Spectating
 
-Every room now supports spectators without assigning them a player seat.
+Every room supports spectators without assigning them a player seat.
 
 - Player invite: `/?room=ABCDE`
 - Spectator invite: `/?spectate=ABCDE`
@@ -13,14 +40,6 @@ Every room now supports spectators without assigning them a player seat.
 - Spectators never receive the identity of any player's cards or undealt deck cards.
 - Spectator sessions reconnect automatically.
 - The server rejects gameplay commands sent by spectator sessions.
-- Rooms show the current spectator count and provide a **Copy Spectate Link** control.
-
-## Other recent gameplay improvements
-
-- Big 2 and Big 10 captures are announced like Brastas and Jack Sweeps.
-- A persistent Last Move banner above the board shows only the most recent play.
-- Player invite URLs show a simplified name + Join Room screen.
-- Match target can be first to 110 or 220.
 
 ## Vercel architecture
 
@@ -52,7 +71,7 @@ Rules regression suite:
 npm run test:rules
 ```
 
-v0.4.4 validation completed locally:
+v0.4.4 gameplay validation before this diagnostics-only milestone:
 
 - 17/17 rules regression tests passed
 - 6/6 spectator server integration checks passed
