@@ -1,0 +1,15 @@
+.boot-shell{min-height:100svh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));text-align:center}
+.boot-card{width:min(520px,100%);padding:30px 24px;background:#071b15e8;border:1px solid #ffffff1f;border-radius:20px;box-shadow:0 22px 60px #0008}
+.boot-logo{margin:0 auto 18px}
+.boot-eyebrow{margin:0 0 8px;color:#d8b75e;font-size:11px;font-weight:800;letter-spacing:.2em}
+.boot-card h1{margin:0;font-size:clamp(28px,7vw,42px)}
+.boot-copy{margin:10px auto 20px;max-width:420px;color:#b9c8c0;line-height:1.5}
+.boot-spinner{width:30px;height:30px;margin:18px auto 4px;border:3px solid #ffffff20;border-top-color:#d8b75e;border-radius:50%;animation:brasta-spin .85s linear infinite}
+.boot-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.boot-actions[hidden],.boot-spinner[hidden],.boot-diagnostics[hidden]{display:none!important}
+.boot-actions button{border:1px solid #ffffff2a;color:#f5f1e2;background:#ffffff0a;border-radius:9px;padding:10px 13px;cursor:pointer}
+.boot-actions button:hover{background:#ffffff17}
+.boot-diagnostics{max-height:300px;overflow:auto;margin:18px 0 0;padding:12px;text-align:left;white-space:pre-wrap;word-break:break-word;background:#04100d;border:1px solid #ffffff1a;border-radius:10px;color:#c9d8d0;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.boot-noscript{margin-top:18px;padding:10px;border-radius:9px;background:#842a33;color:#fff}
+@keyframes brasta-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.boot-spinner{animation:none;border-top-color:#ffffff20;border-right-color:#d8b75e}}
