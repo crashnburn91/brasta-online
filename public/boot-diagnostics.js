@@ -58,6 +58,59 @@
     userAgent: navigator.userAgent,
   });
 
+  // Observe the existing socket lifecycle without changing Brasta's reconnect policy.
+  const NativeWebSocket = window.WebSocket;
+  if (typeof NativeWebSocket === 'function') {
+    function TrackedWebSocket(url, protocols) {
+      let safeUrl = '';
+      try {
+        const parsed = new URL(String(url), window.location.href);
+        safeUrl = `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+      } catch {
+        safeUrl = String(url).split('?')[0];
+      }
+      mark('websocket_requested', { url: safeUrl });
+      const socket = protocols === undefined
+        ? new NativeWebSocket(url)
+        : new NativeWebSocket(url, protocols);
+      socket.addEventListener('open', () => mark('websocket_open', { url: safeUrl }));
+      socket.addEventListener('error', () => mark('websocket_error', { url: safeUrl }));
+      socket.addEventListener('close', (event) => mark('websocket_close', {
+        url: safeUrl,
+        code: event.code,
+        clean: event.wasClean,
+        reason: event.reason || '',
+      }));
+      socket.addEventListener('message', (event) => {
+        try {
+          const message = JSON.parse(String(event.data));
+          if (message?.type === 'SESSION') {
+            markOnce('session_received', {
+              seat: message.session?.seat ?? null,
+              spectator: !!message.session?.isSpectator,
+            });
+          }
+          if (message?.type === 'ROOM_STATE') {
+            markOnce('first_room_state_received', {
+              started: !!message.update?.room?.started,
+              revision: message.update?.room?.revision ?? null,
+              spectator: !!message.update?.you?.isSpectator,
+            });
+          }
+        } catch {}
+      });
+      return socket;
+    }
+    try {
+      Object.setPrototypeOf(TrackedWebSocket, NativeWebSocket);
+      TrackedWebSocket.prototype = NativeWebSocket.prototype;
+      window.WebSocket = TrackedWebSocket;
+      mark('websocket_diagnostics_installed');
+    } catch (error) {
+      mark('websocket_diagnostics_unavailable', { reason: safeString(error) });
+    }
+  }
+
   window.addEventListener('error', (event) => {
     mark('window_error', {
       message: event.message || 'Unknown error',
