@@ -1,0 +1,14 @@
+/* Brasta online room/lobby polish */
+.topbar nav{align-items:center}
+.topbar nav .toolbar-exit{border-color:#9f4c55;background:#45191f;color:#ffe7e9}
+.topbar nav .toolbar-exit:hover{background:#5a2028;border-color:#c16a73}
+
+.lobby-controls{display:flex;flex-direction:column;align-items:center;gap:16px}
+.lobby-controls .big-button{min-width:260px;min-height:50px;border:1px solid #f0d98c;border-radius:12px!important;padding:12px 24px!important;box-shadow:0 8px 20px #0004;transition:transform .12s ease,background .12s ease,box-shadow .12s ease}
+.lobby-controls .big-button:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 10px 24px #0005}
+.lobby-controls .big-button:disabled{opacity:.72;background:#807344!important;color:#eee4bc!important;border-color:#a7975e!important;cursor:not-allowed;box-shadow:none}
+.lobby-controls .waiting-copy{display:inline-flex;align-items:center;justify-content:center;min-width:260px;min-height:50px;margin:0;padding:12px 22px;border:1px solid #ffffff20;border-radius:12px;background:#ffffff08;color:#c8d5cd}
+
+@media(max-width:800px){
+  .lobby-controls .big-button,.lobby-controls .waiting-copy{min-width:min(100%,320px)}
+}
