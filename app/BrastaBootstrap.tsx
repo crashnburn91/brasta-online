@@ -123,7 +123,10 @@ export default function BrastaBootstrap() {
     const pre = document.getElementById('brasta-boot-diagnostics');
     const details = document.getElementById('brasta-boot-diagnostics-details') as HTMLDetailsElement | null;
     if (pre) pre.textContent = diagnosticsPayload();
-    if (details && open) details.open = true;
+    if (details) {
+      details.hidden = false;
+      if (open) details.open = true;
+    }
   }, [diagnosticsPayload]);
 
   const copyDiagnostics = useCallback(async () => {
@@ -262,7 +265,7 @@ export default function BrastaBootstrap() {
             <a id="brasta-boot-retry" href="" className="primary">Retry</a>
             <button id="brasta-boot-copy-diagnostics" type="button" onClick={() => void copyDiagnostics()}>Copy Diagnostics</button>
           </div>
-          <details id="brasta-boot-diagnostics-details" className="boot-diagnostics-details">
+          <details id="brasta-boot-diagnostics-details" className="boot-diagnostics-details" hidden>
             <summary>Diagnostics</summary>
             <pre id="brasta-boot-diagnostics" className="boot-diagnostics">Diagnostics will appear here if startup fails.</pre>
           </details>
