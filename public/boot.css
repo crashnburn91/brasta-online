@@ -6,10 +6,13 @@
 .boot-copy{margin:10px auto 20px;max-width:420px;color:#b9c8c0;line-height:1.5}
 .boot-spinner{width:30px;height:30px;margin:18px auto 4px;border:3px solid #ffffff20;border-top-color:#d8b75e;border-radius:50%;animation:brasta-spin .85s linear infinite}
 .boot-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
-.boot-actions[hidden],.boot-spinner[hidden],.boot-diagnostics[hidden]{display:none!important}
-.boot-actions button{border:1px solid #ffffff2a;color:#f5f1e2;background:#ffffff0a;border-radius:9px;padding:10px 13px;cursor:pointer}
-.boot-actions button:hover{background:#ffffff17}
-.boot-diagnostics{max-height:300px;overflow:auto;margin:18px 0 0;padding:12px;text-align:left;white-space:pre-wrap;word-break:break-word;background:#04100d;border:1px solid #ffffff1a;border-radius:10px;color:#c9d8d0;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.boot-actions[hidden],.boot-spinner[hidden],.boot-diagnostics-details[hidden]{display:none!important}
+.boot-actions button,.boot-actions a{display:inline-flex;align-items:center;justify-content:center;border:1px solid #ffffff2a;color:#f5f1e2;background:#ffffff0a;border-radius:9px;padding:10px 13px;cursor:pointer;text-decoration:none;font:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.boot-actions button:hover,.boot-actions a:hover{background:#ffffff17}
+.boot-actions .primary{background:#d8b75e!important;color:#1d1809!important;border-color:#f0d98c!important;font-weight:800}
+.boot-diagnostics-details{margin-top:18px;text-align:left;background:#04100d;border:1px solid #ffffff1a;border-radius:10px;overflow:hidden}
+.boot-diagnostics-details summary{padding:12px 14px;color:#f7e29e;font-weight:800;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.boot-diagnostics{max-height:300px;overflow:auto;margin:0;padding:12px 14px;border-top:1px solid #ffffff12;text-align:left;white-space:pre-wrap;word-break:break-word;color:#c9d8d0;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;-webkit-user-select:text;user-select:text}
 .boot-noscript{margin-top:18px;padding:10px;border-radius:9px;background:#842a33;color:#fff}
 @keyframes brasta-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.boot-spinner{animation:none;border-top-color:#ffffff20;border-right-color:#d8b75e}}
