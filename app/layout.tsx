@@ -17,15 +17,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="/styles.css?v=0.4.5" />
-        <link rel="stylesheet" href="/boot.css?v=0.4.5" />
+        <link rel="stylesheet" href="/styles.css?v=0.4.6" />
+        <link rel="stylesheet" href="/boot.css?v=0.4.6" />
       </head>
       <body>
         {children}
-        <script src="/boot-diagnostics.js?v=0.4.5" />
-        <script src="/dist/game.js?v=0.4.5" defer />
-        <script src="/dist/network.js?v=0.4.5" defer />
-        <script src="/dist/app.js?v=0.4.5" defer />
+        <script src="/boot-diagnostics.js?v=0.4.6" async />
+        <script src="/dist/game.js?v=0.4.6" defer />
+        <script src="/dist/network.js?v=0.4.6" defer />
+        <script src="/dist/app.js?v=0.4.6" defer />
       </body>
     </html>
   );
