@@ -19,6 +19,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
+        <link rel="stylesheet" href="/lobby-polish.css?v=1" />
+        <script src="/lobby-polish.js?v=1" defer />
       </head>
       <body>{children}</body>
     </html>
