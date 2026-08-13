@@ -1,4 +1,5 @@
 .boot-shell{min-height:100svh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));text-align:center}
+.boot-shell[hidden]{display:none!important}
 .boot-card{width:min(520px,100%);padding:30px 24px;background:#071b15e8;border:1px solid #ffffff1f;border-radius:20px;box-shadow:0 22px 60px #0008}
 .boot-logo{margin:0 auto 18px}
 .boot-eyebrow{margin:0 0 8px;color:#d8b75e;font-size:11px;font-weight:800;letter-spacing:.2em}
