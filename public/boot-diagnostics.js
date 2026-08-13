@@ -228,6 +228,12 @@
   }
 
   function installFallbackControls() {
+    // v0.4.7+: the server-rendered inline watchdog owns these controls so they remain usable
+    // even when deferred scripts prevent DOMContentLoaded or this diagnostics bundle only partially starts.
+    if (window.__BRASTA_BOOT_CONTROLS__) {
+      markOnce('inline_controls_active');
+      return;
+    }
     document.getElementById('brasta-boot-retry')?.addEventListener('click', () => {
       mark('retry_clicked');
       window.location.reload();
@@ -291,7 +297,7 @@
     if (rendered) window.clearInterval(progressTimer);
   }, 100);
 
-  // Crucially, this timer starts as soon as diagnostics executes. It does not wait for DOMContentLoaded,
+  // This timer starts as soon as diagnostics executes. It does not wait for DOMContentLoaded,
   // because DOMContentLoaded itself waits for deferred game scripts.
   window.setTimeout(showFailure, Math.max(0, 8000 - performance.now()));
 
