@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-const CLIENT_VERSION = '0.4.9';
+const CLIENT_VERSION = '0.4.10';
 const HISTORY_KEY = 'brasta-bootstrap-history-v2';
 
 type BootEvent = { ms: number; stage: string; detail?: unknown };
@@ -229,8 +229,8 @@ export default function BrastaBootstrap() {
 
         await new Promise((resolve) => window.setTimeout(resolve, 50));
         if (app && app.childNodes.length === 0 && document.readyState !== 'loading') {
-          mark('legacy_domcontentloaded_replayed');
-          document.dispatchEvent(new Event('DOMContentLoaded'));
+          mark('legacy_domcontentloaded_replayed', { target: 'window' });
+          window.dispatchEvent(new Event('DOMContentLoaded'));
           await new Promise((resolve) => window.setTimeout(resolve, 50));
         }
 
