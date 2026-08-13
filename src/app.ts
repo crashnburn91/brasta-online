@@ -1,0 +1,374 @@
+namespace BrastaApp {
+  type Context = 'local' | 'online' | 'lab' | null;
+  type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+
+  let context: Context = null;
+  let state: Brasta.GameState | null = null;
+  let selectedCard: string | null = null;
+  let pendingAction: Brasta.LegalActionType | null = null;
+  let selectedLoose = new Set<string>();
+  let selectedBuildId: string | null = null;
+  let selectedDeclaration: Brasta.BuildDeclarationOption | null = null;
+  let covered = false;
+  let lastError: string | null = null;
+  let notice: string | null = null;
+  let commandPending = false;
+
+  let onlineClient: BrastaNet.Client | null = null;
+  let onlineSession: BrastaNet.SessionInfo | null = null;
+  let onlineRoom: BrastaNet.RoomSnapshot | null = null;
+  let connectionStatus: ConnectionStatus = 'disconnected';
+  let lastOnlineRevision = -1;
+  let inviteRoomCode = '';
+
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string): T => document.querySelector(selector)! as T;
+
+  function escapeHtml(s: string): string {
+    return s.replace(/[&<>'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[c]!));
+  }
+  function escapeAttr(s: string): string { return escapeHtml(s); }
+
+  function resetInteraction(): void {
+    selectedCard = null;
+    pendingAction = null;
+    selectedLoose.clear();
+    selectedBuildId = null;
+    selectedDeclaration = null;
+    lastError = null;
+    commandPending = false;
+  }
+
+  function suitClass(card: Brasta.Card): string { return card.suit === 'diamonds' || card.suit === 'hearts' ? 'red' : 'black'; }
+
+  function cardHtml(id: string, opts: { clickable?: boolean; selected?: boolean; tiny?: boolean } = {}): string {
+    if (!state) return '';
+    const c = state.cards[id];
+    if (!c) return `<span class="card-back-placeholder" aria-hidden="true"></span>`;
+    const classes = ['card', suitClass(c)];
+    if (opts.clickable) classes.push('clickable');
+    if (opts.selected) classes.push('selected');
+    if (opts.tiny) classes.push('tiny');
+    return `<button class="${classes.join(' ')}" ${opts.clickable ? `data-card="${escapeAttr(id)}"` : 'disabled'} aria-label="${escapeAttr(Brasta.cardLabel(c))}">
+      <span class="corner">${c.rank}</span><span class="suit">${Brasta.cardLabel(c).slice(-1)}</span>
+    </button>`;
+  }
+
+  function teamName(team: Brasta.Team): string { return `Team ${team}`; }
+  function isSpectator(): boolean { return context === 'online' && onlineSession?.role === 'spectator'; }
+  function actionSeat(): Brasta.Seat {
+    if (context === 'online' && onlineSession?.role === 'player' && onlineSession.seat) return onlineSession.seat;
+    if (context === 'lab') return 1;
+    return state?.currentSeat ?? 1;
+  }
+  function canLocalPlayerAct(): boolean {
+    if (!state) return false;
+    if (context === 'online') return !!onlineSession && onlineSession.role === 'player' && !!onlineSession.seat && connectionStatus === 'connected' && state.currentSeat === onlineSession.seat && !commandPending;
+    if (context === 'lab') return true;
+    return !covered;
+  }
+  function currentPlayerName(seat: Brasta.Seat): string { return state?.players.find((p) => p.seat === seat)?.name || `Seat ${seat}`; }
+
+  function renderHeader(): string {
+    if (!state && context !== 'online') return '';
+    const round = state?.round ?? 0;
+    const scores = state?.score ?? { A: 0, B: 0 };
+    const roomPill = context === 'online' && onlineRoom
+      ? `<span class="pill room-pill">Room ${onlineRoom.code}</span>${isSpectator() ? '<span class="pill spectator-pill">Spectating</span>' : ''}${onlineRoom.spectatorCount ? `<span class="pill watcher-pill">👁 ${onlineRoom.spectatorCount}</span>` : ''}<span class="connection ${connectionStatus}">${connectionStatus}</span>`
+      : '';
+    const nav = context === 'online'
+      ? `${!isSpectator() ? '<button data-copy-invite>Copy Invite</button>' : ''}<button data-copy-spectate>Copy Spectate Link</button><button data-online-home>${isSpectator() ? 'Stop Spectating' : 'Home'}</button>`
+      : `<button data-nav="game">Game</button><button data-nav="lab">Rules Lab</button><button data-action="new">New Match</button>`;
+    return `<header class="topbar"><div><strong>Brasta</strong>${round ? `<span class="pill">Round ${round}</span>` : ''}${roomPill}</div><div class="scoreline"><span>Team A <b>${scores.A}</b></span><span>Team B <b>${scores.B}</b></span>${state ? `<span class="target-score">First to ${state.targetScore}</span>` : ''}</div><nav>${nav}</nav></header>`;
+  }
+
+  function renderPlayers(): string {
+    if (!state) return '';
+    const s = state;
+    const lobbyBySeat = new Map((onlineRoom?.players || []).map((p) => [p.seat, p]));
+    return `<div class="players">${s.players.map((p) => {
+      const active = s.phase === 'play' && p.seat === s.currentSeat;
+      const starter = p.seat === s.starterSeat;
+      const team = Brasta.teamForSeat(s.mode, p.seat);
+      const lobby = lobbyBySeat.get(p.seat);
+      const disconnected = context === 'online' && lobby && !lobby.connected;
+      const you = context === 'online' && onlineSession?.seat === p.seat;
+      return `<div class="player-chip ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}"><div><b>${escapeHtml(p.name || `Seat ${p.seat}`)}</b> <span class="seat-label">Seat ${p.seat}</span> <span class="team-${team}">${teamName(team)}</span>${starter ? '<span class="starter">starts</span>' : ''}${you ? '<span class="you-badge">you</span>' : ''}</div><div>${p.hand.length} cards${disconnected ? ' · disconnected' : ''}</div></div>`;
+    }).join('')}</div>`;
+  }
+
+  function renderBuild(build: Brasta.Build): string {
+    if (!state) return '';
+    const cards = [...build.groups.flat(), ...build.modifiers];
+    const selected = selectedBuildId === build.id;
+    const canSelect = canLocalPlayerAct() && !!pendingAction && ['ADD_TO_BUILD', 'RAISE_BUILD', 'CAPTURE_BUILD'].includes(pendingAction);
+    return `<div class="build ${selected ? 'selected' : ''} ${canSelect ? 'clickable' : ''}" data-build="${escapeAttr(build.id)}" role="button" aria-disabled="${canSelect ? 'false' : 'true'}" tabindex="${canSelect ? '0' : '-1'}"><div class="build-label">${Brasta.buildLabel(build)}</div><div class="build-cards">${cards.map((id) => cardHtml(id, { tiny: true })).join('')}</div>${build.modifiers.length ? `<div class="modifier-note">raised +${build.modifiers.map((id) => state!.cards[id]?.value ?? '?').join('+')}</div>` : ''}</div>`;
+  }
+
+  function renderBoard(): string {
+    if (!state) return '';
+    const looseSelectable = canLocalPlayerAct() && !!pendingAction && ['CAPTURE_LOOSE', 'MAKE_BUILD', 'ADD_TO_BUILD', 'CAPTURE_BUILD'].includes(pendingAction);
+    return `<section class="table"><div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
+  }
+
+  function renderOpening(): string {
+    if (!state || state.phase !== 'openingChoice') return '';
+    const starterName = currentPlayerName(state.starterSeat);
+    if (context === 'online' && (isSpectator() || onlineSession?.seat !== state.starterSeat)) return `<div class="action-panel opening-panel ${isSpectator() ? 'spectator-panel' : ''}"><h3>${escapeHtml(starterName)} is choosing the opening</h3><p>${isSpectator() ? 'You are spectating. ' : ''}Waiting for Seat ${state.starterSeat} to keep the first four or put them on the board.</p></div>`;
+    return `<div class="action-panel opening-panel"><h3>${escapeHtml(starterName)} — Opening choice</h3><p>Keep your first four cards, or put all four on the board and receive a replacement hand.</p><div class="button-row"><button class="primary" data-open="keep">Keep 4</button><button class="primary" data-open="put">Put 4 on Board</button></div></div>`;
+  }
+
+  function buildPicker(kind: 'capture' | 'add' | 'raise'): string {
+    if (!state || !selectedCard) return '';
+    const seat = actionSeat();
+    const builds = kind === 'capture' ? Brasta.getCapturableBuilds(state, selectedCard) : kind === 'add' ? Brasta.getAddableBuilds(state, seat, selectedCard) : Brasta.getRaiseableBuilds(state, seat, selectedCard);
+    return `<div class="target-list">${builds.map((b) => `<button data-buildchoice="${escapeAttr(b.id)}" class="${selectedBuildId === b.id ? 'selected' : ''}">${Brasta.buildLabel(b)}</button>`).join('') || '<span>No matching builds</span>'}</div>`;
+  }
+  function loosePicker(help: string): string { return `<p>${help}</p><div class="selection-summary">Selected: ${selectedLoose.size}</div>`; }
+
+  function renderPendingAction(): string {
+    if (!state || !selectedCard || !pendingAction) return '';
+    let body = '';
+    const seat = actionSeat();
+    if (pendingAction === 'CAPTURE_LOOSE') body = loosePicker('Select loose cards that form one or more complete capture sets, then confirm.');
+    else if (pendingAction === 'MAKE_BUILD') {
+      const opts = Brasta.getBuildDeclarationOptions(state, seat, selectedCard);
+      body = `<p>Choose the declared build you will retain a matching capture card for:</p><div class="target-list">${opts.map((o, i) => `<button data-decl="${i}" class="${selectedDeclaration?.label === o.label ? 'selected' : ''}">${o.label}</button>`).join('')}</div>${loosePicker('Then select all loose cards to include in the new build. The engine validates the complete build before committing it.')}`;
+    } else if (pendingAction === 'ADD_TO_BUILD') body = `<p>Choose the build:</p>${buildPicker('add')}${loosePicker('Optionally select loose cards that join your played card to form complete sets equal to the build value.')}`;
+    else if (pendingAction === 'RAISE_BUILD') body = `<p>Choose the numeric build to raise. No loose cards are used.</p>${buildPicker('raise')}`;
+    else if (pendingAction === 'CAPTURE_BUILD') body = `<p>Choose the build:</p>${buildPicker('capture')}${loosePicker('Optionally select loose cards to capture in complete sets equal to the build value (or matching face rank).')}`;
+    return `<div class="action-panel"><h3>${pendingAction.replace(/_/g, ' ')}</h3>${body}<div class="button-row"><button class="primary" data-submit>Confirm</button><button data-cancel>Cancel</button></div></div>`;
+  }
+
+  function renderActions(): string {
+    if (!state || state.phase !== 'play') return '';
+    const seat = actionSeat();
+    if (isSpectator()) return `<div class="action-panel waiting spectator-panel"><p><b>Spectating</b> · ${escapeHtml(currentPlayerName(state.currentSeat))} (Seat ${state.currentSeat}) is playing.</p></div>`;
+    if (context === 'online' && onlineSession?.seat !== state.currentSeat) return `<div class="action-panel waiting"><p>Waiting for <b>${escapeHtml(currentPlayerName(state.currentSeat))}</b> (Seat ${state.currentSeat}).</p></div>`;
+    if (commandPending) return `<div class="action-panel"><p>Sending move to server…</p></div>`;
+    if (!selectedCard) return `<div class="action-panel"><p>Click a card in your hand.</p></div>`;
+    const legal = Brasta.legalActionsForCard(state, seat, selectedCard);
+    if (!legal.length) return `<div class="action-panel"><p>No legal actions for this card.</p></div>`;
+    if (pendingAction) return renderPendingAction();
+    return `<div class="action-panel"><h3>${Brasta.cardLabel(state.cards[selectedCard])}</h3><div class="button-row actions">${legal.map((a) => `<button data-legal="${a.type}">${a.label}</button>`).join('')}</div></div>`;
+  }
+
+  function renderHand(): string {
+    if (!state || state.phase === 'roundEnd' || state.phase === 'matchEnd') return '';
+    if (isSpectator()) return `<section class="spectator-hand-note"><span>👁</span><div><b>Spectator view</b><small>Player hands and the deck are hidden.</small></div></section>`;
+    let seat: Brasta.Seat;
+    if (context === 'online' && onlineSession?.role === 'player' && onlineSession.seat) seat = onlineSession.seat;
+    else if (context === 'lab') seat = 1;
+    else seat = state.phase === 'openingChoice' ? state.starterSeat : state.currentSeat;
+    const player = state.players.find((p) => p.seat === seat); if (!player) return '';
+    const clickable = state.phase === 'play' && canLocalPlayerAct();
+    const title = context === 'online' ? `Your hand · ${escapeHtml(player.name)} · Seat ${seat}` : `Seat ${seat}'s hand`;
+    return `<section class="hand-area"><div class="hand-title">${title}</div><div class="hand">${player.hand.length ? player.hand.map((id) => cardHtml(id, { clickable, selected: selectedCard === id })).join('') : '<span class="empty-note">Waiting for cards…</span>'}</div></section>`;
+  }
+
+  function renderRoundEnd(): string {
+    if (!state || state.phase !== 'roundEnd' || !state.roundScore) return '';
+    const a = state.roundScore.A, b = state.roundScore.B;
+    const row = (label: string, av: number, bv: number) => `<tr><td>${label}</td><td>${av}</td><td>${bv}</td></tr>`;
+    let controls = `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
+    if (context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
+    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${state.event ? `<div class="event">${escapeHtml(state.event)}</div>` : ''}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
+  }
+  function renderMatchEnd(): string {
+    if (!state || state.phase !== 'matchEnd') return '';
+    const winner = state.score.A === state.score.B ? 'Tie match' : state.score.A > state.score.B ? 'Team A wins' : 'Team B wins';
+    return `<section class="round-end"><h2>${winner}</h2><p>First to ${state.targetScore}</p><p class="match-score">Team A ${state.score.A} — Team B ${state.score.B}</p>${context === 'online' ? '<p>Return home or reconnect to the room from the same browser.</p>' : '<div class="button-row"><button data-action="new">New Match</button></div>'}</section>`;
+  }
+  function renderCover(): string {
+    if (context !== 'local' || !state || !covered || state.phase === 'roundEnd' || state.phase === 'matchEnd') return '';
+    const seat = state.phase === 'openingChoice' ? state.starterSeat : state.currentSeat;
+    return `<div class="privacy-cover"><div><h2>Pass to Seat ${seat}</h2><p>Other players: look away.</p><button class="primary" data-reveal>Reveal Hand</button></div></div>`;
+  }
+
+  function renderGame(): void {
+    const app = $('#app'); if (!state) { renderLanding(); return; }
+    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${state.event && state.phase === 'play' ? `<div class="event">${escapeHtml(state.event)}</div>` : ''}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${state.lastMove ? `<div class="last-move-banner"><span>LAST MOVE</span>${escapeHtml(state.lastMove)}</div>` : ''}${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
+    bindGame();
+  }
+
+  function renderLanding(): void {
+    const app = $('#app');
+    const params = new URLSearchParams(location.search);
+    const spectateHint = BrastaNet.normalizeCode(params.get('spectate') || '');
+    const roomHint = inviteRoomCode || BrastaNet.normalizeCode(params.get('room') || '');
+    const name = BrastaNet.lastName();
+    if (spectateHint) {
+      const saved = BrastaNet.loadSession(spectateHint, 'spectator');
+      app.innerHTML = `<div class="landing invite-landing spectator-invite"><div class="logo-mark">B</div><div class="invite-join-card"><div class="eyebrow">WATCH BRASTA</div><h1>${escapeHtml(spectateHint)}</h1><p>Enter your name to spectate this room. Player hands and the deck stay hidden.</p>${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}<input id="join-code" type="hidden" value="${escapeAttr(spectateHint)}"><label>Your name<input id="join-name" maxlength="24" value="${escapeAttr(saved?.name || name)}" placeholder="Your name" autofocus></label><button class="primary big-button invite-join-button" data-spectate-room>Spectate Room</button></div></div>`;
+      bindLanding();
+      return;
+    }
+    if (roomHint) {
+      const saved = BrastaNet.loadSession(roomHint, 'player');
+      app.innerHTML = `<div class="landing invite-landing"><div class="logo-mark">B</div><div class="invite-join-card"><div class="eyebrow">BRASTA ROOM INVITE</div><h1>${escapeHtml(roomHint)}</h1><p>Enter your name to join this room.</p>${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}<input id="join-code" type="hidden" value="${escapeAttr(roomHint)}"><label>Your name<input id="join-name" maxlength="24" value="${escapeAttr(saved?.name || name)}" placeholder="Your name" autofocus></label><button class="primary big-button invite-join-button" data-join-room>Join Room</button></div></div>`;
+      bindLanding();
+      return;
+    }
+    app.innerHTML = `<div class="landing landing-wide"><div class="logo-mark">B</div><h1>Brasta</h1><p>Standalone Brasta · local hot-seat or private online rooms</p>${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}<div class="landing-grid"><section class="landing-card online-card"><h2>Play Online</h2><p>Create a private room and send the code or invite link to the other players.</p><label>Display name<input id="create-name" maxlength="24" value="${escapeAttr(name)}" placeholder="Your name"></label><label>Game to<select id="create-target"><option value="110" selected>110 points</option><option value="220">220 points</option></select></label><div class="button-row"><button class="primary" data-create-room="1v1">Create 1v1 Room</button><button class="primary" data-create-room="2v2">Create 2v2 Room</button></div><div class="divider"><span>or join / watch</span></div><label>Room code<input id="join-code" maxlength="6" placeholder="ABCDE" autocapitalize="characters"></label><label>Display name<input id="join-name" maxlength="24" value="${escapeAttr(name)}" placeholder="Your name"></label><div class="button-row"><button data-join-room>Join Room</button><button data-spectate-room>👁 Spectate</button></div><div class="server-note">Spectators can join before or during a game. They see the table and scores, but never player hands or the deck.</div></section><section class="landing-card"><h2>Local Hot-Seat</h2><p>One screen, pass the device between players. No server required.</p><label>Game to<select id="local-target"><option value="110" selected>110 points</option><option value="220">220 points</option></select></label><div class="button-row"><button data-newmode="1v1">Local 1v1</button><button data-newmode="2v2">Local 2v2</button></div><button data-nav="lab">Rules Lab</button></section></div></div>`;
+    bindLanding();
+  }
+
+  function renderLobby(): void {
+    const app = $('#app'); if (!onlineRoom || !onlineSession) { renderLanding(); return; }
+    const capacity = onlineRoom.mode === '1v1' ? 2 : 4;
+    const occupied = onlineRoom.players.filter((p) => p.occupied).length;
+    const invite = inviteUrl(onlineRoom.code);
+    const watch = spectateUrl(onlineRoom.code);
+    const spectatorNames = onlineRoom.spectators.map((s) => escapeHtml(s.name)).join(', ');
+    const watcherCopy = onlineRoom.spectatorCount ? `${onlineRoom.spectatorCount} watching${spectatorNames ? ` · ${spectatorNames}` : ''}` : 'No spectators yet';
+    const startControls = onlineSession.role === 'spectator'
+      ? '<p class="waiting-copy">You are spectating. Waiting for the host to start the game.</p>'
+      : onlineSession.isHost
+        ? `<button class="primary big-button" data-start-online ${onlineRoom.full ? '' : 'disabled'}>${onlineRoom.full ? 'Start Game' : 'Waiting for all seats'}</button>`
+        : '<p class="waiting-copy">Waiting for the host to start the game.</p>';
+    app.innerHTML = `${renderHeader()}<main class="lobby"><section class="lobby-hero"><div><div class="eyebrow">PRIVATE ROOM</div><h1>${onlineRoom.code}</h1><p>${onlineRoom.mode} · First to ${onlineRoom.targetScore} · ${occupied}/${capacity} seats filled</p><div class="spectator-count">👁 ${escapeHtml(watcherCopy)}</div></div><div class="button-row">${onlineSession.role === 'player' ? '<button class="primary" data-copy-invite>Copy Player Invite</button>' : ''}<button data-copy-spectate>Copy Spectate Link</button><button data-copy-code>Copy Code</button></div></section>${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}<section class="lobby-seats">${onlineRoom.players.map((p) => { const team = Brasta.teamForSeat(onlineRoom!.mode, p.seat); const you = onlineSession!.role === 'player' && p.seat === onlineSession!.seat; return `<div class="lobby-seat ${p.occupied ? 'occupied' : 'empty'} ${!p.connected && p.occupied ? 'offline' : ''}"><div class="seat-number">Seat ${p.seat}</div><div class="seat-name">${p.occupied ? escapeHtml(p.name) : 'Open seat'}</div><div class="team-${team}">Team ${team}</div>${you ? '<span class="you-badge">you</span>' : ''}${p.occupied && !p.connected ? '<div class="offline-note">reconnecting…</div>' : ''}</div>`; }).join('')}</section><section class="lobby-controls"><div class="room-links"><p>Players: <code>${escapeHtml(invite)}</code></p><p>Spectators: <code>${escapeHtml(watch)}</code></p></div>${startControls}<button data-online-home>${onlineSession.role === 'spectator' ? 'Stop Spectating' : onlineRoom.started ? 'Disconnect' : 'Leave Room'}</button></section></main>`;
+    bindLobby();
+  }
+
+  function renderOnline(): void { if (!onlineRoom || !onlineSession) { renderLanding(); return; } if (!onlineRoom.started || !state) renderLobby(); else renderGame(); }
+  function render(): void { if (location.hash === '#lab' || context === 'lab') { renderLab(); return; } if (context === 'online') { renderOnline(); return; } if (context === 'local' && state) { renderGame(); return; } renderLanding(); }
+
+  function execute(command: Brasta.Command): void {
+    if (!state) return;
+    if (context === 'online') { if (!onlineClient || !onlineSession || onlineSession.role !== 'player' || !onlineSession.seat) return; commandPending = true; lastError = null; onlineClient.command({ ...command, seat: onlineSession.seat } as Brasta.Command); render(); return; }
+    const result = Brasta.applyCommand(state, command);
+    if (!result.ok) { lastError = result.error || 'Move rejected.'; render(); return; }
+    state = result.state; resetInteraction(); if (context === 'local' && (state.phase === 'play' || state.phase === 'openingChoice')) covered = true; render();
+  }
+
+  function submitPending(): void {
+    if (!state || !selectedCard || !pendingAction) return; const seat = actionSeat();
+    if (pendingAction === 'CAPTURE_LOOSE') execute({ type: 'CAPTURE_LOOSE', seat, cardId: selectedCard, looseIds: [...selectedLoose] });
+    else if (pendingAction === 'MAKE_BUILD') { if (!selectedDeclaration) { lastError = 'Choose a declared build first.'; render(); return; } execute({ type: 'MAKE_BUILD', seat, cardId: selectedCard, declaredValue: selectedDeclaration.value, declaredRank: selectedDeclaration.rank, looseIds: [...selectedLoose] }); }
+    else if (pendingAction === 'ADD_TO_BUILD') { if (!selectedBuildId) { lastError = 'Choose a build.'; render(); return; } execute({ type: 'ADD_TO_BUILD', seat, cardId: selectedCard, buildId: selectedBuildId, looseIds: [...selectedLoose] }); }
+    else if (pendingAction === 'RAISE_BUILD') { if (!selectedBuildId) { lastError = 'Choose a build.'; render(); return; } execute({ type: 'RAISE_BUILD', seat, cardId: selectedCard, buildId: selectedBuildId }); }
+    else if (pendingAction === 'CAPTURE_BUILD') { if (!selectedBuildId) { lastError = 'Choose a build.'; render(); return; } execute({ type: 'CAPTURE_BUILD', seat, cardId: selectedCard, buildId: selectedBuildId, looseIds: [...selectedLoose] }); }
+  }
+
+  function bindCommonGameControls(): void {
+    document.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => el.onclick = () => {
+      if (!state || !canLocalPlayerAct()) return; const id = el.dataset.card!;
+      if (state.loose.includes(id)) { if (pendingAction) { selectedLoose.has(id) ? selectedLoose.delete(id) : selectedLoose.add(id); render(); } }
+      else { const ownHand = state.players.find((p) => p.seat === actionSeat())?.hand || []; if (!ownHand.includes(id)) return; selectedCard = id; pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; lastError = null; render(); }
+    });
+    document.querySelectorAll<HTMLElement>('[data-legal]').forEach((el) => el.onclick = () => {
+      if (!state || !selectedCard || !canLocalPlayerAct()) return; const action = el.dataset.legal as Brasta.LegalActionType; const seat = actionSeat();
+      if (action === 'PLAY_LOOSE') execute({ type: 'PLAY_LOOSE', seat, cardId: selectedCard });
+      else if (action === 'JACK_SWEEP' || action === 'BURN_JACK') execute({ type: 'JACK_ACTION', seat, cardId: selectedCard });
+      else { pendingAction = action; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; render(); }
+    });
+    document.querySelectorAll<HTMLElement>('[data-buildchoice],[data-build]').forEach((el) => el.onclick = () => { if (!pendingAction || !canLocalPlayerAct()) return; selectedBuildId = el.dataset.buildchoice || el.dataset.build || null; render(); });
+    document.querySelectorAll<HTMLElement>('[data-decl]').forEach((el) => el.onclick = () => { if (!state || !selectedCard || !canLocalPlayerAct()) return; const opts = Brasta.getBuildDeclarationOptions(state, actionSeat(), selectedCard); selectedDeclaration = opts[Number(el.dataset.decl)]; render(); });
+    document.querySelectorAll<HTMLElement>('[data-submit]').forEach((el) => el.onclick = submitPending);
+    document.querySelectorAll<HTMLElement>('[data-cancel]').forEach((el) => el.onclick = () => { pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; render(); });
+  }
+
+  function bindGame(): void {
+    bindCommonGameControls();
+    document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => el.onclick = () => { covered = false; render(); });
+    document.querySelectorAll<HTMLElement>('[data-open]').forEach((el) => el.onclick = () => {
+      if (!state) return; const choice = el.dataset.open as 'keep' | 'put';
+      if (context === 'online') { if (onlineSession?.seat !== state.starterSeat) return; commandPending = true; onlineClient?.openingChoice(choice); render(); }
+      else { const result = Brasta.resolveOpening(state, choice); if (result.ok) { state = result.state; covered = true; lastError = null; } else lastError = result.error || 'Opening failed.'; render(); }
+    });
+    document.querySelectorAll<HTMLElement>('[data-next-round]').forEach((el) => el.onclick = () => { if (!state) return; if (context === 'online') { if (onlineSession?.isHost) onlineClient?.nextRound(); } else { const result = Brasta.nextRound(state); if (result.ok) { state = result.state; resetInteraction(); covered = true; } else lastError = result.error || 'Unable to start next round.'; render(); } });
+    document.querySelectorAll<HTMLElement>('[data-end-match]').forEach((el) => el.onclick = () => { if (!state) return; if (context === 'online') { if (onlineSession?.isHost) onlineClient?.endMatch(); } else { state = Brasta.endMatch(state); render(); } });
+    document.querySelectorAll<HTMLElement>('[data-copy-invite]').forEach((el) => el.onclick = copyInvite);
+    document.querySelectorAll<HTMLElement>('[data-copy-spectate]').forEach((el) => el.onclick = copySpectate);
+    document.querySelectorAll<HTMLElement>('[data-online-home]').forEach((el) => el.onclick = goHomeFromOnline);
+    document.querySelectorAll<HTMLElement>('[data-nav="lab"]').forEach((el) => el.onclick = () => { context = 'lab'; location.hash = 'lab'; resetInteraction(); render(); });
+    document.querySelectorAll<HTMLElement>('[data-nav="game"]').forEach((el) => el.onclick = () => { location.hash = ''; context = state ? 'local' : null; render(); });
+    document.querySelectorAll<HTMLElement>('[data-action="new"]').forEach((el) => el.onclick = () => { context = null; state = null; covered = false; resetInteraction(); render(); });
+  }
+
+  function bindLanding(): void {
+    document.querySelectorAll<HTMLElement>('[data-newmode]').forEach((el) => el.onclick = () => { const target = Number((($('#local-target') as HTMLSelectElement).value)) as Brasta.TargetScore; context = 'local'; state = Brasta.startMatch(el.dataset.newmode as Brasta.Mode, Date.now(), target); resetInteraction(); covered = true; history.replaceState({}, '', location.pathname); render(); });
+    document.querySelectorAll<HTMLElement>('[data-nav="lab"]').forEach((el) => el.onclick = () => { context = 'lab'; location.hash = 'lab'; resetInteraction(); renderLab(); });
+    document.querySelectorAll<HTMLElement>('[data-create-room]').forEach((el) => el.onclick = async () => { const name = ($('#create-name') as HTMLInputElement).value.trim(); if (!name) { lastError = 'Enter your display name.'; renderLanding(); return; } context = 'online'; lastError = null; notice = null; try { const target = Number((($('#create-target') as HTMLSelectElement).value)) as Brasta.TargetScore; await client().createRoom(name, el.dataset.createRoom as Brasta.Mode, target); } catch (e) { context = null; lastError = (e as Error).message; renderLanding(); } });
+    document.querySelectorAll<HTMLElement>('[data-join-room]').forEach((el) => el.onclick = async () => { const code = BrastaNet.normalizeCode((($('#join-code') as HTMLInputElement).value)); const name = ($('#join-name') as HTMLInputElement).value.trim(); if (!code || !name) { lastError = 'Enter both a room code and your display name.'; renderLanding(); return; } context = 'online'; inviteRoomCode = code; lastError = null; try { const saved = BrastaNet.loadSession(code, 'player'); await client().joinRoom(code, name, saved?.token); } catch (e) { context = null; lastError = (e as Error).message; renderLanding(); } });
+    document.querySelectorAll<HTMLElement>('[data-spectate-room]').forEach((el) => el.onclick = async () => { const code = BrastaNet.normalizeCode((($('#join-code') as HTMLInputElement).value)); const name = ($('#join-name') as HTMLInputElement).value.trim(); if (!code || !name) { lastError = 'Enter both a room code and your display name.'; renderLanding(); return; } context = 'online'; inviteRoomCode = ''; lastError = null; try { const saved = BrastaNet.loadSession(code, 'spectator'); await client().spectateRoom(code, name, saved?.token); } catch (e) { context = null; lastError = (e as Error).message; renderLanding(); } });
+    document.querySelectorAll<HTMLElement>('[data-reconnect-room]').forEach((el) => el.onclick = async () => { const code = BrastaNet.normalizeCode((($('#join-code') as HTMLInputElement).value)); const saved = BrastaNet.loadSession(code, 'player'); if (!saved) { lastError = 'No reconnect token is stored for this room.'; renderLanding(); return; } context = 'online'; inviteRoomCode = code; lastError = null; try { await client().joinRoom(code, saved.name, saved.token); } catch (e) { context = null; lastError = (e as Error).message; renderLanding(); } });
+  }
+
+  function bindLobby(): void {
+    document.querySelectorAll<HTMLElement>('[data-start-online]').forEach((el) => el.onclick = () => onlineClient?.startGame());
+    document.querySelectorAll<HTMLElement>('[data-copy-invite]').forEach((el) => el.onclick = copyInvite);
+    document.querySelectorAll<HTMLElement>('[data-copy-spectate]').forEach((el) => el.onclick = copySpectate);
+    document.querySelectorAll<HTMLElement>('[data-copy-code]').forEach((el) => el.onclick = () => onlineRoom && copyText(onlineRoom.code, 'Room code copied.'));
+    document.querySelectorAll<HTMLElement>('[data-online-home]').forEach((el) => el.onclick = goHomeFromOnline);
+  }
+
+  function client(): BrastaNet.Client {
+    if (onlineClient) return onlineClient;
+    onlineClient = new BrastaNet.Client((event) => {
+      if (event.type === 'status') { connectionStatus = event.status; if (context === 'online') render(); }
+      else if (event.type === 'session') { onlineSession = event.session; inviteRoomCode = event.session.role === 'player' ? event.session.code : ''; context = 'online'; const key = event.session.role === 'spectator' ? 'spectate' : 'room'; history.replaceState({}, '', `${location.pathname}?${key}=${encodeURIComponent(event.session.code)}`); render(); }
+      else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; render(); }
+      else if (event.type === 'error') { commandPending = false; lastError = event.message; render(); }
+      else if (event.type === 'notice') { if (event.message && event.message !== 'Connected to Brasta.') notice = event.message; render(); }
+    });
+    return onlineClient;
+  }
+
+  function inviteUrl(code: string): string { if (location.protocol === 'file:') return `Room ${code}`; return `${location.origin}${location.pathname}?room=${encodeURIComponent(code)}`; }
+  function spectateUrl(code: string): string { if (location.protocol === 'file:') return `Spectate ${code}`; return `${location.origin}${location.pathname}?spectate=${encodeURIComponent(code)}`; }
+  async function copyText(text: string, success: string): Promise<void> { try { await navigator.clipboard.writeText(text); notice = success; } catch { notice = `Copy this: ${text}`; } render(); }
+  function copyInvite(): void { if (!onlineRoom) return; void copyText(inviteUrl(onlineRoom.code), 'Player invite link copied.'); }
+  function copySpectate(): void { if (!onlineRoom) return; void copyText(spectateUrl(onlineRoom.code), 'Spectate link copied.'); }
+  function goHomeFromOnline(): void {
+    const code = onlineRoom?.code || onlineSession?.code || '';
+    const role = onlineSession?.role || 'player';
+    const wasPregame = !!onlineRoom && !onlineRoom.started;
+    const shouldLeave = role === 'spectator' || wasPregame;
+    if (shouldLeave) onlineClient?.leaveRoom();
+    onlineClient?.close(); onlineClient = null; onlineRoom = null; onlineSession = null; state = null; connectionStatus = 'disconnected'; lastOnlineRevision = -1; context = null; resetInteraction(); if (code && shouldLeave) BrastaNet.clearSession(code, role); history.replaceState({}, '', location.pathname); render();
+  }
+
+  function renderLab(): void {
+    context = 'lab'; const app = $('#app'); if (!state || state.message !== 'Rules Lab') state = Brasta.scenario('build7');
+    const hand = state.players[0].hand; const legal = selectedCard ? Brasta.legalActionsForCard(state, 1, selectedCard) : [];
+    app.innerHTML = `${renderHeader()}<main class="lab"><h1>Rules Lab</h1><p>Load a canned regression scenario, select a hand card, and inspect the same engine used by the authoritative online server.</p><div class="button-row lab-scenarios">${['build7', 'add8', 'raise8', 'capture8', 'jackBuild', 'burnJack', 'brasta'].map((n) => `<button data-scenario="${n}">${n}</button>`).join('')}</div><div class="lab-grid"><div>${renderBoard()}<section class="hand-area"><div class="hand-title">Seat 1 test hand</div><div class="hand">${hand.map((id) => cardHtml(id, { clickable: true, selected: selectedCard === id })).join('')}</div></section>${renderActions()}</div><div class="inspector"><h3>Legal Actions</h3><pre>${escapeHtml(JSON.stringify(legal, null, 2))}</pre><h3>State</h3><pre>${escapeHtml(JSON.stringify(state, null, 2))}</pre></div></div></main>`;
+    bindLab();
+  }
+  function bindLab(): void {
+    document.querySelectorAll<HTMLElement>('[data-scenario]').forEach((el) => el.onclick = () => { state = Brasta.scenario(el.dataset.scenario!); resetInteraction(); covered = false; renderLab(); });
+    document.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => el.onclick = () => { const id = el.dataset.card!; if (state!.loose.includes(id)) { if (pendingAction) { selectedLoose.has(id) ? selectedLoose.delete(id) : selectedLoose.add(id); renderLab(); } } else { selectedCard = id; pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; renderLab(); } });
+    document.querySelectorAll<HTMLElement>('[data-legal]').forEach((el) => el.onclick = () => { if (!state || !selectedCard) return; const action = el.dataset.legal as Brasta.LegalActionType; if (action === 'PLAY_LOOSE') labExecute({ type: 'PLAY_LOOSE', seat: 1, cardId: selectedCard }); else if (action === 'JACK_SWEEP' || action === 'BURN_JACK') labExecute({ type: 'JACK_ACTION', seat: 1, cardId: selectedCard }); else { pendingAction = action; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; renderLab(); } });
+    document.querySelectorAll<HTMLElement>('[data-submit]').forEach((el) => el.onclick = labSubmitPending);
+    document.querySelectorAll<HTMLElement>('[data-cancel]').forEach((el) => el.onclick = () => { pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; renderLab(); });
+    document.querySelectorAll<HTMLElement>('[data-buildchoice],[data-build]').forEach((el) => el.onclick = () => { if (!pendingAction) return; selectedBuildId = el.dataset.buildchoice || el.dataset.build || null; renderLab(); });
+    document.querySelectorAll<HTMLElement>('[data-decl]').forEach((el) => el.onclick = () => { if (!state || !selectedCard) return; selectedDeclaration = Brasta.getBuildDeclarationOptions(state, 1, selectedCard)[Number(el.dataset.decl)]; renderLab(); });
+    document.querySelectorAll<HTMLElement>('[data-nav="game"],[data-action="new"]').forEach((el) => el.onclick = () => { location.hash = ''; context = null; state = null; resetInteraction(); renderLanding(); });
+  }
+  function labExecute(command: Brasta.Command): void { if (!state) return; const result = Brasta.applyCommand(state, command); if (result.ok) { state = result.state; resetInteraction(); state.message = 'Rules Lab'; state.phase = 'play'; state.currentSeat = 1; } else lastError = result.error || 'Rejected'; renderLab(); }
+  function labSubmitPending(): void {
+    if (!state || !selectedCard || !pendingAction) return;
+    if (pendingAction === 'CAPTURE_LOOSE') labExecute({ type: 'CAPTURE_LOOSE', seat: 1, cardId: selectedCard, looseIds: [...selectedLoose] });
+    else if (pendingAction === 'MAKE_BUILD') { if (!selectedDeclaration) { lastError = 'Choose declaration'; renderLab(); return; } labExecute({ type: 'MAKE_BUILD', seat: 1, cardId: selectedCard, declaredValue: selectedDeclaration.value, declaredRank: selectedDeclaration.rank, looseIds: [...selectedLoose] }); }
+    else if (pendingAction === 'ADD_TO_BUILD') { if (!selectedBuildId) { lastError = 'Choose build'; renderLab(); return; } labExecute({ type: 'ADD_TO_BUILD', seat: 1, cardId: selectedCard, buildId: selectedBuildId, looseIds: [...selectedLoose] }); }
+    else if (pendingAction === 'RAISE_BUILD') { if (!selectedBuildId) { lastError = 'Choose build'; renderLab(); return; } labExecute({ type: 'RAISE_BUILD', seat: 1, cardId: selectedCard, buildId: selectedBuildId }); }
+    else if (pendingAction === 'CAPTURE_BUILD') { if (!selectedBuildId) { lastError = 'Choose build'; renderLab(); return; } labExecute({ type: 'CAPTURE_BUILD', seat: 1, cardId: selectedCard, buildId: selectedBuildId, looseIds: [...selectedLoose] }); }
+  }
+
+  async function autoReconnectFromUrl(): Promise<void> {
+    if (location.hash === '#lab') return;
+    const params = new URLSearchParams(location.search);
+    const spectateCode = BrastaNet.normalizeCode(params.get('spectate') || '');
+    if (spectateCode) {
+      const saved = BrastaNet.loadSession(spectateCode, 'spectator');
+      if (!saved) { renderLanding(); return; }
+      context = 'online'; try { await client().spectateRoom(spectateCode, saved.name, saved.token); } catch (e) { context = null; lastError = (e as Error).message; renderLanding(); }
+      return;
+    }
+    const code = BrastaNet.normalizeCode(params.get('room') || ''); if (!code) return;
+    inviteRoomCode = code; const saved = BrastaNet.loadSession(code, 'player'); if (!saved) { renderLanding(); return; }
+    context = 'online'; try { await client().joinRoom(code, saved.name, saved.token); } catch (e) { context = null; lastError = (e as Error).message; renderLanding(); }
+  }
+
+  window.addEventListener('hashchange', () => { if (location.hash === '#lab') { context = 'lab'; state = null; resetInteraction(); renderLab(); } else if (context === 'lab') { context = null; state = null; resetInteraction(); renderLanding(); } });
+  window.addEventListener('DOMContentLoaded', () => { if (location.hash === '#lab') { context = 'lab'; renderLab(); return; } renderLanding(); void autoReconnectFromUrl(); });
+}

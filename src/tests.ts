@@ -169,6 +169,34 @@ namespace BrastaTests {
     assert(r.state.phase === 'roundEnd', `tie should continue, got ${r.state.phase}`);
   });
 
+  test('capturing Big 2 produces a special announcement and last-move note', () => {
+    const s = Brasta.createLabState('1v1');
+    s.players[0].name = 'Alice';
+    s.players[0].hand = [card(s, '2', 'hearts')];
+    s.loose = [card(s, '2', 'clubs')];
+    const r = Brasta.applyCommand(s, { type: 'CAPTURE_LOOSE', seat: 1, cardId: card(s, '2', 'hearts'), looseIds: [card(s, '2', 'clubs')] });
+    assert(r.ok, r.error || 'capture failed');
+    assert((r.state.event || '').includes('BIG 2!'), `missing Big 2 event: ${r.state.event}`);
+    assert((r.state.lastMove || '').includes('Alice captured'), `missing last move: ${r.state.lastMove}`);
+  });
+
+  test('capturing Big 10 produces a special announcement', () => {
+    const s = Brasta.createLabState('1v1');
+    s.players[0].hand = [card(s, '10', 'hearts')];
+    s.loose = [card(s, '10', 'diamonds')];
+    const r = Brasta.applyCommand(s, { type: 'CAPTURE_LOOSE', seat: 1, cardId: card(s, '10', 'hearts'), looseIds: [card(s, '10', 'diamonds')] });
+    assert(r.ok, r.error || 'capture failed');
+    assert((r.state.event || '').includes('BIG 10!'), `missing Big 10 event: ${r.state.event}`);
+  });
+
+  test('build action records a readable last move', () => {
+    const s = Brasta.scenario('build7');
+    s.players[0].name = 'Alice';
+    const r = Brasta.applyCommand(s, { type: 'MAKE_BUILD', seat: 1, cardId: card(s, '3', 'spades'), declaredValue: 7, looseIds: [card(s, '4', 'clubs'), card(s, '7', 'diamonds')] });
+    assert(r.ok, r.error || 'build failed');
+    assert((r.state.lastMove || '').includes('made BUILD 7'), `bad last move: ${r.state.lastMove}`);
+  });
+
   (globalThis as any).__BRASTA_TEST_RESULTS__ = { passed, failed, results };
   console.log(results.join('\n'));
   console.log(`${passed} passed, ${failed} failed`);

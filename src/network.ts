@@ -1,8 +1,32 @@
 namespace BrastaNet {
+  export type SessionRole = 'player' | 'spectator';
   export interface RoomPlayer { seat: Brasta.Seat; name: string; connected: boolean; occupied: boolean; }
-  export interface RoomSnapshot { code: string; mode: Brasta.Mode; targetScore: Brasta.TargetScore; started: boolean; revision: number; hostSeat: Brasta.Seat; players: RoomPlayer[]; full: boolean; }
-  export interface SessionInfo { code: string; seat: Brasta.Seat; token: string; name: string; isHost: boolean; }
-  export interface RoomUpdate { room: RoomSnapshot; you: { seat: Brasta.Seat; name: string; isHost: boolean }; state: Brasta.GameState | null; }
+  export interface RoomSpectator { name: string; connected: boolean; }
+  export interface RoomSnapshot {
+    code: string;
+    mode: Brasta.Mode;
+    targetScore: Brasta.TargetScore;
+    started: boolean;
+    revision: number;
+    hostSeat: Brasta.Seat;
+    players: RoomPlayer[];
+    spectators: RoomSpectator[];
+    spectatorCount: number;
+    full: boolean;
+  }
+  export interface SessionInfo {
+    code: string;
+    seat: Brasta.Seat | null;
+    token: string;
+    name: string;
+    isHost: boolean;
+    role: SessionRole;
+  }
+  export interface RoomUpdate {
+    room: RoomSnapshot;
+    you: { seat: Brasta.Seat | null; name: string; isHost: boolean; role: SessionRole };
+    state: Brasta.GameState | null;
+  }
   export type ClientEvent =
     | { type: 'status'; status: 'connecting' | 'connected' | 'disconnected' }
     | { type: 'session'; session: SessionInfo }
@@ -15,11 +39,36 @@ namespace BrastaNet {
   export function normalizeCode(code: string): string { return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
   export function rememberName(name: string): void { try { localStorage.setItem(LAST_NAME_KEY, name.trim()); } catch {} }
   export function lastName(): string { try { return localStorage.getItem(LAST_NAME_KEY) || ''; } catch { return ''; } }
-  export function loadSession(code: string): SessionInfo | null {
-    try { const raw = localStorage.getItem(SESSION_PREFIX + normalizeCode(code)); if (!raw) return null; const v = JSON.parse(raw) as SessionInfo; return v?.token && v?.code ? v : null; } catch { return null; }
+  function sessionKey(code: string, role: SessionRole): string { return `${SESSION_PREFIX}${role}:${normalizeCode(code)}`; }
+  function legacySessionKey(code: string): string { return SESSION_PREFIX + normalizeCode(code); }
+  export function loadSession(code: string, role: SessionRole = 'player'): SessionInfo | null {
+    try {
+      const normalized = normalizeCode(code);
+      let raw = localStorage.getItem(sessionKey(normalized, role));
+      if (!raw && role === 'player') raw = localStorage.getItem(legacySessionKey(normalized));
+      if (!raw) return null;
+      const v = JSON.parse(raw) as SessionInfo;
+      if (!v?.token || !v?.code) return null;
+      return { ...v, role: v.role === 'spectator' ? 'spectator' : role, seat: v.role === 'spectator' ? null : v.seat };
+    } catch { return null; }
   }
-  export function saveSession(session: SessionInfo): void { try { localStorage.setItem(SESSION_PREFIX + session.code, JSON.stringify(session)); rememberName(session.name); } catch {} }
-  export function clearSession(code: string): void { try { localStorage.removeItem(SESSION_PREFIX + normalizeCode(code)); } catch {} }
+  export function saveSession(session: SessionInfo): void {
+    try {
+      localStorage.setItem(sessionKey(session.code, session.role), JSON.stringify(session));
+      if (session.role === 'player') localStorage.removeItem(legacySessionKey(session.code));
+      rememberName(session.name);
+    } catch {}
+  }
+  export function clearSession(code: string, role?: SessionRole): void {
+    try {
+      const normalized = normalizeCode(code);
+      if (!role || role === 'player') {
+        localStorage.removeItem(sessionKey(normalized, 'player'));
+        localStorage.removeItem(legacySessionKey(normalized));
+      }
+      if (!role || role === 'spectator') localStorage.removeItem(sessionKey(normalized, 'spectator'));
+    } catch {}
+  }
 
   export class Client {
     private socket: WebSocket | null = null;
@@ -28,7 +77,7 @@ namespace BrastaNet {
     private pingTimer: number | null = null;
     private reconnectDelay = 1000;
     private stopped = false;
-    private resume: { code: string; name: string; token: string } | null = null;
+    private resume: { code: string; name: string; token: string; role: SessionRole } | null = null;
 
     constructor(private handler: EventHandler) {}
     get isConnected(): boolean { return this.socket?.readyState === WebSocket.OPEN; }
@@ -59,7 +108,12 @@ namespace BrastaNet {
           this.handler({ type: 'status', status: 'connected' });
           this.startPing();
           if (resumeOnOpen && this.resume?.token) {
-            this.send({ type: 'JOIN_ROOM', code: this.resume.code, name: this.resume.name, token: this.resume.token });
+            this.send({
+              type: this.resume.role === 'spectator' ? 'SPECTATE_ROOM' : 'JOIN_ROOM',
+              code: this.resume.code,
+              name: this.resume.name,
+              token: this.resume.token,
+            });
           }
           resolve();
         };
@@ -104,7 +158,7 @@ namespace BrastaNet {
       if (message.type === 'SESSION') {
         const session = message.session as SessionInfo;
         saveSession(session);
-        this.resume = { code: session.code, name: session.name, token: session.token };
+        this.resume = { code: session.code, name: session.name, token: session.token, role: session.role };
         this.handler({ type: 'session', session });
       }
       else if (message.type === 'ROOM_STATE') this.handler({ type: 'room', update: message.update as RoomUpdate });
@@ -127,9 +181,15 @@ namespace BrastaNet {
     }
     async joinRoom(code: string, name: string, token?: string): Promise<void> {
       const normalized = normalizeCode(code);
-      this.resume = token ? { code: normalized, name: name.trim(), token } : null;
+      this.resume = token ? { code: normalized, name: name.trim(), token, role: 'player' } : null;
       await this.connect();
       this.send({ type: 'JOIN_ROOM', code: normalized, name: name.trim(), token: token || undefined });
+    }
+    async spectateRoom(code: string, name: string, token?: string): Promise<void> {
+      const normalized = normalizeCode(code);
+      this.resume = token ? { code: normalized, name: name.trim(), token, role: 'spectator' } : null;
+      await this.connect();
+      this.send({ type: 'SPECTATE_ROOM', code: normalized, name: name.trim(), token: token || undefined });
     }
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
