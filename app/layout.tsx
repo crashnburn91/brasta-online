@@ -17,8 +17,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="/styles.css?v=0.4.9" />
-        <link rel="stylesheet" href="/boot.css?v=0.4.9" />
+        <link rel="stylesheet" href="/styles.css?v=0.4.10" />
+        <link rel="stylesheet" href="/boot.css?v=0.4.10" />
       </head>
       <body>{children}</body>
     </html>
