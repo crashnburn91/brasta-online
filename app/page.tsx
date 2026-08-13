@@ -30,39 +30,125 @@ const bootWatchdog = String.raw`(() => {
     mark('early_unhandled_rejection', { reason });
   });
 
-  const earlyPayload = () => JSON.stringify({
-    watchdog: true,
-    userAgent: navigator.userAgent,
-    online: navigator.onLine,
-    readyState: document.readyState,
-    events: early,
-  }, null, 2);
-
-  const showEarlyDiagnostics = () => {
-    if (window.__BRASTA_BOOT__) return;
-    const pre = document.getElementById('brasta-boot-diagnostics');
-    if (!pre) return;
-    pre.textContent = earlyPayload();
-    pre.hidden = false;
-    mark('early_diagnostics_shown');
+  const resourceSnapshot = () => {
+    const wanted = ['/boot-diagnostics.js', '/dist/game.js', '/dist/network.js', '/dist/app.js'];
+    let resources = [];
+    try { resources = performance.getEntriesByType('resource'); } catch {}
+    return wanted.map((path) => {
+      const entry = resources.find((item) => {
+        try { return new URL(item.name, window.location.href).pathname === path; } catch { return false; }
+      });
+      if (!entry) return { path, found: false };
+      return {
+        path,
+        found: true,
+        durationMs: Math.round(entry.duration || 0),
+        transferSize: typeof entry.transferSize === 'number' ? entry.transferSize : undefined,
+        encodedBodySize: typeof entry.encodedBodySize === 'number' ? entry.encodedBodySize : undefined,
+      };
+    });
   };
 
-  const copyEarlyDiagnostics = () => {
-    if (window.__BRASTA_BOOT__) return;
-    const text = earlyPayload();
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).catch(() => window.prompt('Copy Brasta diagnostics:', text));
-    } else {
-      window.prompt('Copy Brasta diagnostics:', text);
+  const diagnosticPayload = () => {
+    let recentAttempts = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem('brasta-boot-history-v1') || '[]');
+      if (Array.isArray(parsed)) recentAttempts = parsed.slice(0, 5);
+    } catch {}
+    return JSON.stringify({
+      watchdog: {
+        userAgent: navigator.userAgent,
+        online: navigator.onLine,
+        readyState: document.readyState,
+        visibility: document.visibilityState,
+        events: early,
+        resources: resourceSnapshot(),
+        globals: {
+          Brasta: typeof window.Brasta !== 'undefined',
+          BrastaNet: typeof window.BrastaNet !== 'undefined',
+        },
+      },
+      diagnostics: window.__BRASTA_BOOT__ || null,
+      recentAttempts,
+    }, null, 2);
+  };
+
+  const showDiagnostics = () => {
+    const pre = document.getElementById('brasta-boot-diagnostics');
+    if (!pre) return;
+    pre.textContent = diagnosticPayload();
+    pre.hidden = false;
+    mark('inline_diagnostics_shown');
+  };
+
+  const selectDiagnosticsText = () => {
+    const pre = document.getElementById('brasta-boot-diagnostics');
+    if (!pre) return false;
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return true;
+    } catch {
+      return false;
     }
   };
 
-  document.getElementById('brasta-boot-retry')?.addEventListener('click', () => {
-    mark('early_retry_clicked');
+  const fallbackCopy = (text) => {
+    showDiagnostics();
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = typeof document.execCommand === 'function' && document.execCommand('copy');
+      textarea.remove();
+      if (copied) {
+        mark('inline_diagnostics_copied_fallback');
+        const copy = document.getElementById('brasta-boot-copy');
+        if (copy) copy.textContent = 'Diagnostics copied. Paste them into the ChatGPT conversation.';
+        return;
+      }
+    } catch {}
+    selectDiagnosticsText();
+    const copy = document.getElementById('brasta-boot-copy');
+    if (copy) copy.textContent = 'Safari could not copy automatically. The diagnostics text below is selected — use Copy, then paste it into the ChatGPT conversation.';
+    mark('inline_diagnostics_copy_manual');
+  };
+
+  const copyDiagnostics = () => {
+    const text = diagnosticPayload();
+    mark('inline_copy_clicked');
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(() => {
+        mark('inline_diagnostics_copied');
+        const copy = document.getElementById('brasta-boot-copy');
+        if (copy) copy.textContent = 'Diagnostics copied. Paste them into the ChatGPT conversation.';
+      }).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const retry = () => {
+    mark('inline_retry_clicked');
     window.location.reload();
-  });
-  document.getElementById('brasta-boot-show-diagnostics')?.addEventListener('click', showEarlyDiagnostics);
-  document.getElementById('brasta-boot-copy-diagnostics')?.addEventListener('click', copyEarlyDiagnostics);
+  };
+
+  document.getElementById('brasta-boot-retry')?.addEventListener('click', retry);
+  document.getElementById('brasta-boot-show-diagnostics')?.addEventListener('click', showDiagnostics);
+  document.getElementById('brasta-boot-copy-diagnostics')?.addEventListener('click', copyDiagnostics);
+
+  // Expose standalone controls so the optional full diagnostics script can coexist
+  // without being required for the failure UI to work.
+  window.__BRASTA_BOOT_CONTROLS__ = { retry, showDiagnostics, copyDiagnostics };
 
   window.setTimeout(() => {
     const fallback = document.getElementById('brasta-boot-fallback');
@@ -75,6 +161,7 @@ const bootWatchdog = String.raw`(() => {
       online: navigator.onLine,
       gameGlobal: typeof window.Brasta !== 'undefined',
       networkGlobal: typeof window.BrastaNet !== 'undefined',
+      resources: resourceSnapshot(),
     });
     const title = document.getElementById('brasta-boot-title');
     const copy = document.getElementById('brasta-boot-copy');
