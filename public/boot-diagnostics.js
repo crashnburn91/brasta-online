@@ -2,18 +2,19 @@
   const HISTORY_KEY = 'brasta-boot-history-v1';
   const params = new URLSearchParams(window.location.search);
   const mode = params.has('spectate') ? 'spectate' : params.has('room') ? 'room' : 'home';
+  const earlyEvents = Array.isArray(window.__BRASTA_BOOT_EARLY__) ? window.__BRASTA_BOOT_EARLY__.slice() : [];
   const attempt = {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     startedAt: new Date().toISOString(),
     mode,
-    events: [],
+    events: earlyEvents,
   };
-  const seen = new Set();
+  const seen = new Set(earlyEvents.map((entry) => entry?.stage).filter(Boolean));
   let rendered = false;
   let timedOut = false;
-  const started = performance.now();
+  let domInitialized = false;
 
-  const elapsed = () => Math.round(performance.now() - started);
+  const elapsed = () => Math.round(performance.now());
   const safeString = (value) => {
     try {
       if (value instanceof Error) return `${value.name}: ${value.message}`;
@@ -56,6 +57,7 @@
     language: navigator.language,
     platform: navigator.platform || '',
     userAgent: navigator.userAgent,
+    readyState: document.readyState,
   });
 
   // Observe the existing socket lifecycle without changing Brasta's reconnect policy.
@@ -112,6 +114,11 @@
   }
 
   window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target && target !== window && (target.src || target.href)) {
+      mark('resource_error', { url: String(target.src || target.href).split('?')[0] });
+      return;
+    }
     mark('window_error', {
       message: event.message || 'Unknown error',
       file: event.filename || '',
@@ -131,7 +138,7 @@
   document.addEventListener('visibilitychange', () => mark('visibilitychange', { state: document.visibilityState }));
 
   function inspectResources(label) {
-    const wanted = ['/dist/game.js', '/dist/network.js', '/dist/app.js'];
+    const wanted = ['/boot-diagnostics.js', '/dist/game.js', '/dist/network.js', '/dist/app.js'];
     const resources = performance.getEntriesByType('resource');
     const report = wanted.map((path) => {
       const entry = resources.find((item) => {
@@ -196,7 +203,7 @@
   }
 
   function showFailure() {
-    if (rendered || timedOut) return;
+    if (rendered || timedOut || !document.getElementById('brasta-boot-fallback')) return;
     timedOut = true;
     attempt.result = 'timeout';
     attempt.completedAt = new Date().toISOString();
@@ -206,6 +213,7 @@
       networkGlobal: typeof window.BrastaNet !== 'undefined',
       online: navigator.onLine,
       visibility: document.visibilityState,
+      readyState: document.readyState,
     });
     persist();
 
@@ -214,7 +222,7 @@
     const spinner = document.getElementById('brasta-boot-spinner');
     const actions = document.getElementById('brasta-boot-actions');
     if (title) title.textContent = 'Brasta did not finish loading';
-    if (copy) copy.textContent = 'Retry the page. If it happens again, open Diagnostics so we can see exactly where startup stopped.';
+    if (copy) copy.textContent = 'The game client did not start. Retry the page, or open Diagnostics to see where loading stopped.';
     if (spinner) spinner.hidden = true;
     if (actions) actions.hidden = false;
   }
@@ -229,8 +237,9 @@
   }
 
   function installDebugButton() {
-    if (params.get('debug') !== '1') return;
+    if (params.get('debug') !== '1' || document.getElementById('brasta-debug-button')) return;
     const button = document.createElement('button');
+    button.id = 'brasta-debug-button';
     button.type = 'button';
     button.textContent = 'Boot diagnostics';
     button.setAttribute('aria-label', 'Show Brasta boot diagnostics');
@@ -257,13 +266,10 @@
     document.body.appendChild(button);
   }
 
-  const progressTimer = window.setInterval(() => {
-    checkProgress();
-    if (rendered) window.clearInterval(progressTimer);
-  }, 100);
-
-  document.addEventListener('DOMContentLoaded', () => {
-    mark('dom_content_loaded');
+  function initializeDom() {
+    if (domInitialized) return;
+    domInitialized = true;
+    mark('dom_ready', { readyState: document.readyState });
     installFallbackControls();
     installDebugButton();
     checkProgress();
@@ -278,12 +284,28 @@
     }
 
     window.setTimeout(() => inspectResources('2s'), 2000);
-    window.setTimeout(showFailure, 8000);
-  });
+  }
 
-  window.addEventListener('load', () => {
-    mark('window_load');
+  const progressTimer = window.setInterval(() => {
+    checkProgress();
+    if (rendered) window.clearInterval(progressTimer);
+  }, 100);
+
+  // Crucially, this timer starts as soon as diagnostics executes. It does not wait for DOMContentLoaded,
+  // because DOMContentLoaded itself waits for deferred game scripts.
+  window.setTimeout(showFailure, Math.max(0, 8000 - performance.now()));
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDom, { once: true });
+  } else {
+    initializeDom();
+  }
+
+  const handleWindowLoad = () => {
+    markOnce('window_load');
     inspectResources('load');
     checkProgress();
-  });
+  };
+  if (document.readyState === 'complete') handleWindowLoad();
+  else window.addEventListener('load', handleWindowLoad, { once: true });
 })();
