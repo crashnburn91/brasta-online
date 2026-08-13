@@ -73,12 +73,15 @@ const bootWatchdog = String.raw`(() => {
     }, null, 2);
   };
 
-  const showDiagnostics = () => {
+  const refreshDiagnostics = (open) => {
     const pre = document.getElementById('brasta-boot-diagnostics');
-    if (!pre) return;
-    pre.textContent = diagnosticPayload();
-    pre.hidden = false;
-    mark('inline_diagnostics_shown');
+    const details = document.getElementById('brasta-boot-diagnostics-details');
+    if (pre) pre.textContent = diagnosticPayload();
+    if (details) {
+      details.hidden = false;
+      if (open) details.open = true;
+    }
+    mark('inline_diagnostics_refreshed', { open: !!open });
   };
 
   const selectDiagnosticsText = () => {
@@ -97,14 +100,14 @@ const bootWatchdog = String.raw`(() => {
   };
 
   const fallbackCopy = (text) => {
-    showDiagnostics();
+    refreshDiagnostics(true);
     try {
       const textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.setAttribute('readonly', '');
       textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      textarea.style.pointerEvents = 'none';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
       document.body.appendChild(textarea);
       textarea.focus();
       textarea.select();
@@ -119,13 +122,14 @@ const bootWatchdog = String.raw`(() => {
     } catch {}
     selectDiagnosticsText();
     const copy = document.getElementById('brasta-boot-copy');
-    if (copy) copy.textContent = 'Safari could not copy automatically. The diagnostics text below is selected — use Copy, then paste it into the ChatGPT conversation.';
+    if (copy) copy.textContent = 'Automatic copy was unavailable. The diagnostics are open below; select and copy the text manually.';
     mark('inline_diagnostics_copy_manual');
   };
 
   const copyDiagnostics = () => {
     const text = diagnosticPayload();
     mark('inline_copy_clicked');
+    refreshDiagnostics(false);
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
       navigator.clipboard.writeText(text).then(() => {
         mark('inline_diagnostics_copied');
@@ -137,18 +141,22 @@ const bootWatchdog = String.raw`(() => {
     }
   };
 
-  const retry = () => {
-    mark('inline_retry_clicked');
-    window.location.reload();
+  // Hydration-proof delegated handler: React may replace the button node, but it cannot replace document.
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const copyButton = target.closest('#brasta-boot-copy-diagnostics');
+    if (!copyButton) return;
+    event.preventDefault();
+    event.stopPropagation();
+    copyDiagnostics();
+  }, true);
+
+  window.__BRASTA_BOOT_CONTROLS__ = {
+    retry: () => window.location.reload(),
+    showDiagnostics: () => refreshDiagnostics(true),
+    copyDiagnostics,
   };
-
-  document.getElementById('brasta-boot-retry')?.addEventListener('click', retry);
-  document.getElementById('brasta-boot-show-diagnostics')?.addEventListener('click', showDiagnostics);
-  document.getElementById('brasta-boot-copy-diagnostics')?.addEventListener('click', copyDiagnostics);
-
-  // Expose standalone controls so the optional full diagnostics script can coexist
-  // without being required for the failure UI to work.
-  window.__BRASTA_BOOT_CONTROLS__ = { retry, showDiagnostics, copyDiagnostics };
 
   window.setTimeout(() => {
     const fallback = document.getElementById('brasta-boot-fallback');
@@ -168,9 +176,10 @@ const bootWatchdog = String.raw`(() => {
     const spinner = document.getElementById('brasta-boot-spinner');
     const actions = document.getElementById('brasta-boot-actions');
     if (title) title.textContent = 'Brasta did not finish loading';
-    if (copy) copy.textContent = 'The game client did not start. Retry the page, or open Diagnostics to see where loading stopped.';
+    if (copy) copy.textContent = 'The game client did not start. Retry the page, or open Diagnostics below to see where loading stopped.';
     if (spinner) spinner.hidden = true;
     if (actions) actions.hidden = false;
+    refreshDiagnostics(false);
   }, 8000);
 })();`;
 
@@ -185,11 +194,13 @@ export default function Home() {
           <p id="brasta-boot-copy" className="boot-copy">Preparing the table and game client.</p>
           <div id="brasta-boot-spinner" className="boot-spinner" aria-label="Loading" />
           <div id="brasta-boot-actions" className="boot-actions" hidden>
-            <button id="brasta-boot-retry" type="button" className="primary">Retry</button>
-            <button id="brasta-boot-show-diagnostics" type="button">Diagnostics</button>
+            <a id="brasta-boot-retry" href="" className="primary">Retry</a>
             <button id="brasta-boot-copy-diagnostics" type="button">Copy Diagnostics</button>
           </div>
-          <pre id="brasta-boot-diagnostics" className="boot-diagnostics" hidden />
+          <details id="brasta-boot-diagnostics-details" className="boot-diagnostics-details" hidden>
+            <summary>Diagnostics</summary>
+            <pre id="brasta-boot-diagnostics" className="boot-diagnostics" />
+          </details>
           <noscript>
             <p className="boot-noscript">Brasta requires JavaScript. Enable JavaScript and reload this page.</p>
           </noscript>
