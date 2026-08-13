@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
@@ -19,10 +20,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
-        <link rel="stylesheet" href="/lobby-polish.css?v=1" />
-        <script src="/lobby-polish.js?v=1" defer />
+        <link rel="stylesheet" href="/lobby-polish.css?v=2" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Script src="/lobby-polish.js?v=2" strategy="afterInteractive" />
+      </body>
     </html>
   );
 }
