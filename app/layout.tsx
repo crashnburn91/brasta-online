@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
@@ -6,18 +6,25 @@ export const metadata: Metadata = {
   description: 'Online Brasta card game',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#071b13',
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#071b13" />
-        <link rel="stylesheet" href="/styles.css" />
+        <link rel="stylesheet" href="/styles.css?v=0.4.5" />
       </head>
       <body>
         {children}
-        <script src="/dist/game.js" defer />
-        <script src="/dist/network.js" defer />
-        <script src="/dist/app.js" defer />
+        <script src="/boot-diagnostics.js?v=0.4.5" />
+        <script src="/dist/game.js?v=0.4.5" defer />
+        <script src="/dist/network.js?v=0.4.5" defer />
+        <script src="/dist/app.js?v=0.4.5" defer />
       </body>
     </html>
   );
