@@ -1,33 +1,24 @@
-# Brasta Online v0.4.5 — Startup Diagnostics
+# Brasta Online v0.4.9 — Post-Hydration Bootstrap
 
 Standalone, server-authoritative Brasta with 1v1, 2v2, and spectator support.
 
-## v0.4.5 startup hardening
+## v0.4.9 startup architecture
 
-This milestone adds diagnostics without changing Brasta gameplay or the realtime reconnect policy.
+Diagnostics from iPhone Safari showed React error #418 immediately after the legacy Brasta client rendered. All Brasta bundles had loaded successfully, indicating that the intermittent first-load failure was a React/Next hydration collision rather than a missing script or network failure.
 
-- The server-rendered page now shows a real **Loading Brasta…** screen immediately instead of an empty app container.
-- If the client does not render within 8 seconds, the loading screen becomes a retry/error screen instead of remaining blank.
-- Startup diagnostics record:
-  - DOM ready and window load
-  - `game.js`, `network.js`, and `app.js` resource timing
-  - Brasta and BrastaNet bundle readiness
-  - first successful app render
-  - JavaScript errors and unhandled promise rejections
-  - browser online/offline state
-  - `pageshow`, `pagehide`, and visibility changes for iPhone/Safari lifecycle testing
-  - WebSocket request, open, error, close code/reason, session receipt, and first room-state receipt
-- The most recent five startup attempts are retained locally in the browser so a failed first attempt can still be inspected after a successful reload.
-- Use `?debug=1` on any Brasta URL to show a **Boot diagnostics** button.
-- The failure screen also provides **Diagnostics** and **Copy Diagnostics** controls.
-- Static client URLs are versioned with `v=0.4.5` to reduce stale mixed-version browser caching during deployment testing.
-- The mobile viewport explicitly uses `viewport-fit=cover` for iPhone safe-area behavior.
+v0.4.9 changes the startup order:
 
-Example diagnostic URLs:
+1. Next renders the Brasta loading shell and an empty `#app` mount.
+2. React hydrates that stable markup.
+3. A Client Component `useEffect` runs only after hydration.
+4. The legacy scripts load sequentially: `game.js`, then `network.js`, then `app.js`.
+5. The legacy Brasta UI is allowed to populate `#app` only after React hydration is complete.
 
-- Homepage: `/?debug=1`
-- Player invite: `/?room=ABCDE&debug=1`
-- Spectator invite: `/?spectate=ABCDE&debug=1`
+The legacy scripts are no longer included as deferred scripts in the server-rendered layout.
+
+For compatibility with the existing standalone client, if `app.js` loads after the browser's native `DOMContentLoaded` event and has not rendered, the bootstrap replays that event once for the legacy startup listener.
+
+The loading shell retains an 8-second failure state with Retry, Diagnostics, and Copy Diagnostics. Bootstrap diagnostics retain the latest five attempts locally and report script timing, JavaScript errors, browser state, and whether the Brasta globals initialized.
 
 ## Spectating
 
@@ -71,8 +62,7 @@ Rules regression suite:
 npm run test:rules
 ```
 
-v0.4.4 gameplay validation before this diagnostics-only milestone:
+Gameplay validation from the current rules engine:
 
 - 17/17 rules regression tests passed
 - 6/6 spectator server integration checks passed
-- Browser TypeScript compilation passed
