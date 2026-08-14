@@ -1,15 +1,14 @@
 {
   "name": "brasta-online",
-  "version": "0.5.1",
+  "version": "0.5.0",
   "private": true,
   "description": "Server-authoritative online Brasta for Vercel WebSockets + Redis",
   "scripts": {
     "sync:engine": "node scripts/sync-server-engine.mjs",
-    "build:client": "tsc -p tsconfig.client.json && tsc -p tsconfig.tests.json && tsc -p tsconfig.release-tests.json",
-    "verify:rules": "node public/dist/tests-bundle.js && node public/dist/release-tests-bundle.js",
-    "build": "npm run sync:engine && npm run build:client && npm run verify:rules && next build",
+    "build:client": "tsc -p tsconfig.client.json && tsc -p tsconfig.tests.json",
+    "build": "npm run sync:engine && npm run build:client && next build",
     "start": "next start",
-    "test:rules": "npm run build:client && npm run verify:rules"
+    "test:rules": "npm run build:client && node public/dist/tests-bundle.js"
   },
   "engines": {
     "node": "24.x"

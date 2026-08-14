@@ -73,7 +73,6 @@ namespace Brasta {
     lastPickupSeat: Seat | null;
     event: string | null;
     lastMove: string | null;
-    lastHandRound: number | null;
     roundScore: RoundScore | null;
     message: string;
   }
@@ -243,7 +242,6 @@ namespace Brasta {
       lastPickupSeat: null,
       event: null,
       lastMove: null,
-      lastHandRound: null,
       roundScore: null,
       message: 'Seat 1: keep your opening four or put them on the board.',
     };
@@ -359,6 +357,7 @@ namespace Brasta {
       return v != null && v <= target;
     });
     const out: CardId[][] = [];
+    // DFS rather than bit masks so this remains usable with larger boards.
     function dfs(start: number, sum: number, chosen: CardId[]): void {
       if (sum === target) {
         out.push([...chosen]);
@@ -591,20 +590,13 @@ namespace Brasta {
       if (state.deck.length > 0) {
         dealAllActive(state, 4);
         state.currentSeat = next;
-        if (state.deck.length === 0) {
-          state.lastHandRound = state.round;
-          appendEvent(state, 'LAST HAND!');
-          state.message = `LAST HAND! Final four-card deal. Seat ${next}'s turn.`;
-        } else {
-          state.message = `New four-card deal. Seat ${next}'s turn.`;
-        }
+        state.message = `New four-card deal. Seat ${next}'s turn.`;
       } else {
         finishRound(state);
       }
     } else {
       state.currentSeat = next;
       state.message = `Seat ${next}'s turn.`;
-      if (state.lastHandRound === state.round) appendEvent(state, 'LAST HAND!');
     }
   }
 
@@ -629,7 +621,6 @@ namespace Brasta {
     next.roundScore = null;
     next.event = null;
     next.lastMove = null;
-    next.lastHandRound = null;
     next.phase = 'openingChoice';
     dealToSeat(next, next.starterSeat, 4);
     next.message = `Seat ${next.starterSeat}: keep your opening four or put them on the board.`;
@@ -793,18 +784,8 @@ namespace Brasta {
       removeFromHand(next, command.seat, command.cardId);
       target.modifiers.push(command.cardId);
       target.declaredValue = newValue;
-      const matching = next.builds.filter((x) => x.id !== target.id && x.kind === 'numeric' && x.declaredValue === newValue);
-      for (const other of matching) {
-        target.groups.push(...other.groups);
-        target.modifiers.push(...other.modifiers);
-      }
-      if (matching.length) {
-        const mergedIds = new Set(matching.map((x) => x.id));
-        next.builds = next.builds.filter((x) => !mergedIds.has(x.id));
-      }
-      next.event = matching.length ? `BUILD ${newValue} • BUILDS COMBINED` : `BUILD ${newValue}`;
-      const mergeText = matching.length ? ` and combined ${matching.length + 1} BUILD ${newValue} piles` : '';
-      next.lastMove = `${playerMoveName(next, command.seat)} raised BUILD ${build.declaredValue} → BUILD ${newValue} with ${cardLabel(card)}${mergeText}.`;
+      next.event = `BUILD ${newValue}`;
+      next.lastMove = `${playerMoveName(next, command.seat)} raised BUILD ${build.declaredValue} → BUILD ${newValue} with ${cardLabel(card)}.`;
       advanceAfterAction(next, command.seat);
       return { ok: true, state: next };
     }
@@ -891,7 +872,6 @@ namespace Brasta {
     state.roundScore = null;
     state.event = null;
     state.lastMove = null;
-    state.lastHandRound = null;
     state.message = 'Rules Lab';
     return state;
   }
