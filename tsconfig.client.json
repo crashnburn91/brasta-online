@@ -16,6 +16,7 @@
     "src/game.ts",
     "src/network.ts",
     "src/app.ts",
-    "src/bot.ts"
+    "src/bot.ts",
+    "src/compact.ts"
   ]
 }
