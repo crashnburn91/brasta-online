@@ -52,5 +52,63 @@ namespace BrastaBotTests {
     assert(BrastaBot.chooseOpening(state, 2) === 'put', 'Bot should put down a weak opening hand');
   }
 
-  console.log('3 bot regression tests passed');
+  {
+    const state = Brasta.createLabState('1v1');
+    state.currentSeat = 2;
+    const human = state.players.find((p) => p.seat === 1)!;
+    const bot = state.players.find((p) => p.seat === 2)!;
+    human.name = 'Donny';
+    bot.name = 'Brasta Bot';
+
+    const five = card(state, '5', 'hearts');
+    const nine = card(state, '9', 'spades');
+    const two = card(state, '2', 'hearts');
+    const three = card(state, '3', 'diamonds');
+    bot.hand = [five, nine];
+    state.loose = [two, three];
+    state.builds = [{
+      id: 'human-build-8',
+      kind: 'numeric',
+      declaredValue: 8,
+      groups: [[card(state, '4', 'clubs'), card(state, '4', 'diamonds')]],
+      modifiers: [],
+    }];
+    state.lastMove = 'Donny made BUILD 8 with 4♣ + 4♦.';
+
+    const command = BrastaBot.chooseCommand(state, 2);
+    assert(command?.type === 'PLAY_LOOSE', `Bot should avoid exposing a guaranteed opponent Brasta, got ${command?.type || 'none'}`);
+    const result = Brasta.applyCommand(state, command);
+    assert(result.ok, result.error || 'Safer bot play was illegal');
+    assert(!(result.state.loose.length === 0 && result.state.builds.length === 1), 'Bot left the opponent a build-only Brasta');
+  }
+
+  {
+    const state = Brasta.createLabState('1v1');
+    state.currentSeat = 2;
+    const bot = state.players.find((p) => p.seat === 2)!;
+    const eight = card(state, '8', 'hearts');
+    const six = card(state, '6', 'spades');
+    const three = card(state, '3', 'clubs');
+    const five = card(state, '5', 'diamonds');
+    bot.hand = [eight, six];
+    state.loose = [three, five];
+    state.builds = [{
+      id: 'build-8-clear',
+      kind: 'numeric',
+      declaredValue: 8,
+      groups: [[card(state, '4', 'clubs'), card(state, '4', 'diamonds')]],
+      modifiers: [],
+    }];
+
+    const command = BrastaBot.chooseCommand(state, 2);
+    assert(command?.type === 'CAPTURE_BUILD', `Bot should capture the build, got ${command?.type || 'none'}`);
+    assert(command.cardId === eight, 'Bot should use the 8 to capture BUILD 8');
+    assert(command.looseIds.includes(three) && command.looseIds.includes(five), 'Bot should include the compatible loose 3 + 5 with the build capture');
+    const result = Brasta.applyCommand(state, command);
+    assert(result.ok, result.error || 'Build + loose capture was illegal');
+    assert(result.state.builds.length === 0 && result.state.loose.length === 0, 'Bot should clear the whole table');
+    assert(result.state.roundStats.brastas.B === 1, 'Bot should earn Brasta for the full table clear');
+  }
+
+  console.log('5 bot regression tests passed');
 }
