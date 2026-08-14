@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
         <link rel="stylesheet" href="/compact-gameplay.css?v=0.5.4" />
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.5" />
+        <link rel="stylesheet" href="/tutorial.css?v=0.5.7" />
       </head>
       <body>
         {children}
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/dist/compact.js?v=0.5.4" strategy="afterInteractive" />
         <Script src="/compact-ambiguity.js?v=0.5.6" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.5" strategy="afterInteractive" />
+        <Script src="/tutorial.js?v=0.5.7" strategy="afterInteractive" />
       </body>
     </html>
   );
