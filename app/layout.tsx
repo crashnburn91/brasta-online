@@ -3,15 +3,15 @@ import Script from 'next/script';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Brasta',
-  description: 'Online Brasta card game',
+  title: 'Brasta — A Romani-American Card Game',
+  description: 'Brasta is a Romani-American card game of builds, captures and sweeps — from family tables to the online table.',
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#071b13',
+  themeColor: '#351014',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/compact-gameplay.css?v=0.5.4" />
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.5" />
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
+        <link rel="stylesheet" href="/brand-heritage.css?v=1" />
       </head>
       <body>
         {children}
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
+        <Script src="/brand-heritage.js?v=1" strategy="afterInteractive" />
       </body>
     </html>
   );
