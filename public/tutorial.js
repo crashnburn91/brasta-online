@@ -4,15 +4,16 @@
 
   let stepIndex = 0;
   let switchingScenario = false;
+  let openingChoice = '';
 
   const steps = [
     {
-      title: 'Welcome to Brasta',
-      eyebrow: '1 · THE GOAL',
-      text: 'Brasta is played in rounds. Capture cards, protect valuable cards, build combinations, and earn bonuses. Matches are played to 110 or 220 points.',
-      tip: 'At the start of each round, the starting player may KEEP their first four cards or PUT those four on the board and receive a replacement hand.',
+      title: 'Choose Your Opening Four',
+      eyebrow: '1 · OPENING CHOICE',
+      text: 'At the start of each round, the starting player sees their first four cards before the table is dealt. You decide whether to KEEP them or PUT all four onto the board.',
+      tip: 'Try it below. Either choice is legal: KEEP means these four stay in your hand and four new cards are dealt to the table. PUT means these four become the opening table and you receive four replacement cards.',
       scenario: 'build7',
-      passive: true,
+      mode: 'opening',
     },
     {
       title: 'Make a Build',
@@ -66,10 +67,10 @@
     {
       title: 'Round Scoring',
       eyebrow: '9 · SCORING',
-      text: 'Captured cards and round bonuses all add together. The last successful capture also receives every card left on the table when the round ends.',
-      tip: 'Aces +1 each · Jacks +1 each · 2♣ +10 · 10♦ +10 · most clubs +2 · most cards +2 · Last Pickup +10 · each Brasta +10 · each Burned Jack −10.',
+      text: 'At the end of the round, captured cards and bonuses are counted together. These are the values to remember.',
+      tip: 'Special cards score individually. Majority bonuses, Last Pickup, Brastas, and Burned Jacks are then added to the round total.',
       scenario: 'brasta',
-      passive: true,
+      mode: 'scoring',
     },
   ];
 
@@ -91,34 +92,98 @@
   }
 
   function renameNavigation() {
+    const inTutorial = !!labRoot();
+    document.documentElement.classList.toggle('tutorial-page-active', inTutorial);
     document.querySelectorAll('[data-nav="lab"]').forEach((el) => {
       if (!el.classList.contains('tutorial-launch')) {
         el.classList.add('tutorial-launch');
         el.innerHTML = '<span class="tutorial-launch-icon">?</span><span class="tutorial-launch-copy"><b>Tutorial</b><small>Learn Brasta step by step</small></span>';
         el.setAttribute('aria-label', 'Open Brasta tutorial');
       }
+      el.classList.toggle('tutorial-launch-current', inTutorial && !!el.closest('.topbar'));
     });
   }
 
   function tutorialMarkup(step) {
     const dots = steps.map((_, i) => `<button class="tutorial-dot ${i === stepIndex ? 'active' : ''}" data-tutorial-step="${i}" aria-label="Tutorial step ${i + 1}"></button>`).join('');
+    const needsOpeningChoice = step.mode === 'opening' && !openingChoice;
     return `
       <section class="tutorial-guide" data-tutorial-current="${stepIndex}">
         <div class="tutorial-copy">
           <div class="tutorial-eyebrow">${step.eyebrow}</div>
           <h1>${step.title}</h1>
           <p>${step.text}</p>
-          <div class="tutorial-tip"><b>${step.passive ? 'Remember' : 'Your move'}</b><span>${step.tip}</span></div>
+          <div class="tutorial-tip"><b>${step.mode === 'scoring' ? 'Reference' : step.mode === 'opening' ? 'Your choice' : 'Your move'}</b><span>${step.tip}</span></div>
         </div>
         <div class="tutorial-controls">
           <div class="tutorial-progress">${dots}</div>
           <div class="tutorial-nav">
             <button data-tutorial-prev ${stepIndex === 0 ? 'disabled' : ''}>Back</button>
             <span>${stepIndex + 1} / ${steps.length}</span>
-            <button class="primary" data-tutorial-next>${stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button>
+            <button class="primary" data-tutorial-next ${needsOpeningChoice ? 'disabled' : ''}>${stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button>
           </div>
         </div>
       </section>`;
+  }
+
+  function faceCard(rank, suit, red = false) {
+    return `<div class="tutorial-card-face ${red ? 'red' : ''}" aria-label="${rank}${suit}"><span>${rank}</span><strong>${suit}</strong></div>`;
+  }
+
+  function openingMarkup() {
+    const result = openingChoice === 'keep'
+      ? '<div class="tutorial-choice-result"><b>KEEP</b><span>These four cards stay in your hand. The dealer now puts four new cards face-up on the table, then deals the other players.</span></div>'
+      : openingChoice === 'put'
+        ? '<div class="tutorial-choice-result"><b>PUT</b><span>These four cards become the opening table. You receive four replacement cards, then the other players are dealt.</span></div>'
+        : '<div class="tutorial-choice-result muted"><b>Your decision</b><span>Look at the four cards, then choose what you would do. There is no universally correct answer.</span></div>';
+    return `<section class="tutorial-special-stage tutorial-opening-stage">
+      <div class="tutorial-opening-label">YOUR FIRST FOUR</div>
+      <div class="tutorial-opening-hand">
+        ${faceCard('A','♠')}${faceCard('7','♥',true)}${faceCard('10','♦',true)}${faceCard('4','♣')}
+      </div>
+      <div class="tutorial-opening-actions">
+        <button class="${openingChoice === 'keep' ? 'selected' : ''}" data-tutorial-opening="keep"><b>KEEP 4</b><span>Keep these cards in your hand</span></button>
+        <button class="${openingChoice === 'put' ? 'selected' : ''}" data-tutorial-opening="put"><b>PUT 4 ON BOARD</b><span>Use these as the opening table</span></button>
+      </div>
+      ${result}
+    </section>`;
+  }
+
+  function scoringCard(rank, suit, value, text, red = false) {
+    return `<div class="tutorial-score-row"><div class="tutorial-score-visual">${faceCard(rank, suit, red)}</div><div class="tutorial-score-copy"><b>${text}</b><span>${value}</span></div></div>`;
+  }
+
+  function scoringMarkup() {
+    return `<section class="tutorial-special-stage tutorial-scoring-stage">
+      <div class="tutorial-score-list">
+        ${scoringCard('A','♠','+1 each','Every Ace')}
+        ${scoringCard('J','♥','+1 each','Every Jack',true)}
+        ${scoringCard('2','♣','+10','Big 2 · 2♣')}
+        ${scoringCard('10','♦','+10','Big 10 · 10♦',true)}
+        <div class="tutorial-score-row"><div class="tutorial-score-icon">♣</div><div class="tutorial-score-copy"><b>Most Clubs</b><span>+2</span><small>No points if tied</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon">▤</div><div class="tutorial-score-copy"><b>Most Captured Cards</b><span>+2</span><small>No points if tied</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon">LAST</div><div class="tutorial-score-copy"><b>Last Pickup</b><span>+10</span><small>Also receives cards left on the table at round end</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon gold">B</div><div class="tutorial-score-copy"><b>Each Brasta</b><span>+10</span><small>Clear the entire table with a non-Jack capture</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon danger">J</div><div class="tutorial-score-copy"><b>Each Burned Jack</b><span>−10</span><small>Playing a Jack when no loose cards are available</small></div></div>
+      </div>
+      <div class="tutorial-score-note"><b>Other cards</b> do not score individually, but every captured card still counts toward the Most Cards bonus, and every captured club counts toward Most Clubs.</div>
+    </section>`;
+  }
+
+  function renderSpecialStage(lab, step) {
+    let stage = lab.querySelector('.tutorial-special-stage');
+    const wanted = step.mode || 'game';
+    if (wanted === 'game') {
+      stage?.remove();
+      return;
+    }
+    const markup = wanted === 'opening' ? openingMarkup() : scoringMarkup();
+    if (stage) stage.outerHTML = markup;
+    else {
+      const grid = lab.querySelector('.lab-grid');
+      if (grid) grid.insertAdjacentHTML('beforebegin', markup);
+      else lab.insertAdjacentHTML('beforeend', markup);
+    }
   }
 
   function bindTutorial() {
@@ -128,6 +193,13 @@
         const step = steps[stepIndex];
         setScenario(step.scenario);
         enhance();
+      };
+    });
+
+    document.querySelectorAll('[data-tutorial-opening]').forEach((el) => {
+      el.onclick = () => {
+        openingChoice = el.dataset.tutorialOpening || '';
+        enhance(true);
       };
     });
 
@@ -141,6 +213,7 @@
 
     const next = document.querySelector('[data-tutorial-next]');
     if (next) next.onclick = () => {
+      if (stepIndex === 0 && !openingChoice) return;
       if (stepIndex >= steps.length - 1) {
         location.hash = '';
         location.reload();
@@ -152,10 +225,12 @@
     };
   }
 
-  function enhanceLab() {
+  function enhanceLab(forceGuide = false) {
     const lab = labRoot();
     if (!lab) return;
     lab.classList.add('tutorial-mode');
+    const step = steps[stepIndex];
+    lab.classList.toggle('tutorial-special-mode', step.mode === 'opening' || step.mode === 'scoring');
 
     const originalTitle = lab.querySelector(':scope > h1');
     const originalIntro = lab.querySelector(':scope > p');
@@ -169,14 +244,15 @@
     const currentStep = existing?.getAttribute('data-tutorial-current');
     if (!existing) {
       const grid = lab.querySelector('.lab-grid');
-      if (grid) grid.insertAdjacentHTML('beforebegin', tutorialMarkup(steps[stepIndex]));
-      else lab.insertAdjacentHTML('afterbegin', tutorialMarkup(steps[stepIndex]));
-    } else if (currentStep !== String(stepIndex)) {
-      existing.outerHTML = tutorialMarkup(steps[stepIndex]);
+      if (grid) grid.insertAdjacentHTML('beforebegin', tutorialMarkup(step));
+      else lab.insertAdjacentHTML('afterbegin', tutorialMarkup(step));
+    } else if (currentStep !== String(stepIndex) || forceGuide) {
+      existing.outerHTML = tutorialMarkup(step);
     }
 
     const grid = lab.querySelector('.lab-grid');
     grid?.classList.add('tutorial-game-grid');
+    renderSpecialStage(lab, step);
 
     const handTitle = lab.querySelector('.hand-title');
     if (handTitle && /test hand/i.test(handTitle.textContent || '')) handTitle.textContent = 'Your tutorial hand';
@@ -184,9 +260,9 @@
     bindTutorial();
   }
 
-  function enhance() {
+  function enhance(forceGuide = false) {
     renameNavigation();
-    enhanceLab();
+    enhanceLab(forceGuide);
   }
 
   const start = () => {
@@ -195,7 +271,7 @@
       window.setTimeout(start, 50);
       return;
     }
-    const observer = new MutationObserver(enhance);
+    const observer = new MutationObserver(() => enhance(false));
     observer.observe(app, { childList: true, subtree: true });
     enhance();
   };
