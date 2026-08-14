@@ -34,13 +34,61 @@ namespace BrastaNet {
     | { type: 'error'; message: string }
     | { type: 'notice'; message: string };
   type EventHandler = (event: ClientEvent) => void;
+  type DiagnosticEntry = {
+    ts: number;
+    event: string;
+    code?: number;
+    reason?: string;
+    clean?: boolean;
+    lifetimeMs?: number;
+    delayMs?: number;
+    attempt?: number;
+    source?: string;
+    online?: boolean;
+    visibility?: string;
+  };
+
   const SESSION_PREFIX = 'brasta-online-session:';
   const LAST_NAME_KEY = 'brasta-online-last-name';
+  const DIAGNOSTICS_KEY = 'brasta-network-diagnostics-v1';
+  const MAX_DIAGNOSTICS = 80;
+  const CONNECT_TIMEOUT_MS = 10000;
+  const PING_INTERVAL_MS = 15000;
+  const PONG_TIMEOUT_MS = 12000;
+  const HEALTH_INTERVAL_MS = 4000;
+
   export function normalizeCode(code: string): string { return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
   export function rememberName(name: string): void { try { localStorage.setItem(LAST_NAME_KEY, name.trim()); } catch {} }
   export function lastName(): string { try { return localStorage.getItem(LAST_NAME_KEY) || ''; } catch { return ''; } }
   function sessionKey(code: string, role: SessionRole): string { return `${SESSION_PREFIX}${role}:${normalizeCode(code)}`; }
   function legacySessionKey(code: string): string { return SESSION_PREFIX + normalizeCode(code); }
+
+  function diagnostic(event: string, extra: Partial<DiagnosticEntry> = {}): void {
+    try {
+      const raw = localStorage.getItem(DIAGNOSTICS_KEY);
+      const entries = raw ? JSON.parse(raw) as DiagnosticEntry[] : [];
+      entries.push({
+        ts: Date.now(),
+        event,
+        online: typeof navigator !== 'undefined' ? navigator.onLine : undefined,
+        visibility: typeof document !== 'undefined' ? document.visibilityState : undefined,
+        ...extra,
+      });
+      localStorage.setItem(DIAGNOSTICS_KEY, JSON.stringify(entries.slice(-MAX_DIAGNOSTICS)));
+    } catch {}
+  }
+
+  export function connectionDiagnostics(): DiagnosticEntry[] {
+    try {
+      const raw = localStorage.getItem(DIAGNOSTICS_KEY);
+      return raw ? JSON.parse(raw) as DiagnosticEntry[] : [];
+    } catch { return []; }
+  }
+
+  export function clearConnectionDiagnostics(): void {
+    try { localStorage.removeItem(DIAGNOSTICS_KEY); } catch {}
+  }
+
   export function loadSession(code: string, role: SessionRole = 'player'): SessionInfo | null {
     try {
       const normalized = normalizeCode(code);
@@ -75,12 +123,58 @@ namespace BrastaNet {
     private connecting: Promise<void> | null = null;
     private reconnectTimer: number | null = null;
     private pingTimer: number | null = null;
+    private healthTimer: number | null = null;
     private reconnectDelay = 1000;
+    private reconnectAttempt = 0;
     private stopped = false;
     private resume: { code: string; name: string; token: string; role: SessionRole } | null = null;
+    private socketOpenedAt = 0;
+    private lastMessageAt = 0;
+    private lastPingAt = 0;
+    private lastPongAt = 0;
+    private lifecycleBound = false;
 
-    constructor(private handler: EventHandler) {}
+    private readonly onVisibilityChange = () => {
+      diagnostic('visibility_change', { source: document.visibilityState });
+      if (document.visibilityState === 'visible') this.recoverFromLifecycle('visibility');
+    };
+    private readonly onPageShow = () => {
+      diagnostic('pageshow');
+      this.recoverFromLifecycle('pageshow');
+    };
+    private readonly onOnline = () => {
+      diagnostic('online');
+      this.recoverFromLifecycle('online');
+    };
+    private readonly onOffline = () => {
+      diagnostic('offline');
+      if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+        try { this.socket.close(4000, 'Browser offline'); } catch {}
+      }
+    };
+
+    constructor(private handler: EventHandler) {
+      this.bindLifecycle();
+    }
     get isConnected(): boolean { return this.socket?.readyState === WebSocket.OPEN; }
+
+    private bindLifecycle(): void {
+      if (this.lifecycleBound || typeof window === 'undefined') return;
+      this.lifecycleBound = true;
+      document.addEventListener('visibilitychange', this.onVisibilityChange);
+      window.addEventListener('pageshow', this.onPageShow);
+      window.addEventListener('online', this.onOnline);
+      window.addEventListener('offline', this.onOffline);
+    }
+
+    private unbindLifecycle(): void {
+      if (!this.lifecycleBound || typeof window === 'undefined') return;
+      this.lifecycleBound = false;
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+      window.removeEventListener('pageshow', this.onPageShow);
+      window.removeEventListener('online', this.onOnline);
+      window.removeEventListener('offline', this.onOffline);
+    }
 
     connect(): Promise<void> {
       this.stopped = false;
@@ -96,17 +190,40 @@ namespace BrastaNet {
         this.handler({ type: 'error', message });
         return Promise.reject(new Error(message));
       }
+      if (navigator.onLine === false) {
+        diagnostic('connect_skipped_offline');
+        this.handler({ type: 'status', status: 'disconnected' });
+        return Promise.reject(new Error('Browser is offline.'));
+      }
+
       this.handler({ type: 'status', status: 'connecting' });
+      diagnostic('socket_opening', { attempt: this.reconnectAttempt, source: resumeOnOpen ? 'resume' : 'initial' });
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       return new Promise((resolve, reject) => {
         const ws = new WebSocket(`${protocol}//${location.host}/api/ws`);
         this.socket = ws;
         let settled = false;
-        ws.onopen = () => {
+        const connectStartedAt = Date.now();
+        const connectTimeout = window.setTimeout(() => {
+          if (settled || ws.readyState === WebSocket.OPEN) return;
           settled = true;
+          diagnostic('connect_timeout', { attempt: this.reconnectAttempt });
+          try { ws.close(4000, 'Connect timeout'); } catch {}
+          reject(new Error('Connection attempt timed out.'));
+        }, CONNECT_TIMEOUT_MS);
+
+        ws.onopen = () => {
+          window.clearTimeout(connectTimeout);
+          settled = true;
+          this.socketOpenedAt = Date.now();
+          this.lastMessageAt = this.socketOpenedAt;
+          this.lastPongAt = this.socketOpenedAt;
+          this.lastPingAt = 0;
           this.reconnectDelay = 1000;
+          this.reconnectAttempt = 0;
+          diagnostic('socket_open', { delayMs: this.socketOpenedAt - connectStartedAt, source: resumeOnOpen ? 'resume' : 'initial' });
           this.handler({ type: 'status', status: 'connected' });
-          this.startPing();
+          this.startHeartbeat();
           if (resumeOnOpen && this.resume?.token) {
             this.send({
               type: this.resume.role === 'spectator' ? 'SPECTATE_ROOM' : 'JOIN_ROOM',
@@ -118,43 +235,118 @@ namespace BrastaNet {
           resolve();
         };
         ws.onerror = () => {
-          if (!settled) { settled = true; reject(new Error('Could not connect to the Brasta server.')); }
+          diagnostic('socket_error', { attempt: this.reconnectAttempt });
+          if (!settled) {
+            window.clearTimeout(connectTimeout);
+            settled = true;
+            reject(new Error('Could not connect to the Brasta server.'));
+          }
         };
-        ws.onclose = () => {
-          this.stopPing();
+        ws.onclose = (event) => {
+          window.clearTimeout(connectTimeout);
+          this.stopHeartbeat();
+          const lifetimeMs = this.socketOpenedAt ? Date.now() - this.socketOpenedAt : 0;
+          diagnostic('socket_close', {
+            code: event.code,
+            reason: String(event.reason || '').slice(0, 120),
+            clean: event.wasClean,
+            lifetimeMs,
+            attempt: this.reconnectAttempt,
+          });
+          this.socketOpenedAt = 0;
+          this.lastMessageAt = 0;
+          this.lastPingAt = 0;
+          this.lastPongAt = 0;
           if (this.socket === ws) this.socket = null;
           this.handler({ type: 'status', status: 'disconnected' });
-          if (!settled) { settled = true; reject(new Error('Connection closed before it was ready.')); }
+          if (!settled) {
+            settled = true;
+            reject(new Error('Connection closed before it was ready.'));
+          }
           if (!this.stopped) this.scheduleReconnect();
         };
         ws.onmessage = (event) => {
+          this.lastMessageAt = Date.now();
           try { this.handleMessage(JSON.parse(String(event.data))); }
           catch { this.handler({ type: 'error', message: 'Received an unreadable message from the server.' }); }
         };
       });
     }
 
+    private recoverFromLifecycle(source: string): void {
+      if (this.stopped) return;
+      if (navigator.onLine === false) return;
+
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        diagnostic('lifecycle_probe', { source });
+        this.sendPing(source);
+        return;
+      }
+      if (this.socket?.readyState === WebSocket.CONNECTING || this.connecting) return;
+
+      if (this.reconnectTimer != null) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      diagnostic('lifecycle_reconnect', { source });
+      this.connecting = this.openSocket(true)
+        .catch(() => { this.scheduleReconnect(); })
+        .finally(() => { this.connecting = null; });
+    }
+
     private scheduleReconnect(): void {
-      if (this.reconnectTimer != null || this.stopped) return;
+      if (this.reconnectTimer != null || this.stopped || this.connecting) return;
+      if (navigator.onLine === false) {
+        diagnostic('reconnect_wait_offline');
+        return;
+      }
       const delay = this.reconnectDelay;
+      this.reconnectAttempt += 1;
+      diagnostic('reconnect_scheduled', { delayMs: delay, attempt: this.reconnectAttempt });
       this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000);
       this.reconnectTimer = window.setTimeout(() => {
         this.reconnectTimer = null;
-        if (this.stopped) return;
-        this.openSocket(true).catch(() => this.scheduleReconnect());
+        if (this.stopped || navigator.onLine === false) return;
+        this.connecting = this.openSocket(true)
+          .catch(() => { this.scheduleReconnect(); })
+          .finally(() => { this.connecting = null; });
       }, delay);
     }
 
-    private startPing(): void {
-      this.stopPing();
-      this.pingTimer = window.setInterval(() => {
-        if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type: 'PING' }));
-      }, 20000);
+    private sendPing(source = 'interval'): void {
+      if (this.socket?.readyState !== WebSocket.OPEN) return;
+      try {
+        this.lastPingAt = Date.now();
+        this.socket.send(JSON.stringify({ type: 'PING' }));
+        if (source !== 'interval') diagnostic('ping_probe', { source });
+      } catch {
+        try { this.socket.close(4000, 'Ping send failed'); } catch {}
+      }
     }
-    private stopPing(): void { if (this.pingTimer != null) { clearInterval(this.pingTimer); this.pingTimer = null; } }
+
+    private startHeartbeat(): void {
+      this.stopHeartbeat();
+      this.pingTimer = window.setInterval(() => this.sendPing(), PING_INTERVAL_MS);
+      this.healthTimer = window.setInterval(() => {
+        if (this.socket?.readyState !== WebSocket.OPEN) return;
+        if (this.lastPingAt > this.lastPongAt && Date.now() - this.lastPingAt > PONG_TIMEOUT_MS) {
+          diagnostic('pong_timeout', { lifetimeMs: this.socketOpenedAt ? Date.now() - this.socketOpenedAt : 0 });
+          try { this.socket.close(4000, 'PONG timeout'); } catch {}
+        }
+      }, HEALTH_INTERVAL_MS);
+    }
+
+    private stopHeartbeat(): void {
+      if (this.pingTimer != null) { clearInterval(this.pingTimer); this.pingTimer = null; }
+      if (this.healthTimer != null) { clearInterval(this.healthTimer); this.healthTimer = null; }
+    }
 
     private handleMessage(message: any): void {
       if (!message || typeof message.type !== 'string') return;
+      if (message.type === 'PONG') {
+        this.lastPongAt = Date.now();
+        return;
+      }
       if (message.type === 'SESSION') {
         const session = message.session as SessionInfo;
         saveSession(session);
@@ -168,7 +360,7 @@ namespace BrastaNet {
 
     private send(payload: object): void {
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-        this.handler({ type: 'error', message: 'Not connected to the Brasta server.' });
+        this.handler({ type: 'error', message: 'Connection interrupted. Reconnecting…' });
         return;
       }
       this.socket.send(JSON.stringify(payload));
@@ -200,10 +392,12 @@ namespace BrastaNet {
     close(): void {
       this.stopped = true;
       this.resume = null;
-      this.stopPing();
+      this.stopHeartbeat();
+      this.unbindLifecycle();
       if (this.reconnectTimer != null) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
-      this.socket?.close();
+      try { this.socket?.close(1000, 'Client closed'); } catch {}
       this.socket = null;
+      diagnostic('client_closed');
     }
   }
 }
