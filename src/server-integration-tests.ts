@@ -1,6 +1,4 @@
-import { handleMessage, registerSocket, unregisterSocket, type Connection, type WireSocket } from '../lib/brasta-server';
-
-class FakeSocket implements WireSocket {
+class FakeSocket {
   messages: any[] = [];
   closed = false;
 
@@ -21,8 +19,10 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-async function send(conn: Connection, message: object): Promise<void> {
-  await handleMessage(conn, JSON.stringify(message));
+type ServerApi = typeof import('../lib/brasta-server');
+
+async function send(server: ServerApi, conn: any, message: object): Promise<void> {
+  await server.handleMessage(conn, JSON.stringify(message));
 }
 
 function publicState(update: any) {
@@ -51,28 +51,28 @@ function assertSynced(hostSocket: FakeSocket, guestSocket: FakeSocket, expectedP
   assert(JSON.stringify(publicState(host.update)) === JSON.stringify(publicState(guest.update)), 'Players disagree on public game state');
 }
 
-async function runOpeningScenario(choice: 'keep' | 'put'): Promise<void> {
+async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Promise<void> {
   const hostSocket = new FakeSocket();
   const guestSocket = new FakeSocket();
-  const host = await registerSocket(hostSocket);
-  const guest = await registerSocket(guestSocket);
+  const host = await server.registerSocket(hostSocket);
+  const guest = await server.registerSocket(guestSocket);
 
-  await send(host, { type: 'CREATE_ROOM', name: `Host-${choice}`, mode: '1v1', targetScore: 110 });
+  await send(server, host, { type: 'CREATE_ROOM', name: `Host-${choice}`, mode: '1v1', targetScore: 110 });
   const hostSession = hostSocket.latest('SESSION')?.session;
   assert(hostSession?.code && hostSession?.token, 'Host session was not created');
 
-  await send(guest, { type: 'JOIN_ROOM', code: hostSession.code, name: `Guest-${choice}` });
+  await send(server, guest, { type: 'JOIN_ROOM', code: hostSession.code, name: `Guest-${choice}` });
   const guestSession = guestSocket.latest('SESSION')?.session;
   assert(guestSession?.token, 'Guest session was not created');
 
-  await send(host, { type: 'START_GAME' });
+  await send(server, host, { type: 'START_GAME' });
   assertSynced(hostSocket, guestSocket, 'openingChoice');
 
   const beforeOpening = hostSocket.latest('ROOM_STATE');
   assert(beforeOpening.update.state.starterSeat === 1, 'Seat 1 should start round one');
   assert(beforeOpening.update.state.players[0].hand.length === 4, 'Starter should have four cards before opening choice');
 
-  await send(host, { type: 'OPENING_CHOICE', choice });
+  await send(server, host, { type: 'OPENING_CHOICE', choice });
   assertSynced(hostSocket, guestSocket, 'play');
 
   const hostAfter = hostSocket.latest('ROOM_STATE');
@@ -85,11 +85,11 @@ async function runOpeningScenario(choice: 'keep' | 'put'): Promise<void> {
   const revisionAfterOpening = guestAfter.update.room.revision;
   const guestHandBeforeReconnect = [...guestAfter.update.state.players.find((p: any) => p.seat === 2).hand];
 
-  await unregisterSocket(guest);
+  await server.unregisterSocket(guest);
 
   const reconnectSocket = new FakeSocket();
-  const reconnect = await registerSocket(reconnectSocket);
-  await send(reconnect, {
+  const reconnect = await server.registerSocket(reconnectSocket);
+  await send(server, reconnect, {
     type: 'JOIN_ROOM',
     code: hostSession.code,
     name: `Guest-${choice}`,
@@ -105,14 +105,15 @@ async function runOpeningScenario(choice: 'keep' | 'put'): Promise<void> {
   const guestHandAfterReconnect = [...reconnectedRoom.update.state.players.find((p: any) => p.seat === 2).hand];
   assert(JSON.stringify(guestHandAfterReconnect) === JSON.stringify(guestHandBeforeReconnect), `${choice}: reconnect did not restore the same hand`);
 
-  await unregisterSocket(reconnect);
-  await unregisterSocket(host);
+  await server.unregisterSocket(reconnect);
+  await server.unregisterSocket(host);
 }
 
 async function main(): Promise<void> {
-  assert(!process.env.REDIS_URL, 'Server integration tests must run in in-memory mode without REDIS_URL');
-  await runOpeningScenario('keep');
-  await runOpeningScenario('put');
+  delete process.env.REDIS_URL;
+  const server = await import('../lib/brasta-server');
+  await runOpeningScenario(server, 'keep');
+  await runOpeningScenario(server, 'put');
   console.log('2 online opening sync/reconnect integration scenarios passed');
 }
 
