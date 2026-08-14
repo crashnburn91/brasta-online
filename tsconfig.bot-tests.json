@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmitOnError": true
   },
-  "files": ["src/game.ts", "src/bot.ts", "src/bot-tests.ts"]
+  "files": ["src/game.ts", "src/scoring-fix.ts", "src/bot.ts", "src/bot-tests.ts"]
 }
