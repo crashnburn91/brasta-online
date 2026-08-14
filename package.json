@@ -6,9 +6,10 @@
   "scripts": {
     "sync:engine": "node scripts/sync-server-engine.mjs",
     "build:client": "tsc -p tsconfig.client.json && tsc -p tsconfig.tests.json && tsc -p tsconfig.release-tests.json",
-    "build": "npm run sync:engine && npm run build:client && next build",
+    "verify:rules": "node public/dist/tests-bundle.js && node public/dist/release-tests-bundle.js",
+    "build": "npm run sync:engine && npm run build:client && npm run verify:rules && next build",
     "start": "next start",
-    "test:rules": "npm run build:client && node public/dist/tests-bundle.js && node public/dist/release-tests-bundle.js"
+    "test:rules": "npm run build:client && npm run verify:rules"
   },
   "engines": {
     "node": "24.x"
