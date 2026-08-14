@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
         <link rel="stylesheet" href="/compact-gameplay.css?v=0.5.4" />
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.5" />
-        <link rel="stylesheet" href="/tutorial.css?v=0.5.9" />
+        <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
       </head>
       <body>
         {children}
@@ -34,9 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/connection-ui.js?v=0.5.5" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
-        <Script src="/tutorial.js?v=0.5.13" strategy="afterInteractive" />
-        <Script src="/tutorial-opening-order.js?v=0.5.10" strategy="afterInteractive" />
-        <Script src="/tutorial-scoring-rules.js?v=0.5.12" strategy="afterInteractive" />
+        <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
     </html>
   );
