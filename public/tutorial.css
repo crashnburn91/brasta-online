@@ -20,12 +20,22 @@
 .tutorial-mode .lab-grid>div:first-child{min-width:0}
 .tutorial-mode .action-panel{scroll-margin-bottom:120px}
 
+/* Launcher on the landing/local-play card */
+button.tutorial-launch{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:11px!important;width:100%;margin-top:12px;padding:11px 13px!important;border:1px solid #d8b75e66!important;border-radius:12px!important;background:linear-gradient(135deg,#173a2d,#0d2a20)!important;color:#f8f1d2!important;box-shadow:0 7px 18px #0003;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,background .12s ease;text-align:left!important}
+button.tutorial-launch:hover{transform:translateY(-1px);border-color:#ead27e!important;background:linear-gradient(135deg,#1d4938,#103326)!important;box-shadow:0 9px 22px #0004}
+button.tutorial-launch:active{transform:translateY(0)}
+.tutorial-launch-icon{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:#d8b75e;color:#201906;font-size:18px;font-weight:900;box-shadow:inset 0 0 0 1px #fff4b066}
+.tutorial-launch-copy{display:flex;min-width:0;flex-direction:column;gap:1px;line-height:1.15}
+.tutorial-launch-copy b{font-size:13px;letter-spacing:.02em;color:#fff5cc}
+.tutorial-launch-copy small{font-size:10px;font-weight:500;color:#aebfb6;letter-spacing:.01em}
+
 @media(max-width:800px){
   .tutorial-guide{grid-template-columns:1fr;gap:14px;padding:14px;margin-bottom:10px}
   .tutorial-copy h1{font-size:23px}
   .tutorial-tip{flex-direction:column;gap:4px}
   .tutorial-controls{min-width:0}
   .tutorial-nav{grid-template-columns:1fr auto 1fr}
+  button.tutorial-launch{padding:10px 12px!important}
 }
 
 @media(max-height:820px){
