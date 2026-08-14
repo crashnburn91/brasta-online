@@ -3,10 +3,12 @@
   window.__BRASTA_TUTORIAL_SCORING_RULES__ = true;
 
   function patch() {
-    document.querySelectorAll('.tutorial-score-copy small').forEach((el) => {
-      if ((el.textContent || '').trim() === 'No points if tied') {
-        el.textContent = 'Split 1 point each if tied';
-      }
+    document.querySelectorAll('.tutorial-score-row').forEach((row) => {
+      const title = (row.querySelector('.tutorial-score-copy b')?.textContent || '').trim();
+      const detail = row.querySelector('.tutorial-score-copy small');
+      if (!detail) return;
+      if (title === 'Most Clubs') detail.textContent = '13 clubs means there is always one majority winner';
+      if (title === 'Most Captured Cards') detail.textContent = 'Split 1 point each on a 26–26 tie';
     });
 
     const note = document.querySelector('.tutorial-score-note');
