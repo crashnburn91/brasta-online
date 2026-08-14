@@ -1,19 +1,13 @@
-// Scoring compatibility patch: tied majority bonuses split 1–1.
-// Kept separate so the authoritative generated server engine can mirror the same rule during sync.
+// Scoring compatibility patch: only the Most Captured Cards bonus can tie.
+// There are 13 clubs in a standard deck, so Most Clubs always has a single winner.
 namespace BrastaScoringFix {
   const originalCalculateRoundScore = Brasta.calculateRoundScore;
 
   function patchedCalculateRoundScore(state: Brasta.GameState): Brasta.RoundScore {
     const score = originalCalculateRoundScore(state);
-    const clubsA = state.captured.A.filter((id) => state.cards[id].suit === 'clubs').length;
-    const clubsB = state.captured.B.filter((id) => state.cards[id].suit === 'clubs').length;
     const cardsA = state.captured.A.length;
     const cardsB = state.captured.B.length;
 
-    if (clubsA === clubsB) {
-      score.A.clubsMajority = 1;
-      score.B.clubsMajority = 1;
-    }
     if (cardsA === cardsB) {
       score.A.cardsMajority = 1;
       score.B.cardsMajority = 1;
