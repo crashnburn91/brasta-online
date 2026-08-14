@@ -59,5 +59,26 @@ namespace BrastaReleaseTests {
     assert((nextMove.state.event || '').includes('LAST HAND!'), 'LAST HAND banner did not persist');
   }
 
-  console.log('2 release regression tests passed');
+  {
+    const s = Brasta.createLabState('1v1');
+    const played7 = card(s, '7', 'hearts');
+    const retained7 = card(s, '7', 'spades');
+    const build7Card = card(s, '7', 'diamonds');
+    s.players[0].hand = [played7, retained7];
+    s.loose = [];
+    s.builds = [{ id: 'same-value-b7', kind: 'numeric', declaredValue: 7, groups: [[build7Card]], modifiers: [] }];
+
+    const legal = Brasta.legalActionsForCard(s, 1, played7).map((action) => action.type);
+    assert(legal.includes('ADD_TO_BUILD'), 'A played 7 should be allowed to add to BUILD 7 when another 7 is retained');
+    assert(legal.includes('CAPTURE_BUILD'), 'The same played 7 should still be allowed to capture BUILD 7');
+
+    const added = Brasta.applyCommand(s, { type: 'ADD_TO_BUILD', seat: 1, cardId: played7, buildId: 'same-value-b7', looseIds: [] });
+    assert(added.ok, added.error || 'same-value add failed');
+    assert(added.state.builds.length === 1, 'BUILD 7 should remain after adding another 7');
+    assert(added.state.builds[0].declaredValue === 7, 'Build value should remain 7');
+    assert(added.state.builds[0].groups.some((group) => group.length === 1 && group[0] === played7), 'Played 7 should become its own BUILD 7 group');
+    assert(added.state.players[0].hand.includes(retained7), 'The retained 7 should remain in hand');
+  }
+
+  console.log('3 release regression tests passed');
 }
