@@ -73,13 +73,11 @@ const newOpening = `  export function resolveOpening(state: GameState, choice: '
 if (!body.includes(oldOpening)) throw new Error('Could not locate resolveOpening for opening-order patch');
 body = body.replace(oldOpening, newOpening);
 
-const oldClubs = "    if (clubsA > clubsB) A.clubsMajority = 2;\n    else if (clubsB > clubsA) B.clubsMajority = 2;";
-const newClubs = "    if (clubsA > clubsB) A.clubsMajority = 2;\n    else if (clubsB > clubsA) B.clubsMajority = 2;\n    else { A.clubsMajority = 1; B.clubsMajority = 1; }";
 const oldCards = "    if (cardsA > cardsB) A.cardsMajority = 2;\n    else if (cardsB > cardsA) B.cardsMajority = 2;";
 const newCards = "    if (cardsA > cardsB) A.cardsMajority = 2;\n    else if (cardsB > cardsA) B.cardsMajority = 2;\n    else { A.cardsMajority = 1; B.cardsMajority = 1; }";
-if (!body.includes(oldClubs) || !body.includes(oldCards)) throw new Error('Could not locate majority scoring rules for tie-split patch');
-body = body.replace(oldClubs, newClubs).replace(oldCards, newCards);
+if (!body.includes(oldCards)) throw new Error('Could not locate captured-card majority rule for tie-split patch');
+body = body.replace(oldCards, newCards);
 
 fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
 fs.writeFileSync(path.join(root, 'lib/game-engine.ts'), '// GENERATED from src/game.ts. Do not hand-edit.\n' + body.trimStart());
-console.log('Synced lib/game-engine.ts from src/game.ts with corrected opening order and tied-majority scoring');
+console.log('Synced lib/game-engine.ts from src/game.ts with corrected opening order and captured-card tie scoring');
