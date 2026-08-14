@@ -22,12 +22,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
         <link rel="stylesheet" href="/lobby-polish.css?v=3" />
         <link rel="stylesheet" href="/compact-gameplay.css?v=0.5.4" />
+        <link rel="stylesheet" href="/connection-ui.css?v=0.5.5" />
       </head>
       <body>
         {children}
         <Script src="/lobby-polish.js?v=3" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.5.4" strategy="afterInteractive" />
+        <Script src="/connection-ui.js?v=0.5.5" strategy="afterInteractive" />
       </body>
     </html>
   );
