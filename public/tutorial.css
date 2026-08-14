@@ -19,6 +19,7 @@
 .tutorial-nav button:disabled{opacity:.35;cursor:not-allowed}
 .tutorial-mode .lab-grid>div:first-child{min-width:0}
 .tutorial-mode .action-panel{scroll-margin-bottom:120px}
+.tutorial-special-mode .lab-grid{display:none!important}
 
 /* Launcher on the landing/local-play card */
 button.tutorial-launch{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:11px!important;width:100%;margin-top:12px;padding:11px 13px!important;border:1px solid #d8b75e66!important;border-radius:12px!important;background:linear-gradient(135deg,#173a2d,#0d2a20)!important;color:#f8f1d2!important;box-shadow:0 7px 18px #0003;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,background .12s ease;text-align:left!important}
@@ -29,6 +30,60 @@ button.tutorial-launch:active{transform:translateY(0)}
 .tutorial-launch-copy b{font-size:13px;letter-spacing:.02em;color:#fff5cc}
 .tutorial-launch-copy small{font-size:10px;font-weight:500;color:#aebfb6;letter-spacing:.01em}
 
+/* The tutorial page is already open, so the giant launcher should not occupy header space. */
+.tutorial-page-active .topbar nav .tutorial-launch-current{display:none!important}
+.tutorial-page-active .topbar{display:grid;grid-template-columns:auto 1fr auto;gap:18px}
+.tutorial-page-active .topbar>div:first-child{min-width:max-content}
+.tutorial-page-active .topbar .scoreline{justify-content:center;min-width:0}
+.tutorial-page-active .topbar nav{justify-content:flex-end;min-width:max-content}
+.tutorial-page-active .topbar nav button{width:auto;margin:0}
+
+/* Opening-choice lesson */
+.tutorial-special-stage{margin:0 0 18px;border:1px solid #ffffff1b;border-radius:18px;background:#061913cc;box-shadow:0 16px 36px #0004}
+.tutorial-opening-stage{padding:22px;text-align:center}
+.tutorial-opening-label{font-size:11px;font-weight:900;letter-spacing:.18em;color:#d8b75e;margin-bottom:14px}
+.tutorial-opening-hand{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.tutorial-card-face{width:84px;height:120px;border-radius:10px;border:1px solid #d9d0bb;background:#f6f0df;color:#171817;box-shadow:0 7px 18px #0006;position:relative;display:grid;place-items:center;font-family:Georgia,serif}
+.tutorial-card-face.red{color:#d53a45}
+.tutorial-card-face span{position:absolute;left:8px;top:5px;font:900 19px/1 system-ui,sans-serif}
+.tutorial-card-face strong{font-size:42px;font-weight:400}
+.tutorial-opening-actions{display:grid;grid-template-columns:repeat(2,minmax(0,260px));justify-content:center;gap:12px}
+.tutorial-opening-actions button{display:flex;flex-direction:column;gap:3px;align-items:center;padding:12px 16px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff0a;color:#f7f3e4;cursor:pointer}
+.tutorial-opening-actions button:hover{background:#ffffff12;border-color:#d8b75e66}
+.tutorial-opening-actions button.selected{background:#d8b75e1d;border-color:#efd77c;box-shadow:0 0 0 2px #d8b75e22}
+.tutorial-opening-actions b{font-size:13px;color:#fff2b0}
+.tutorial-opening-actions span{font-size:11px;color:#aebeb5}
+.tutorial-choice-result{max-width:700px;margin:16px auto 0;padding:11px 13px;display:flex;gap:11px;align-items:flex-start;text-align:left;border:1px solid #d8b75e44;border-radius:11px;background:#d8b75e0d}
+.tutorial-choice-result b{flex:0 0 auto;color:#f4db82;font-size:11px;letter-spacing:.1em}
+.tutorial-choice-result span{color:#d6e0da;font-size:12px;line-height:1.45}
+.tutorial-choice-result.muted{border-color:#ffffff16;background:#ffffff07}
+.tutorial-choice-result.muted b{color:#aebeb5}
+
+/* Scoring reference lesson */
+.tutorial-scoring-stage{padding:16px}
+.tutorial-score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.tutorial-score-row{min-height:92px;display:flex;align-items:center;gap:14px;padding:10px 12px;border:1px solid #ffffff14;border-radius:12px;background:#ffffff07}
+.tutorial-score-visual{flex:0 0 auto}
+.tutorial-score-row .tutorial-card-face{width:50px;height:72px;border-radius:7px;box-shadow:0 4px 10px #0005}
+.tutorial-score-row .tutorial-card-face span{left:5px;top:4px;font-size:13px}
+.tutorial-score-row .tutorial-card-face strong{font-size:27px}
+.tutorial-score-icon{display:grid;place-items:center;flex:0 0 50px;width:50px;height:50px;border:1px solid #ffffff20;border-radius:11px;background:#0b2d22;color:#e8f1eb;font-size:25px;font-weight:900}
+.tutorial-score-icon.gold{background:#d8b75e;color:#211a07;border-color:#f1d87c}
+.tutorial-score-icon.danger{background:#6e272d;color:#ffe8e8;border-color:#b75d65}
+.tutorial-score-icon:has(+ .tutorial-score-copy){font-size:18px}
+.tutorial-score-copy{min-width:0;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;width:100%}
+.tutorial-score-copy b{font-size:13px;color:#f2f5f3}
+.tutorial-score-copy span{font-size:16px;font-weight:900;color:#f2d56f;white-space:nowrap}
+.tutorial-score-copy small{grid-column:1/-1;color:#9fb1a7;font-size:10px;line-height:1.3}
+.tutorial-score-note{margin-top:10px;padding:10px 12px;border-radius:10px;background:#ffffff08;color:#afc0b7;font-size:11px;line-height:1.45}
+.tutorial-score-note b{color:#f2e5aa}
+
+@media(max-width:900px){
+  .tutorial-page-active .topbar{grid-template-columns:1fr auto;gap:8px}
+  .tutorial-page-active .topbar .scoreline{display:none}
+  .tutorial-score-list{grid-template-columns:1fr}
+}
+
 @media(max-width:800px){
   .tutorial-guide{grid-template-columns:1fr;gap:14px;padding:14px;margin-bottom:10px}
   .tutorial-copy h1{font-size:23px}
@@ -36,6 +91,11 @@ button.tutorial-launch:active{transform:translateY(0)}
   .tutorial-controls{min-width:0}
   .tutorial-nav{grid-template-columns:1fr auto 1fr}
   button.tutorial-launch{padding:10px 12px!important}
+  .tutorial-opening-stage{padding:15px 10px}
+  .tutorial-card-face{width:68px;height:98px}
+  .tutorial-card-face span{font-size:16px}
+  .tutorial-card-face strong{font-size:34px}
+  .tutorial-opening-actions{grid-template-columns:1fr;max-width:360px;margin:0 auto}
 }
 
 @media(max-height:820px){
