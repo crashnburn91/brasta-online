@@ -13,15 +13,9 @@
     const original = Brasta.calculateRoundScore.bind(Brasta);
     Brasta.calculateRoundScore = (state) => {
       const score = original(state);
-      const clubsA = state.captured.A.filter((id) => state.cards[id].suit === 'clubs').length;
-      const clubsB = state.captured.B.filter((id) => state.cards[id].suit === 'clubs').length;
       const cardsA = state.captured.A.length;
       const cardsB = state.captured.B.length;
 
-      if (clubsA === clubsB) {
-        score.A.clubsMajority = 1;
-        score.B.clubsMajority = 1;
-      }
       if (cardsA === cardsB) {
         score.A.cardsMajority = 1;
         score.B.cardsMajority = 1;
