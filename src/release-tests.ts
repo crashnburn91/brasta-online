@@ -83,27 +83,20 @@ namespace BrastaReleaseTests {
   {
     const s = Brasta.createLabState('1v1');
     const clubs = Object.keys(s.cards).filter((id) => s.cards[id].suit === 'clubs');
-    s.captured.A = clubs.slice(0, 6);
-    s.captured.B = clubs.slice(6, 12);
-    s.lastPickupTeam = null;
-    const tied = Brasta.calculateRoundScore(s);
-    assert(tied.A.clubsMajority === 1 && tied.B.clubsMajority === 1, 'Tied clubs should split the two majority points 1–1');
-    assert(tied.A.cardsMajority === 1 && tied.B.cardsMajority === 1, 'Tied captured-card count should split the two majority points 1–1');
-  }
-
-  {
-    const s = Brasta.createLabState('1v1');
-    const ids = Object.keys(s.cards);
-    s.captured.A = ids.slice(0, 26);
-    s.captured.B = ids.slice(26);
+    const nonClubs = Object.keys(s.cards).filter((id) => s.cards[id].suit !== 'clubs');
+    s.captured.A = [...clubs.slice(0, 6), ...nonClubs.slice(0, 20)];
+    s.captured.B = [...clubs.slice(6), ...nonClubs.slice(20)];
     s.lastPickupTeam = 'A';
     s.roundStats.brastas = { A: 0, B: 0 };
     s.roundStats.burnedJacks = { A: 0, B: 0 };
+
     const score = Brasta.calculateRoundScore(s);
     const awarded = score.A.total + score.B.total;
-    assert(score.A.cardsMajority === 1 && score.B.cardsMajority === 1, 'A 26–26 card split should award 1 point to each side');
+    assert(s.captured.A.length === 26 && s.captured.B.length === 26, 'Regression setup must split all 52 cards 26–26');
+    assert(score.A.cardsMajority === 1 && score.B.cardsMajority === 1, 'A 26–26 captured-card tie should split the two points 1–1');
+    assert(score.A.clubsMajority === 0 && score.B.clubsMajority === 2, 'With 13 clubs, one side must always win the clubs majority 2–0');
     assert(awarded === 42, `Expected the no-Brasta/no-burn baseline to award 42 total points, got ${awarded}`);
   }
 
-  console.log('5 release regression tests passed');
+  console.log('4 release regression tests passed');
 }
