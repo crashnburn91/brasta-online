@@ -295,7 +295,7 @@ namespace BrastaNet {
     }
 
     private scheduleReconnect(): void {
-      if (this.reconnectTimer != null || this.stopped || this.connecting) return;
+      if (this.reconnectTimer != null || this.stopped) return;
       if (navigator.onLine === false) {
         diagnostic('reconnect_wait_offline');
         return;
