@@ -1,6 +1,6 @@
 (() => {
-  if (window.__BRASTA_TUTORIAL__) return;
-  window.__BRASTA_TUTORIAL__ = true;
+  if (window.__BRASTA_TUTORIAL_V2__) return;
+  window.__BRASTA_TUTORIAL_V2__ = true;
 
   let stepIndex = 0;
   let switchingScenario = false;
@@ -69,34 +69,16 @@
       eyebrow: '9 · SCORING',
       text: 'At the end of the round, captured cards and bonuses are counted together. These are the values to remember.',
       tip: 'Special cards score individually. Majority bonuses, Last Pickup, Brastas, and Burned Jacks are then added to the round total.',
-      scenario: 'brasta',
       mode: 'scoring',
     },
   ];
 
-  function labRoot() { return document.querySelector('.lab'); }
-  function scenarioButton(name) { return Array.from(document.querySelectorAll('[data-scenario]')).find((el) => el.dataset.scenario === name) || null; }
-
-  function setScenario(name) {
-    if (switchingScenario) return;
-    const button = scenarioButton(name);
-    if (!button) { enhance(); return; }
-    switchingScenario = true;
-    button.click();
-    window.setTimeout(() => { switchingScenario = false; enhance(); }, 0);
+  function labRoot() {
+    return document.querySelector('.lab');
   }
 
-  function goToStep(index, resetGameScenario = true) {
-    if (index < 0 || index >= steps.length) return;
-    stepIndex = index;
-    const step = steps[stepIndex];
-    // Opening/scoring are presentation-only stages. Do not ask Rules Lab to
-    // rerender a scenario for them; doing so can destroy the tutorial DOM mid-transition.
-    if (step.mode === 'opening' || step.mode === 'scoring' || !resetGameScenario) {
-      enhance(true);
-      return;
-    }
-    setScenario(step.scenario);
+  function scenarioButton(name) {
+    return Array.from(document.querySelectorAll('[data-scenario]')).find((el) => el.dataset.scenario === name) || null;
   }
 
   function renameNavigation() {
@@ -112,13 +94,30 @@
     });
   }
 
-  function tutorialMarkup(step) {
-    const dots = steps.map((_, i) => `<button class="tutorial-dot ${i === stepIndex ? 'active' : ''}" data-tutorial-step="${i}" aria-label="Tutorial step ${i + 1}"></button>`).join('');
-    const needsOpeningChoice = step.mode === 'opening' && !openingChoice;
-    return `<section class="tutorial-guide" data-tutorial-current="${stepIndex}"><div class="tutorial-copy"><div class="tutorial-eyebrow">${step.eyebrow}</div><h1>${step.title}</h1><p>${step.text}</p><div class="tutorial-tip"><b>${step.mode === 'scoring' ? 'Reference' : step.mode === 'opening' ? 'Your choice' : 'Your move'}</b><span>${step.tip}</span></div></div><div class="tutorial-controls"><div class="tutorial-progress">${dots}</div><div class="tutorial-nav"><button data-tutorial-prev ${stepIndex === 0 ? 'disabled' : ''}>Back</button><span>${stepIndex + 1} / ${steps.length}</span><button class="primary" data-tutorial-next ${needsOpeningChoice ? 'disabled' : ''}>${stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button></div></div></section>`;
+  function faceCard(rank, suit, red = false) {
+    return `<div class="tutorial-card-face ${red ? 'red' : ''}" aria-label="${rank}${suit}"><span>${rank}</span><strong>${suit}</strong></div>`;
   }
 
-  function faceCard(rank, suit, red = false) { return `<div class="tutorial-card-face ${red ? 'red' : ''}" aria-label="${rank}${suit}"><span>${rank}</span><strong>${suit}</strong></div>`; }
+  function guideMarkup(step) {
+    const dots = steps.map((_, i) => `<button class="tutorial-dot ${i === stepIndex ? 'active' : ''}" data-tutorial-step="${i}" aria-label="Tutorial step ${i + 1}"></button>`).join('');
+    const needsChoice = step.mode === 'opening' && !openingChoice;
+    return `<section class="tutorial-guide" data-tutorial-current="${stepIndex}">
+      <div class="tutorial-copy">
+        <div class="tutorial-eyebrow">${step.eyebrow}</div>
+        <h1>${step.title}</h1>
+        <p>${step.text}</p>
+        <div class="tutorial-tip"><b>${step.mode === 'scoring' ? 'Reference' : step.mode === 'opening' ? 'Your choice' : 'Your move'}</b><span>${step.tip}</span></div>
+      </div>
+      <div class="tutorial-controls">
+        <div class="tutorial-progress">${dots}</div>
+        <div class="tutorial-nav">
+          <button data-tutorial-prev ${stepIndex === 0 ? 'disabled' : ''}>Back</button>
+          <span>${stepIndex + 1} / ${steps.length}</span>
+          <button class="primary" data-tutorial-next ${needsChoice ? 'disabled' : ''}>${stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button>
+        </div>
+      </div>
+    </section>`;
+  }
 
   function openingMarkup() {
     const result = openingChoice === 'keep'
@@ -126,24 +125,52 @@
       : openingChoice === 'put'
         ? '<div class="tutorial-choice-result"><b>PUT</b><span>These four become the opening table. The other player(s) are dealt first; then you receive your replacement four last.</span></div>'
         : '<div class="tutorial-choice-result muted"><b>Your decision</b><span>Look at the four cards, then choose what you would do. There is no universally correct answer.</span></div>';
-    return `<section class="tutorial-special-stage tutorial-opening-stage" data-tutorial-special="opening" data-opening-choice="${openingChoice || 'none'}"><div class="tutorial-opening-label">YOUR FIRST FOUR</div><div class="tutorial-opening-hand">${faceCard('A','♠')}${faceCard('7','♥',true)}${faceCard('10','♦',true)}${faceCard('4','♣')}</div><div class="tutorial-opening-actions"><button class="${openingChoice === 'keep' ? 'selected' : ''}" data-tutorial-opening="keep"><b>KEEP 4</b><span>Keep these cards in your hand</span></button><button class="${openingChoice === 'put' ? 'selected' : ''}" data-tutorial-opening="put"><b>PUT 4 ON BOARD</b><span>Use these as the opening table</span></button></div>${result}</section>`;
+    return `<section class="tutorial-special-stage tutorial-opening-stage" data-tutorial-special="opening" data-opening-choice="${openingChoice || 'none'}">
+      <div class="tutorial-opening-label">YOUR FIRST FOUR</div>
+      <div class="tutorial-opening-hand">${faceCard('A','♠')}${faceCard('7','♥',true)}${faceCard('10','♦',true)}${faceCard('4','♣')}</div>
+      <div class="tutorial-opening-actions">
+        <button class="${openingChoice === 'keep' ? 'selected' : ''}" data-tutorial-opening="keep"><b>KEEP 4</b><span>Keep these cards in your hand</span></button>
+        <button class="${openingChoice === 'put' ? 'selected' : ''}" data-tutorial-opening="put"><b>PUT 4 ON BOARD</b><span>Use these as the opening table</span></button>
+      </div>
+      ${result}
+    </section>`;
   }
 
-  function scoringCard(rank, suit, value, text, red = false) { return `<div class="tutorial-score-row"><div class="tutorial-score-visual">${faceCard(rank, suit, red)}</div><div class="tutorial-score-copy"><b>${text}</b><span>${value}</span></div></div>`; }
+  function scoringCard(rank, suit, value, text, red = false) {
+    return `<div class="tutorial-score-row"><div class="tutorial-score-visual">${faceCard(rank, suit, red)}</div><div class="tutorial-score-copy"><b>${text}</b><span>${value}</span></div></div>`;
+  }
 
   function scoringMarkup() {
-    return `<section class="tutorial-special-stage tutorial-scoring-stage" data-tutorial-special="scoring"><div class="tutorial-score-list">${scoringCard('A','♠','+1 each','Every Ace')}${scoringCard('J','♥','+1 each','Every Jack',true)}${scoringCard('2','♣','+10','Big 2 · 2♣')}${scoringCard('10','♦','+10','Big 10 · 10♦',true)}<div class="tutorial-score-row"><div class="tutorial-score-icon">♣</div><div class="tutorial-score-copy"><b>Most Clubs</b><span>+2</span><small>13 clubs means there is always one majority winner</small></div></div><div class="tutorial-score-row"><div class="tutorial-score-icon">▤</div><div class="tutorial-score-copy"><b>Most Captured Cards</b><span>+2</span><small>Split 1 point each on a 26–26 tie</small></div></div><div class="tutorial-score-row"><div class="tutorial-score-icon">LAST</div><div class="tutorial-score-copy"><b>Last Pickup</b><span>+10</span><small>Also receives cards left on the table at round end</small></div></div><div class="tutorial-score-row"><div class="tutorial-score-icon gold">B</div><div class="tutorial-score-copy"><b>Each Brasta</b><span>+10</span><small>Clear the entire table with a non-Jack capture</small></div></div><div class="tutorial-score-row"><div class="tutorial-score-icon danger">J</div><div class="tutorial-score-copy"><b>Each Burned Jack</b><span>−10</span><small>Playing a Jack when no loose cards are available</small></div></div></div><div class="tutorial-score-note"><b>Other cards</b> do not score individually, but every captured card still counts toward Most Cards and every captured club counts toward Most Clubs.<div class="tutorial-score-baseline"><b>42-point baseline:</b> With no burned Jacks, every completed round awards at least 42 total points across both sides before Brasta bonuses.</div></div></section>`;
+    return `<section class="tutorial-special-stage tutorial-scoring-stage" data-tutorial-special="scoring">
+      <div class="tutorial-score-list">
+        ${scoringCard('A','♠','+1 each','Every Ace')}
+        ${scoringCard('J','♥','+1 each','Every Jack',true)}
+        ${scoringCard('2','♣','+10','Big 2 · 2♣')}
+        ${scoringCard('10','♦','+10','Big 10 · 10♦',true)}
+        <div class="tutorial-score-row"><div class="tutorial-score-icon">♣</div><div class="tutorial-score-copy"><b>Most Clubs</b><span>+2</span><small>13 clubs means there is always one majority winner</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon">▤</div><div class="tutorial-score-copy"><b>Most Captured Cards</b><span>+2</span><small>Split 1 point each on a 26–26 tie</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon">LAST</div><div class="tutorial-score-copy"><b>Last Pickup</b><span>+10</span><small>Also receives cards left on the table at round end</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon gold">B</div><div class="tutorial-score-copy"><b>Each Brasta</b><span>+10</span><small>Clear the entire table with a non-Jack capture</small></div></div>
+        <div class="tutorial-score-row"><div class="tutorial-score-icon danger">J</div><div class="tutorial-score-copy"><b>Each Burned Jack</b><span>−10</span><small>Playing a Jack when no loose cards are available</small></div></div>
+      </div>
+      <div class="tutorial-score-note"><b>Other cards</b> do not score individually, but every captured card still counts toward Most Cards and every captured club counts toward Most Clubs.<div class="tutorial-score-baseline"><b>42-point baseline:</b> With no burned Jacks, every completed round awards at least 42 total points across both sides before Brasta bonuses.</div></div>
+    </section>`;
   }
 
   function renderSpecialStage(lab, step, force = false) {
     const stage = lab.querySelector('.tutorial-special-stage');
     const wanted = step.mode || 'game';
-    if (wanted === 'game') { if (stage) stage.remove(); return; }
+    if (wanted === 'game') {
+      if (stage) stage.remove();
+      return;
+    }
+
+    const desiredChoice = openingChoice || 'none';
     const currentMode = stage?.getAttribute('data-tutorial-special') || '';
     const currentChoice = stage?.getAttribute('data-opening-choice') || '';
-    const desiredChoice = openingChoice || 'none';
-    const isCurrent = currentMode === wanted && (wanted !== 'opening' || currentChoice === desiredChoice);
-    if (stage && isCurrent && !force) return;
+    const current = currentMode === wanted && (wanted !== 'opening' || currentChoice === desiredChoice);
+    if (stage && current && !force) return;
+
     const markup = wanted === 'opening' ? openingMarkup() : scoringMarkup();
     if (stage) stage.outerHTML = markup;
     else {
@@ -153,54 +180,119 @@
     }
   }
 
-  function bindTutorial() {
-    document.querySelectorAll('[data-tutorial-step]').forEach((el) => { el.onclick = () => goToStep(Number(el.dataset.tutorialStep || 0), true); });
-    document.querySelectorAll('[data-tutorial-opening]').forEach((el) => { el.onclick = () => { openingChoice = el.dataset.tutorialOpening || ''; enhance(true); }; });
-    const prev = document.querySelector('[data-tutorial-prev]');
-    if (prev) prev.onclick = () => { if (stepIndex > 0) goToStep(stepIndex - 1, true); };
-    const next = document.querySelector('[data-tutorial-next]');
-    if (next) next.onclick = () => {
-      if (stepIndex === 0 && !openingChoice) return;
-      if (stepIndex >= steps.length - 1) { location.hash = ''; location.reload(); return; }
-      goToStep(stepIndex + 1, true);
-    };
-  }
-
-  function enhanceLab(forceGuide = false) {
+  function enhance(force = false) {
+    renameNavigation();
     const lab = labRoot();
     if (!lab) return;
-    lab.classList.add('tutorial-mode');
+
     const step = steps[stepIndex];
+    lab.classList.add('tutorial-mode');
     lab.classList.toggle('tutorial-special-mode', step.mode === 'opening' || step.mode === 'scoring');
+
     const originalTitle = lab.querySelector(':scope > h1');
     const originalIntro = lab.querySelector(':scope > p');
     if (originalTitle) originalTitle.hidden = true;
     if (originalIntro) originalIntro.hidden = true;
     lab.querySelector('.lab-scenarios')?.classList.add('tutorial-source-controls');
     lab.querySelector('.inspector')?.classList.add('tutorial-hidden-inspector');
-    const existing = lab.querySelector('.tutorial-guide');
-    const currentStep = existing?.getAttribute('data-tutorial-current');
-    if (!existing) {
+
+    const guide = lab.querySelector('.tutorial-guide');
+    const currentStep = guide?.getAttribute('data-tutorial-current');
+    if (!guide) {
       const grid = lab.querySelector('.lab-grid');
-      if (grid) grid.insertAdjacentHTML('beforebegin', tutorialMarkup(step));
-      else lab.insertAdjacentHTML('afterbegin', tutorialMarkup(step));
-    } else if (currentStep !== String(stepIndex) || forceGuide) existing.outerHTML = tutorialMarkup(step);
-    const grid = lab.querySelector('.lab-grid');
-    grid?.classList.add('tutorial-game-grid');
-    renderSpecialStage(lab, step, forceGuide);
+      if (grid) grid.insertAdjacentHTML('beforebegin', guideMarkup(step));
+      else lab.insertAdjacentHTML('afterbegin', guideMarkup(step));
+    } else if (currentStep !== String(stepIndex) || force) {
+      guide.outerHTML = guideMarkup(step);
+    }
+
+    lab.querySelector('.lab-grid')?.classList.add('tutorial-game-grid');
+    renderSpecialStage(lab, step, force);
+
     const handTitle = lab.querySelector('.hand-title');
     if (handTitle && /test hand/i.test(handTitle.textContent || '')) handTitle.textContent = 'Your tutorial hand';
-    bindTutorial();
   }
 
-  function enhance(forceGuide = false) { renameNavigation(); enhanceLab(forceGuide); }
+  function loadScenarioForStep(step) {
+    if (!step.scenario || step.mode === 'opening' || step.mode === 'scoring') {
+      enhance(true);
+      return;
+    }
+    if (switchingScenario) return;
+    const button = scenarioButton(step.scenario);
+    if (!button) {
+      enhance(true);
+      return;
+    }
+    switchingScenario = true;
+    button.click();
+    window.setTimeout(() => {
+      switchingScenario = false;
+      enhance(true);
+    }, 0);
+  }
+
+  function goToStep(index) {
+    if (index < 0 || index >= steps.length) return;
+    stepIndex = index;
+    loadScenarioForStep(steps[stepIndex]);
+  }
+
+  function finishTutorial() {
+    location.hash = '';
+    location.reload();
+  }
+
+  function clickHandler(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const opening = target.closest('[data-tutorial-opening]');
+    if (opening) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openingChoice = opening.getAttribute('data-tutorial-opening') || '';
+      enhance(true);
+      return;
+    }
+
+    const dot = target.closest('[data-tutorial-step]');
+    if (dot) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      goToStep(Number(dot.getAttribute('data-tutorial-step') || 0));
+      return;
+    }
+
+    if (target.closest('[data-tutorial-prev]')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (stepIndex > 0) goToStep(stepIndex - 1);
+      return;
+    }
+
+    if (target.closest('[data-tutorial-next]')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (stepIndex === 0 && !openingChoice) return;
+      if (stepIndex >= steps.length - 1) finishTutorial();
+      else goToStep(stepIndex + 1);
+    }
+  }
+
+  document.addEventListener('click', clickHandler, true);
+
   const start = () => {
     const app = document.getElementById('app');
-    if (!app) { window.setTimeout(start, 50); return; }
+    if (!app) {
+      window.setTimeout(start, 50);
+      return;
+    }
     const observer = new MutationObserver(() => enhance(false));
     observer.observe(app, { childList: true, subtree: true });
-    enhance();
+    enhance(true);
   };
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 })();
