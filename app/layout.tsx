@@ -20,11 +20,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
-        <link rel="stylesheet" href="/lobby-polish.css?v=2" />
+        <link rel="stylesheet" href="/lobby-polish.css?v=3" />
       </head>
       <body>
         {children}
-        <Script src="/lobby-polish.js?v=2" strategy="afterInteractive" />
+        <Script src="/lobby-polish.js?v=3" strategy="afterInteractive" />
       </body>
     </html>
   );
