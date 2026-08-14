@@ -32,7 +32,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/dist/compact.js?v=0.5.4" strategy="afterInteractive" />
         <Script src="/compact-ambiguity.js?v=0.5.6" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.5" strategy="afterInteractive" />
+        <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.9" strategy="afterInteractive" />
+        <Script src="/tutorial-opening-order.js?v=0.5.10" strategy="afterInteractive" />
       </body>
     </html>
   );
