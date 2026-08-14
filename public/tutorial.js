@@ -136,7 +136,7 @@
       : openingChoice === 'put'
         ? '<div class="tutorial-choice-result"><b>PUT</b><span>These four cards become the opening table. You receive four replacement cards, then the other players are dealt.</span></div>'
         : '<div class="tutorial-choice-result muted"><b>Your decision</b><span>Look at the four cards, then choose what you would do. There is no universally correct answer.</span></div>';
-    return `<section class="tutorial-special-stage tutorial-opening-stage">
+    return `<section class="tutorial-special-stage tutorial-opening-stage" data-tutorial-special="opening" data-opening-choice="${openingChoice || 'none'}">
       <div class="tutorial-opening-label">YOUR FIRST FOUR</div>
       <div class="tutorial-opening-hand">
         ${faceCard('A','♠')}${faceCard('7','♥',true)}${faceCard('10','♦',true)}${faceCard('4','♣')}
@@ -154,7 +154,7 @@
   }
 
   function scoringMarkup() {
-    return `<section class="tutorial-special-stage tutorial-scoring-stage">
+    return `<section class="tutorial-special-stage tutorial-scoring-stage" data-tutorial-special="scoring">
       <div class="tutorial-score-list">
         ${scoringCard('A','♠','+1 each','Every Ace')}
         ${scoringCard('J','♥','+1 each','Every Jack',true)}
@@ -170,13 +170,20 @@
     </section>`;
   }
 
-  function renderSpecialStage(lab, step) {
-    let stage = lab.querySelector('.tutorial-special-stage');
+  function renderSpecialStage(lab, step, force = false) {
+    const stage = lab.querySelector('.tutorial-special-stage');
     const wanted = step.mode || 'game';
     if (wanted === 'game') {
-      stage?.remove();
+      if (stage) stage.remove();
       return;
     }
+
+    const currentMode = stage?.getAttribute('data-tutorial-special') || '';
+    const currentChoice = stage?.getAttribute('data-opening-choice') || '';
+    const desiredChoice = openingChoice || 'none';
+    const isCurrent = currentMode === wanted && (wanted !== 'opening' || currentChoice === desiredChoice);
+    if (stage && isCurrent && !force) return;
+
     const markup = wanted === 'opening' ? openingMarkup() : scoringMarkup();
     if (stage) stage.outerHTML = markup;
     else {
@@ -252,7 +259,7 @@
 
     const grid = lab.querySelector('.lab-grid');
     grid?.classList.add('tutorial-game-grid');
-    renderSpecialStage(lab, step);
+    renderSpecialStage(lab, step, forceGuide);
 
     const handTitle = lab.querySelector('.hand-title');
     if (handTitle && /test hand/i.test(handTitle.textContent || '')) handTitle.textContent = 'Your tutorial hand';
