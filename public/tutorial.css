@@ -1,0 +1,37 @@
+/* Guided tutorial replacing the developer-facing Rules Lab */
+.tutorial-source-controls,.tutorial-hidden-inspector{display:none!important}
+.tutorial-mode{max-width:1180px;margin:0 auto}
+.tutorial-game-grid{grid-template-columns:1fr!important}
+.tutorial-guide{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;margin:4px 0 16px;padding:18px 20px;border:1px solid #d8b75e55;border-radius:16px;background:linear-gradient(135deg,#0b2d22f2,#071b15f2);box-shadow:0 12px 34px #0005}
+.tutorial-copy h1{margin:3px 0 7px;font-size:28px;letter-spacing:.01em}
+.tutorial-copy p{margin:0;color:#c3d1c9;line-height:1.5;max-width:760px}
+.tutorial-eyebrow{font-size:10px;font-weight:900;letter-spacing:.18em;color:#d8b75e}
+.tutorial-tip{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:10px;background:#ffffff09;border:1px solid #ffffff14;font-size:12px;line-height:1.45}
+.tutorial-tip b{flex:0 0 auto;color:#f3d878;text-transform:uppercase;letter-spacing:.08em;font-size:10px;padding-top:2px}
+.tutorial-tip span{color:#e1e9e4}
+.tutorial-controls{min-width:190px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.tutorial-progress{display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
+.tutorial-dot{width:9px;height:9px;padding:0!important;border-radius:50%!important;border:1px solid #ffffff38!important;background:#ffffff12!important;min-width:0!important}
+.tutorial-dot.active{background:#d8b75e!important;border-color:#f0d98c!important;box-shadow:0 0 0 3px #d8b75e20}
+.tutorial-nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.tutorial-nav span{text-align:center;font-size:11px;color:#9fb1a7;white-space:nowrap}
+.tutorial-nav button{border:1px solid #ffffff2a;color:#f5f1e2;background:#ffffff0a;border-radius:9px;padding:8px 10px;cursor:pointer}
+.tutorial-nav button:disabled{opacity:.35;cursor:not-allowed}
+.tutorial-mode .lab-grid>div:first-child{min-width:0}
+.tutorial-mode .action-panel{scroll-margin-bottom:120px}
+
+@media(max-width:800px){
+  .tutorial-guide{grid-template-columns:1fr;gap:14px;padding:14px;margin-bottom:10px}
+  .tutorial-copy h1{font-size:23px}
+  .tutorial-tip{flex-direction:column;gap:4px}
+  .tutorial-controls{min-width:0}
+  .tutorial-nav{grid-template-columns:1fr auto 1fr}
+}
+
+@media(max-height:820px){
+  .tutorial-guide{padding:10px 12px;gap:10px}
+  .tutorial-copy h1{font-size:20px;margin:2px 0 4px}
+  .tutorial-copy p{font-size:12px;line-height:1.35}
+  .tutorial-tip{margin-top:7px;padding:7px 9px;font-size:11px}
+  .tutorial-progress{display:none}
+}
