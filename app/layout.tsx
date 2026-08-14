@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/lobby-polish.js?v=4" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.5.4" strategy="afterInteractive" />
+        <Script src="/compact-ambiguity.js?v=0.5.6" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.5" strategy="afterInteractive" />
       </body>
     </html>
