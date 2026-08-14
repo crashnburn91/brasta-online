@@ -92,14 +92,18 @@
 
   function renameNavigation() {
     document.querySelectorAll('[data-nav="lab"]').forEach((el) => {
-      if ((el.textContent || '').trim() !== 'Tutorial') el.textContent = 'Tutorial';
+      if (!el.classList.contains('tutorial-launch')) {
+        el.classList.add('tutorial-launch');
+        el.innerHTML = '<span class="tutorial-launch-icon">?</span><span class="tutorial-launch-copy"><b>Tutorial</b><small>Learn Brasta step by step</small></span>';
+        el.setAttribute('aria-label', 'Open Brasta tutorial');
+      }
     });
   }
 
   function tutorialMarkup(step) {
     const dots = steps.map((_, i) => `<button class="tutorial-dot ${i === stepIndex ? 'active' : ''}" data-tutorial-step="${i}" aria-label="Tutorial step ${i + 1}"></button>`).join('');
     return `
-      <section class="tutorial-guide">
+      <section class="tutorial-guide" data-tutorial-current="${stepIndex}">
         <div class="tutorial-copy">
           <div class="tutorial-eyebrow">${step.eyebrow}</div>
           <h1>${step.title}</h1>
@@ -162,12 +166,13 @@
     lab.querySelector('.inspector')?.classList.add('tutorial-hidden-inspector');
 
     const existing = lab.querySelector('.tutorial-guide');
-    const markup = tutorialMarkup(steps[stepIndex]);
-    if (existing) existing.outerHTML = markup;
-    else {
+    const currentStep = existing?.getAttribute('data-tutorial-current');
+    if (!existing) {
       const grid = lab.querySelector('.lab-grid');
-      if (grid) grid.insertAdjacentHTML('beforebegin', markup);
-      else lab.insertAdjacentHTML('afterbegin', markup);
+      if (grid) grid.insertAdjacentHTML('beforebegin', tutorialMarkup(steps[stepIndex]));
+      else lab.insertAdjacentHTML('afterbegin', tutorialMarkup(steps[stepIndex]));
+    } else if (currentStep !== String(stepIndex)) {
+      existing.outerHTML = tutorialMarkup(steps[stepIndex]);
     }
 
     const grid = lab.querySelector('.lab-grid');
