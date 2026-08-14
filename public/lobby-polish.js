@@ -6,6 +6,7 @@
   let audioUnlocked = false;
   let wasYourTurn = false;
   let lastHandSeen = false;
+  let turnToastTimer = null;
 
   function unlockAudio() {
     try {
@@ -52,7 +53,7 @@
     ]);
   }
 
-  function ensureTurnBanner(show) {
+  function turnBanner() {
     let banner = document.getElementById('brasta-your-turn-alert');
     if (!banner) {
       banner = document.createElement('div');
@@ -62,8 +63,30 @@
       banner.hidden = true;
       document.body.appendChild(banner);
     }
-    const shouldHide = !show;
-    if (banner.hidden !== shouldHide) banner.hidden = shouldHide;
+    return banner;
+  }
+
+  function hideTurnBanner() {
+    if (turnToastTimer != null) {
+      window.clearTimeout(turnToastTimer);
+      turnToastTimer = null;
+    }
+    turnBanner().hidden = true;
+  }
+
+  function showTurnBannerBriefly() {
+    const banner = turnBanner();
+    if (turnToastTimer != null) window.clearTimeout(turnToastTimer);
+    banner.hidden = false;
+    banner.classList.remove('leaving');
+    turnToastTimer = window.setTimeout(() => {
+      banner.classList.add('leaving');
+      window.setTimeout(() => {
+        banner.hidden = true;
+        banner.classList.remove('leaving');
+      }, 180);
+      turnToastTimer = null;
+    }, 1150);
   }
 
   function polishRoomUi() {
@@ -93,8 +116,16 @@
     const activePlayer = document.querySelector('.player-chip.active');
     const yourTurn = hasGame && !!activePlayer?.querySelector('.you-badge');
 
-    ensureTurnBanner(yourTurn);
-    if (yourTurn && !wasYourTurn) playTurnSound();
+    document.documentElement.classList.toggle('brasta-your-turn', yourTurn);
+    document.querySelectorAll('.player-chip').forEach((chip) => chip.classList.toggle('your-turn-chip', chip === activePlayer && yourTurn));
+    document.querySelector('.hand-area')?.classList.toggle('your-turn-hand', yourTurn);
+
+    if (yourTurn && !wasYourTurn) {
+      showTurnBannerBriefly();
+      playTurnSound();
+    } else if (!yourTurn) {
+      hideTurnBanner();
+    }
     wasYourTurn = yourTurn;
 
     const targetTitle = yourTurn ? 'Your Turn — Brasta' : 'Brasta';
@@ -114,7 +145,8 @@
 
     if (!hasGame) {
       wasYourTurn = false;
-      ensureTurnBanner(false);
+      document.documentElement.classList.remove('brasta-your-turn');
+      hideTurnBanner();
     }
   }
 
