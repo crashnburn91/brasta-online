@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "none",
+    "outFile": "public/dist/bot-tests-bundle.js",
+    "strict": true,
+    "lib": ["ES2020", "DOM"],
+    "types": [],
+    "skipLibCheck": true,
+    "noEmitOnError": true
+  },
+  "files": ["src/game.ts", "src/bot.ts", "src/bot-tests.ts"]
+}
