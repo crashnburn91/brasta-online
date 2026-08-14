@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/connection-ui.js?v=0.5.5" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
-        <Script src="/tutorial.js?v=0.5.9" strategy="afterInteractive" />
+        <Script src="/tutorial.js?v=0.5.13" strategy="afterInteractive" />
         <Script src="/tutorial-opening-order.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/tutorial-scoring-rules.js?v=0.5.12" strategy="afterInteractive" />
       </body>
