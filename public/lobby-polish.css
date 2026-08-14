@@ -9,6 +9,14 @@
 .lobby-controls .big-button:disabled{opacity:.72;background:#807344!important;color:#eee4bc!important;border-color:#a7975e!important;cursor:not-allowed;box-shadow:none}
 .lobby-controls .waiting-copy{display:inline-flex;align-items:center;justify-content:center;min-width:260px;min-height:50px;margin:0;padding:12px 22px;border:1px solid #ffffff20;border-radius:12px;background:#ffffff08;color:#c8d5cd}
 
+.brasta-turn-alert{position:fixed;z-index:1000;top:76px;left:50%;transform:translateX(-50%);min-width:190px;padding:11px 24px;border:1px solid #f0d98c;border-radius:999px;background:#d8b75ef2;color:#201906;text-align:center;font-size:15px;font-weight:900;letter-spacing:.14em;box-shadow:0 10px 30px #0008;pointer-events:none;animation:brasta-turn-pop .22s ease-out}
+.brasta-turn-alert[hidden]{display:none!important}
+.event.last-hand-banner{border:1px solid #d8b75e!important;background:linear-gradient(90deg,#5b4417d9,#876c24e6,#5b4417d9)!important;color:#fff2b7!important;font-weight:900!important;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 8px 24px #0005}
+@keyframes brasta-turn-pop{from{opacity:0;transform:translate(-50%,-8px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+
 @media(max-width:800px){
   .lobby-controls .big-button,.lobby-controls .waiting-copy{min-width:min(100%,320px)}
+  .brasta-turn-alert{top:68px;min-width:160px;padding:10px 18px;font-size:13px}
 }
+
+@media(prefers-reduced-motion:reduce){.brasta-turn-alert{animation:none}}
