@@ -239,6 +239,49 @@ namespace BrastaBot {
     return risk;
   }
 
+  function buildToken(build: Brasta.Build): string {
+    return build.kind === 'numeric' ? String(build.declaredValue ?? '') : String(build.declaredRank ?? '');
+  }
+
+  function looseCanClearWithBuild(state: Brasta.GameState, build: Brasta.Build): boolean {
+    if (!state.loose.length) return true;
+    if (build.kind === 'numeric' && build.declaredValue != null) {
+      return !!Brasta.partitionNumeric(state, state.loose, build.declaredValue);
+    }
+    if (build.kind === 'rank' && build.declaredRank) {
+      return state.loose.every((id) => state.cards[id]?.rank === build.declaredRank);
+    }
+    return false;
+  }
+
+  function opponentJustProvedBuild(state: Brasta.GameState, seat: Brasta.Seat, build: Brasta.Build): boolean {
+    if (state.mode !== '1v1' || !state.lastMove) return false;
+    const opponent = state.players.find((player) => player.seat !== seat);
+    if (!opponent?.name || !state.lastMove.startsWith(opponent.name)) return false;
+    if (!/\b(made|raised|added)\b/i.test(state.lastMove) || !/BUILD/i.test(state.lastMove)) return false;
+    const matches = [...state.lastMove.matchAll(/BUILD\s+(10|[1-9]|Q|K)/gi)];
+    if (!matches.length) return false;
+    const lastBuild = matches[matches.length - 1][1].toUpperCase();
+    return lastBuild === buildToken(build).toUpperCase();
+  }
+
+  function exposedBrastaPenalty(before: Brasta.GameState, after: Brasta.GameState, seat: Brasta.Seat, command: Brasta.Command): number {
+    if (after.phase !== 'play' || after.builds.length !== 1) return 0;
+    if (command.type === 'MAKE_BUILD' || command.type === 'ADD_TO_BUILD' || command.type === 'RAISE_BUILD') return 0;
+
+    const build = after.builds[0];
+    if (!looseCanClearWithBuild(after, build)) return 0;
+
+    // A lone build plus compatible loose cards is a one-card table clear for whoever holds
+    // the matching capture card. If the opponent just made/raised/added to that build, public
+    // information guarantees they retained that card, so exposing it is especially dangerous.
+    let penalty = 90;
+    if (opponentJustProvedBuild(before, seat, build)) penalty += 130;
+    if (!after.loose.length) penalty += 20;
+    penalty += Math.min(40, setUtility(after, after.loose) * 0.25);
+    return penalty;
+  }
+
   export function scoreCommand(state: Brasta.GameState, seat: Brasta.Seat, command: Brasta.Command): number {
     const result = Brasta.applyCommand(state, command);
     if (!result.ok) return Number.NEGATIVE_INFINITY;
@@ -269,6 +312,8 @@ namespace BrastaBot {
 
     if (result.state.lastPickupTeam === team && state.lastPickupTeam !== team) score += 10;
     if ((result.state.event || '').includes('BUILDS COMBINED')) score += 24;
+
+    score -= exposedBrastaPenalty(state, result.state, seat, command);
 
     const scoreDelta = result.state.score[team] - state.score[team];
     score += scoreDelta * 30;
@@ -398,9 +443,7 @@ namespace BrastaBot {
 
     if (message.type === 'ROOM_STATE') {
       latestUpdate = message.update as BotRoomUpdate;
-      if (!latestUpdate?.state || latestUpdate.state.currentSeat !== session?.seat) {
-        clearActionTimer();
-      }
+      if (!latestUpdate?.state || latestUpdate.state.currentSeat !== session?.seat) clearActionTimer();
       markBotMatchUi();
       scheduleBotTurn(latestUpdate);
       return;
