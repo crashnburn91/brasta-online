@@ -26,6 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
         <link rel="stylesheet" href="/brand-heritage.css?v=2" />
         <link rel="stylesheet" href="/brand-table.css?v=1" />
+        <link rel="stylesheet" href="/brand-table-v2.css?v=2" />
       </head>
       <body>
         {children}
