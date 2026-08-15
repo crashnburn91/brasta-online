@@ -53,9 +53,10 @@ namespace BrastaNet {
   const DIAGNOSTICS_KEY = 'brasta-network-diagnostics-v1';
   const MAX_DIAGNOSTICS = 80;
   const CONNECT_TIMEOUT_MS = 10000;
-  const PING_INTERVAL_MS = 15000;
-  const PONG_TIMEOUT_MS = 12000;
-  const HEALTH_INTERVAL_MS = 4000;
+  const PING_INTERVAL_MS = 20000;
+  const PONG_TIMEOUT_MS = 30000;
+  const HEALTH_INTERVAL_MS = 5000;
+  const RESUME_GRACE_MS = 10000;
 
   export function normalizeCode(code: string): string { return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
   export function rememberName(name: string): void { try { localStorage.setItem(LAST_NAME_KEY, name.trim()); } catch {} }
@@ -132,25 +133,30 @@ namespace BrastaNet {
     private lastMessageAt = 0;
     private lastPingAt = 0;
     private lastPongAt = 0;
+    private resumeGraceUntil = 0;
     private lifecycleBound = false;
 
     private readonly onVisibilityChange = () => {
       diagnostic('visibility_change', { source: document.visibilityState });
-      if (document.visibilityState === 'visible') this.recoverFromLifecycle('visibility');
+      if (document.visibilityState === 'visible') {
+        this.resumeGraceUntil = Date.now() + RESUME_GRACE_MS;
+        this.recoverFromLifecycle('visibility');
+      }
     };
     private readonly onPageShow = () => {
       diagnostic('pageshow');
+      this.resumeGraceUntil = Date.now() + RESUME_GRACE_MS;
       this.recoverFromLifecycle('pageshow');
     };
     private readonly onOnline = () => {
       diagnostic('online');
+      this.resumeGraceUntil = Date.now() + RESUME_GRACE_MS;
       this.recoverFromLifecycle('online');
     };
     private readonly onOffline = () => {
+      // Do not proactively close here. Mobile browsers can briefly report offline
+      // while changing Wi-Fi/cellular paths even though the WebSocket recovers.
       diagnostic('offline');
-      if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
-        try { this.socket.close(4000, 'Browser offline'); } catch {}
-      }
     };
 
     constructor(private handler: EventHandler) {
@@ -219,6 +225,7 @@ namespace BrastaNet {
           this.lastMessageAt = this.socketOpenedAt;
           this.lastPongAt = this.socketOpenedAt;
           this.lastPingAt = 0;
+          this.resumeGraceUntil = this.socketOpenedAt + RESUME_GRACE_MS;
           this.reconnectDelay = 1000;
           this.reconnectAttempt = 0;
           diagnostic('socket_open', { delayMs: this.socketOpenedAt - connectStartedAt, source: resumeOnOpen ? 'resume' : 'initial' });
@@ -257,6 +264,7 @@ namespace BrastaNet {
           this.lastMessageAt = 0;
           this.lastPingAt = 0;
           this.lastPongAt = 0;
+          this.resumeGraceUntil = 0;
           if (this.socket === ws) this.socket = null;
           this.handler({ type: 'status', status: 'disconnected' });
           if (!settled) {
@@ -300,7 +308,8 @@ namespace BrastaNet {
         diagnostic('reconnect_wait_offline');
         return;
       }
-      const delay = this.reconnectDelay;
+      const jitter = Math.floor(Math.random() * 300);
+      const delay = this.reconnectDelay + jitter;
       this.reconnectAttempt += 1;
       diagnostic('reconnect_scheduled', { delayMs: delay, attempt: this.reconnectAttempt });
       this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000);
@@ -315,6 +324,7 @@ namespace BrastaNet {
 
     private sendPing(source = 'interval'): void {
       if (this.socket?.readyState !== WebSocket.OPEN) return;
+      if (source === 'interval' && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         this.lastPingAt = Date.now();
         this.socket.send(JSON.stringify({ type: 'PING' }));
@@ -329,8 +339,15 @@ namespace BrastaNet {
       this.pingTimer = window.setInterval(() => this.sendPing(), PING_INTERVAL_MS);
       this.healthTimer = window.setInterval(() => {
         if (this.socket?.readyState !== WebSocket.OPEN) return;
-        if (this.lastPingAt > this.lastPongAt && Date.now() - this.lastPingAt > PONG_TIMEOUT_MS) {
-          diagnostic('pong_timeout', { lifetimeMs: this.socketOpenedAt ? Date.now() - this.socketOpenedAt : 0 });
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        const now = Date.now();
+        if (now < this.resumeGraceUntil) return;
+
+        // Any server traffic after our last ping proves the socket is alive. Do
+        // not require a specific PONG if a room update/notice arrived meanwhile.
+        const latestServerActivity = Math.max(this.lastPongAt, this.lastMessageAt);
+        if (this.lastPingAt > latestServerActivity && now - this.lastPingAt > PONG_TIMEOUT_MS) {
+          diagnostic('pong_timeout', { lifetimeMs: this.socketOpenedAt ? now - this.socketOpenedAt : 0 });
           try { this.socket.close(4000, 'PONG timeout'); } catch {}
         }
       }, HEALTH_INTERVAL_MS);
