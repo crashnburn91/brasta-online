@@ -154,9 +154,10 @@ namespace BrastaNet {
       this.recoverFromLifecycle('online');
     };
     private readonly onOffline = () => {
-      // Do not proactively close here. Mobile browsers can briefly report offline
-      // while changing Wi-Fi/cellular paths even though the WebSocket recovers.
+      // navigator.onLine is advisory only. Mobile browsers can briefly report
+      // offline while changing Wi-Fi/cellular paths, so never stop recovery here.
       diagnostic('offline');
+      if (!this.isConnected) this.recoverFromLifecycle('offline-event');
     };
 
     constructor(private handler: EventHandler) {
@@ -195,11 +196,6 @@ namespace BrastaNet {
         const message = 'Online rooms require a deployed/server version of Brasta.';
         this.handler({ type: 'error', message });
         return Promise.reject(new Error(message));
-      }
-      if (navigator.onLine === false) {
-        diagnostic('connect_skipped_offline');
-        this.handler({ type: 'status', status: 'disconnected' });
-        return Promise.reject(new Error('Browser is offline.'));
       }
 
       this.handler({ type: 'status', status: 'connecting' });
@@ -283,7 +279,6 @@ namespace BrastaNet {
 
     private recoverFromLifecycle(source: string): void {
       if (this.stopped) return;
-      if (navigator.onLine === false) return;
 
       if (this.socket?.readyState === WebSocket.OPEN) {
         diagnostic('lifecycle_probe', { source });
@@ -304,10 +299,6 @@ namespace BrastaNet {
 
     private scheduleReconnect(): void {
       if (this.reconnectTimer != null || this.stopped) return;
-      if (navigator.onLine === false) {
-        diagnostic('reconnect_wait_offline');
-        return;
-      }
       const jitter = Math.floor(Math.random() * 300);
       const delay = this.reconnectDelay + jitter;
       this.reconnectAttempt += 1;
@@ -315,7 +306,8 @@ namespace BrastaNet {
       this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000);
       this.reconnectTimer = window.setTimeout(() => {
         this.reconnectTimer = null;
-        if (this.stopped || navigator.onLine === false) return;
+        if (this.stopped) return;
+        if (this.connecting || this.socket?.readyState === WebSocket.CONNECTING || this.socket?.readyState === WebSocket.OPEN) return;
         this.connecting = this.openSocket(true)
           .catch(() => { this.scheduleReconnect(); })
           .finally(() => { this.connecting = null; });
