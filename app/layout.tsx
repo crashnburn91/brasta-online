@@ -26,6 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
         <link rel="stylesheet" href="/brand-heritage.css?v=2" />
         <link rel="stylesheet" href="/brand-table.css?v=1" />
+        <link rel="stylesheet" href="/brand-game-layout.css?v=1" />
       </head>
       <body>
         {children}
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
         <Script src="/brand-heritage.js?v=2" strategy="afterInteractive" />
+        <Script src="/brand-game-layout.js?v=1" strategy="afterInteractive" />
       </body>
     </html>
   );
