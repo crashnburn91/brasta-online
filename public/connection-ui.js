@@ -4,6 +4,7 @@
 
   const KEY = 'brasta-network-diagnostics-v1';
   let modal = null;
+  let enhanceScheduled = false;
 
   function readDiagnostics() {
     try {
@@ -108,11 +109,20 @@
     }
   }
 
-  const observer = new MutationObserver(enhance);
+  function scheduleEnhance() {
+    if (enhanceScheduled) return;
+    enhanceScheduled = true;
+    requestAnimationFrame(() => {
+      enhanceScheduled = false;
+      enhance();
+    });
+  }
+
+  const observer = new MutationObserver(scheduleEnhance);
   function start() {
     const app = document.getElementById('app');
     if (!app) { setTimeout(start, 50); return; }
-    observer.observe(app, { childList: true, subtree: true, characterData: true });
+    observer.observe(app, { childList: true, subtree: true });
     enhance();
   }
 
