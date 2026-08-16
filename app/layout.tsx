@@ -25,6 +25,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.17" />
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
         <link rel="stylesheet" href="/seat-picker.css?v=0.5.18" />
+        <link rel="stylesheet" href="/dealer-marker.css?v=0.5.19" />
       </head>
       <body>
         {children}
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
+        <Script src="/dealer-marker.js?v=0.5.19" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
