@@ -1,0 +1,4 @@
+.player-chip{position:relative}
+.dealer-button{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:28px;height:28px;border-radius:50%;border:2px solid #d8b75e;background:#f5f0df;color:#1a1b18;font-size:13px;font-weight:900;line-height:1;box-shadow:0 3px 9px #0006,inset 0 0 0 1px #fff8;letter-spacing:.02em;pointer-events:none}
+.dealer-position{padding-right:48px!important}
+@media(max-width:600px){.dealer-button{right:8px;width:25px;height:25px;font-size:12px}.dealer-position{padding-right:42px!important}}
