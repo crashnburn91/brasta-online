@@ -1,0 +1,10 @@
+/* 2v2 pregame seat selection */
+.seat-picker-enabled .lobby-seat{position:relative}
+.seat-picker-enabled .lobby-seat.seat-pickable{cursor:pointer;border-color:#d8b75e66;background:linear-gradient(145deg,#123428,#0a241c);transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease,background .12s ease}
+.seat-picker-enabled .lobby-seat.seat-pickable:hover,.seat-picker-enabled .lobby-seat.seat-pickable:focus-visible{transform:translateY(-2px);border-color:#efd77c;box-shadow:0 8px 22px #0004,0 0 0 2px #d8b75e1c;background:linear-gradient(145deg,#183f30,#0d2d22);outline:none}
+.seat-picker-enabled .lobby-seat.seat-current{border-color:#f0d98c;box-shadow:0 0 0 2px #d8b75e25}
+.seat-picker-hint{margin-top:8px;padding:6px 9px;border:1px solid #d8b75e45;border-radius:8px;background:#d8b75e0c;color:#f2d979;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.seat-picker-enabled .lobby-seat.seat-moving{pointer-events:none;opacity:.72}
+.seat-move-pending .seat-picker-enabled .lobby-seat.seat-pickable:not(.seat-moving){pointer-events:none;opacity:.55}
+.seat-picker-error{margin:0 0 12px}
+@media(max-width:800px){.seat-picker-hint{font-size:9px;padding:6px 7px}}
