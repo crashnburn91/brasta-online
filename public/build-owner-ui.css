@@ -1,0 +1,11 @@
+.build{position:relative}
+.build-owner-badge{position:absolute;top:6px;right:7px;display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 6px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.04em;color:#fff;border:1px solid #ffffff66;box-shadow:0 2px 8px #0005}
+.build-owner-seat-1{border-color:#5fa8ff!important;box-shadow:0 0 0 1px #5fa8ff33,inset 0 0 18px #5fa8ff12}
+.build-owner-seat-1 .build-label,.build-owner-seat-1 .build-owner-badge{background:#225a9b;color:#eaf4ff}
+.build-owner-seat-2{border-color:#ff6b6b!important;box-shadow:0 0 0 1px #ff6b6b33,inset 0 0 18px #ff6b6b12}
+.build-owner-seat-2 .build-label,.build-owner-seat-2 .build-owner-badge{background:#8f2f35;color:#fff0f0}
+.build-owner-seat-3{border-color:#e4bd58!important;box-shadow:0 0 0 1px #e4bd5833,inset 0 0 18px #e4bd5812}
+.build-owner-seat-3 .build-label,.build-owner-seat-3 .build-owner-badge{background:#80651e;color:#fff7d5}
+.build-owner-seat-4{border-color:#b785ff!important;box-shadow:0 0 0 1px #b785ff33,inset 0 0 18px #b785ff12}
+.build-owner-seat-4 .build-label,.build-owner-seat-4 .build-owner-badge{background:#603890;color:#f5ebff}
+@media(max-width:600px){.build-owner-badge{top:4px;right:5px;min-width:21px;height:21px;font-size:9px;padding:0 5px}}
