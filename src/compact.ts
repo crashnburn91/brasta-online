@@ -208,16 +208,20 @@ namespace BrastaCompact {
     const makeBuild = panel.querySelector<HTMLButtonElement>('[data-legal="MAKE_BUILD"]');
     if (makeBuild) setText(makeBuild, 'Build');
 
-    // Capture Build is deliberately left visible. Build capture supports both
-    // interaction directions: select the hand card first and press Capture Build,
-    // or select the hand card and tap the matching build directly.
-    for (const type of ['CAPTURE_LOOSE', 'ADD_TO_BUILD', 'RAISE_BUILD']) {
+    // Build actions that represent distinct player choices stay visible. This keeps
+    // Capture Build and Add to Build symmetric with the rest of the hand-first flow.
+    for (const type of ['CAPTURE_LOOSE', 'RAISE_BUILD']) {
       panel.querySelector<HTMLElement>(`[data-legal="${type}"]`)?.classList.add('compact-auto-action');
     }
     const captureBuild = panel.querySelector<HTMLButtonElement>('[data-legal="CAPTURE_BUILD"]');
     if (captureBuild) {
       captureBuild.classList.remove('compact-auto-action');
       setText(captureBuild, 'Capture Build');
+    }
+    const addToBuild = panel.querySelector<HTMLButtonElement>('[data-legal="ADD_TO_BUILD"]');
+    if (addToBuild) {
+      addToBuild.classList.remove('compact-auto-action');
+      setText(addToBuild, 'Add to Build');
     }
 
     const jackSweep = panel.querySelector<HTMLButtonElement>('[data-legal="JACK_SWEEP"]');
