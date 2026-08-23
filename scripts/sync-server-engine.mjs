@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root = process.cwd();
 const source = fs.readFileSync(path.join(root, 'src/game.ts'), 'utf8');
+const buildRules = fs.readFileSync(path.join(root, 'src/build-rules-server.ts'), 'utf8');
 const marker = '\n\n\n// Browser builds use the global Brasta namespace.';
 let body = source.split(marker)[0];
 if (!body.startsWith('namespace Brasta {')) throw new Error('Unexpected src/game.ts wrapper');
@@ -79,5 +80,8 @@ if (!body.includes(oldCards)) throw new Error('Could not locate captured-card ma
 body = body.replace(oldCards, newCards);
 
 fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
-fs.writeFileSync(path.join(root, 'lib/game-engine.ts'), '// GENERATED from src/game.ts. Do not hand-edit.\n' + body.trimStart());
-console.log('Synced lib/game-engine.ts from src/game.ts with corrected opening order and captured-card tie scoring');
+fs.writeFileSync(
+  path.join(root, 'lib/game-engine.ts'),
+  '// GENERATED from src/game.ts. Do not hand-edit.\n' + body.trimStart() + '\n\n' + buildRules.trim() + '\n',
+);
+console.log('Synced lib/game-engine.ts with opening order, tie scoring, and build ownership rules');
