@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmitOnError": true
   },
-  "files": ["src/game.ts", "src/scoring-fix.ts", "src/release-tests.ts"]
+  "files": ["src/game.ts", "src/scoring-fix.ts", "src/build-rules.ts", "src/release-tests.ts"]
 }
