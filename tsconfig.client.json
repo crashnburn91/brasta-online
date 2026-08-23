@@ -15,6 +15,7 @@
   "include": [
     "src/game.ts",
     "src/scoring-fix.ts",
+    "src/build-rules.ts",
     "src/network.ts",
     "src/app.ts",
     "src/bot.ts",
