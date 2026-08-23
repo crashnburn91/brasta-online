@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-const CLIENT_VERSION = '0.5.16';
+const CLIENT_VERSION = '0.5.20';
 const HISTORY_KEY = 'brasta-bootstrap-history-v2';
 
 type BootEvent = { ms: number; stage: string; detail?: unknown };
@@ -85,7 +85,7 @@ export default function BrastaBootstrap() {
       if (Array.isArray(parsed)) recentAttempts = parsed.slice(0, 5);
     } catch {}
 
-    const resources = ['/dist/game.js', '/dist/network.js', '/dist/app.js'].map((path) => {
+    const resources = ['/dist/game.js', '/dist/build-rules.js', '/dist/network.js', '/dist/app.js'].map((path) => {
       let entry: PerformanceResourceTiming | undefined;
       try {
         entry = performance.getEntriesByType('resource')
@@ -224,6 +224,7 @@ export default function BrastaBootstrap() {
     const boot = async () => {
       try {
         await loadScript('/dist/game.js', 'game', mark);
+        await loadScript('/dist/build-rules.js', 'build-rules', mark);
         await loadScript('/dist/network.js', 'network', mark);
         await loadScript('/dist/app.js', 'app', mark);
 
