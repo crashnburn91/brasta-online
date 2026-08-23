@@ -20,17 +20,15 @@ function brastaCanSpendAwayFromOwnedBuild(state: GameState, seat: Seat, cardId: 
   return ownedMatching.every((build) => hand.some((id) => id !== cardId && brastaCardMatchesBuild(state, id, build)));
 }
 
-const brastaOriginalDeclarations = getBuildDeclarationOptions;
-getBuildDeclarationOptions = function(state: GameState, seat: Seat, cardId: CardId): BuildDeclarationOption[] {
-  return brastaOriginalDeclarations(state, seat, cardId).filter((option) => {
+export function getBuildDeclarationOptions(state: GameState, seat: Seat, cardId: CardId): BuildDeclarationOption[] {
+  return getBuildDeclarationOptionsBase(state, seat, cardId).filter((option) => {
     const existing = (state.builds as OwnedBuild[]).find((build) => brastaSameDeclaration(build, option));
     return !existing || existing.ownerSeat == null || existing.ownerSeat === seat;
   });
-};
+}
 
-const brastaOriginalLegalActions = legalActionsForCard;
-legalActionsForCard = function(state: GameState, seat: Seat, cardId: CardId): LegalAction[] {
-  let actions = brastaOriginalLegalActions(state, seat, cardId);
+export function legalActionsForCard(state: GameState, seat: Seat, cardId: CardId): LegalAction[] {
+  let actions = legalActionsForCardBase(state, seat, cardId);
   if (!brastaCanSpendAwayFromOwnedBuild(state, seat, cardId)) {
     actions = actions.filter((action) => action.type !== 'PLAY_LOOSE' && action.type !== 'CAPTURE_LOOSE');
   }
@@ -38,10 +36,9 @@ legalActionsForCard = function(state: GameState, seat: Seat, cardId: CardId): Le
     actions = actions.filter((action) => action.type !== 'MAKE_BUILD');
   }
   return actions;
-};
+}
 
-const brastaOriginalApplyCommand = applyCommand;
-applyCommand = function(state: GameState, command: Command): ApplyResult {
+export function applyCommand(state: GameState, command: Command): ApplyResult {
   if ((command.type === 'PLAY_LOOSE' || command.type === 'CAPTURE_LOOSE') && !brastaCanSpendAwayFromOwnedBuild(state, command.seat, command.cardId)) {
     return { ok: false, state, error: 'You must keep a matching card in your hand for your build.' };
   }
@@ -61,7 +58,7 @@ applyCommand = function(state: GameState, command: Command): ApplyResult {
     }
   }
 
-  const result = brastaOriginalApplyCommand(state, command);
+  const result = applyCommandBase(state, command);
   if (!result.ok) return result;
   const nextBuilds = result.state.builds as OwnedBuild[];
 
@@ -100,4 +97,4 @@ applyCommand = function(state: GameState, command: Command): ApplyResult {
   }
 
   return result;
-};
+}
