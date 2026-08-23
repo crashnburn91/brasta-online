@@ -208,8 +208,16 @@ namespace BrastaCompact {
     const makeBuild = panel.querySelector<HTMLButtonElement>('[data-legal="MAKE_BUILD"]');
     if (makeBuild) setText(makeBuild, 'Build');
 
-    for (const type of ['CAPTURE_LOOSE', 'CAPTURE_BUILD', 'ADD_TO_BUILD', 'RAISE_BUILD']) {
+    // Capture Build is deliberately left visible. Build capture supports both
+    // interaction directions: select the hand card first and press Capture Build,
+    // or select the hand card and tap the matching build directly.
+    for (const type of ['CAPTURE_LOOSE', 'ADD_TO_BUILD', 'RAISE_BUILD']) {
       panel.querySelector<HTMLElement>(`[data-legal="${type}"]`)?.classList.add('compact-auto-action');
+    }
+    const captureBuild = panel.querySelector<HTMLButtonElement>('[data-legal="CAPTURE_BUILD"]');
+    if (captureBuild) {
+      captureBuild.classList.remove('compact-auto-action');
+      setText(captureBuild, 'Capture Build');
     }
 
     const jackSweep = panel.querySelector<HTMLButtonElement>('[data-legal="JACK_SWEEP"]');
