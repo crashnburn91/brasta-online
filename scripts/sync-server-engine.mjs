@@ -79,6 +79,16 @@ const newCards = "    if (cardsA > cardsB) A.cardsMajority = 2;\n    else if (ca
 if (!body.includes(oldCards)) throw new Error('Could not locate captured-card majority rule for tie-split patch');
 body = body.replace(oldCards, newCards);
 
+const exportedWrappers = [
+  ['export function getBuildDeclarationOptions(', 'function getBuildDeclarationOptionsBase('],
+  ['export function legalActionsForCard(', 'function legalActionsForCardBase('],
+  ['export function applyCommand(', 'function applyCommandBase('],
+];
+for (const [from, to] of exportedWrappers) {
+  if (!body.includes(from)) throw new Error(`Could not locate ${from} for build-rules wrapper`);
+  body = body.replace(from, to);
+}
+
 fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
 fs.writeFileSync(
   path.join(root, 'lib/game-engine.ts'),
