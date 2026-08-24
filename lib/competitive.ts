@@ -18,6 +18,29 @@ export type CompetitiveStatus = {
   placementGames: number;
 };
 
+export type PublicCompetitiveStatus = Omit<CompetitiveStatus, 'matchmakingOrdinal'>;
+
+export type LeaderboardEntry = {
+  leaderboardPosition: number;
+  username: string;
+  rankName: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  bestStreak: number;
+};
+
+export type RecentRankedMatch = {
+  matchId: string;
+  completedAt: string;
+  opponentUsername: string;
+  result: 'win' | 'loss';
+  scoreFor: number;
+  scoreAgainst: number;
+  rankBefore: string;
+  rankAfter: string;
+};
+
 export type RankedActionEvent = {
   seat: number | null;
   type: string;
@@ -26,6 +49,7 @@ export type RankedActionEvent = {
 
 export type RankedFinalizePlayer = {
   playerId: string;
+  won: boolean;
   rankBefore: string;
   rankAfter: string;
   gamesPlayedAfter: number;
@@ -54,6 +78,11 @@ type RatingRow = {
 
 export function competitiveBackendReady(): boolean {
   return Boolean(supabaseUrl && publishableKey && secretKey);
+}
+
+export function publicCompetitiveStatus(status: CompetitiveStatus): PublicCompetitiveStatus {
+  const { matchmakingOrdinal: _hidden, ...visible } = status;
+  return visible;
 }
 
 export function baseRankName(gamesPlayed: number, ordinalValue: number): string {
@@ -127,6 +156,71 @@ export async function getCompetitiveStatus(accessToken: string, mode: Competitiv
   };
 }
 
+export async function getRankedLeaderboard(mode: CompetitiveMode = '1v1', limit = 50): Promise<LeaderboardEntry[]> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/brasta_ranked_leaderboard`, {
+    method: 'POST',
+    headers: {
+      apikey: publishableKey,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ p_mode: mode, p_limit: limit }),
+    cache: 'no-store',
+  });
+  const rows = await parseJsonResponse<Array<{
+    leaderboard_position: number;
+    username: string;
+    rank_name: string;
+    games_played: number;
+    wins: number;
+    losses: number;
+    best_streak: number;
+  }>>(response, 'Could not load ranked leaderboard');
+  return rows.map((row) => ({
+    leaderboardPosition: Number(row.leaderboard_position),
+    username: row.username,
+    rankName: row.rank_name,
+    gamesPlayed: row.games_played,
+    wins: row.wins,
+    losses: row.losses,
+    bestStreak: row.best_streak,
+  }));
+}
+
+export async function getRecentRankedMatches(accessToken: string, mode: CompetitiveMode = '1v1', limit = 10): Promise<RecentRankedMatch[]> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/brasta_my_recent_matches`, {
+    method: 'POST',
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ p_mode: mode, p_limit: limit }),
+    cache: 'no-store',
+  });
+  const rows = await parseJsonResponse<Array<{
+    match_id: string;
+    completed_at: string;
+    opponent_username: string;
+    result: 'win' | 'loss';
+    score_for: number;
+    score_against: number;
+    rank_before: string;
+    rank_after: string;
+  }>>(response, 'Could not load ranked match history');
+  return rows.map((row) => ({
+    matchId: row.match_id,
+    completedAt: row.completed_at,
+    opponentUsername: row.opponent_username,
+    result: row.result,
+    scoreFor: row.score_for,
+    scoreAgainst: row.score_against,
+    rankBefore: row.rank_before,
+    rankAfter: row.rank_after,
+  }));
+}
+
 function serviceHeaders(): Record<string, string> {
   if (!secretKey) throw new Error('Ranked backend secret is not configured.');
   return {
@@ -169,9 +263,9 @@ export async function createRankedMatchRecord(args: {
 }
 
 async function getRatingRows(playerIds: string[], mode: CompetitiveMode): Promise<RatingRow[]> {
-  const ids = playerIds.join(',');
+  const ids = playerIds.map((id) => encodeURIComponent(id)).join(',');
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/player_ratings?player_id=in.(${encodeURIComponent(ids)})&mode=eq.${encodeURIComponent(mode)}&select=player_id,mode,mu,sigma,ordinal,games_played,wins,losses,current_streak,best_streak`,
+    `${supabaseUrl}/rest/v1/player_ratings?player_id=in.(${ids})&mode=eq.${encodeURIComponent(mode)}&select=player_id,mode,mu,sigma,ordinal,games_played,wins,losses,current_streak,best_streak`,
     {
       headers: serviceHeaders(),
       cache: 'no-store',
@@ -226,6 +320,7 @@ export async function finalizeRanked1v1Match(args: {
     players: [
       {
         playerId: a.player_id,
+        won: aWon,
         rankBefore: baseRankName(a.games_played, Number(a.ordinal)),
         rankAfter: baseRankName(a.games_played + 1, nextAOrdinal),
         gamesPlayedAfter: a.games_played + 1,
@@ -235,6 +330,7 @@ export async function finalizeRanked1v1Match(args: {
       },
       {
         playerId: b.player_id,
+        won: bWon,
         rankBefore: baseRankName(b.games_played, Number(b.ordinal)),
         rankAfter: baseRankName(b.games_played + 1, nextBOrdinal),
         gamesPlayedAfter: b.games_played + 1,
