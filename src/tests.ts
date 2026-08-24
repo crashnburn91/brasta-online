@@ -200,4 +200,5 @@ namespace BrastaTests {
   (globalThis as any).__BRASTA_TEST_RESULTS__ = { passed, failed, results };
   console.log(results.join('\n'));
   console.log(`${passed} passed, ${failed} failed`);
+  if (failed > 0) throw new Error(`${failed} Brasta rule test${failed === 1 ? '' : 's'} failed.`);
 }
