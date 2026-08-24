@@ -1,0 +1,37 @@
+/* Brasta is now an online-first product. Keep the legacy local engine dormant,
+   but remove local hot-seat from the shipped UI without adding runtime JS. */
+.landing.landing-wide > p{
+  font-size:0;
+}
+.landing.landing-wide > p::after{
+  content:"Online Brasta · private rooms, bot play, ranked matchmaking, and tutorial";
+  font-size:15px;
+}
+
+/* The legacy second landing card used to host Local Hot-Seat. Retain the card
+   as the tutorial entry point, while removing every local-game affordance. */
+.landing-card:has([data-newmode]) > h2{
+  font-size:0;
+}
+.landing-card:has([data-newmode]) > h2::after{
+  content:"Learn Brasta";
+  font-size:24px;
+}
+.landing-card:has([data-newmode]) > p{
+  font-size:0;
+}
+.landing-card:has([data-newmode]) > p::after{
+  content:"Learn the rules and practice the core moves before jumping into an online match.";
+  font-size:15px;
+  line-height:1.5;
+}
+.landing-card:has([data-newmode]) label:has(#local-target),
+.landing-card:has([data-newmode]) .button-row:has([data-newmode]),
+.landing-card:has([data-newmode]) [data-newmode]{
+  display:none!important;
+}
+
+@media(max-width:800px){
+  .landing.landing-wide > p::after{font-size:14px}
+  .landing-card:has([data-newmode]) > h2::after{font-size:22px}
+}
