@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/dealer-marker.js?v=0.5.19" strategy="afterInteractive" />
-        <Script src="/build-owner-ui.js?v=0.5.20" strategy="afterInteractive" />
+        <Script src="/build-owner-ui.js?v=0.5.24" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
