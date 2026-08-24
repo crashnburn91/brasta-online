@@ -93,9 +93,9 @@ namespace BrastaReleaseTests {
     const score = Brasta.calculateRoundScore(s);
     const awarded = score.A.total + score.B.total;
     assert(s.captured.A.length === 26 && s.captured.B.length === 26, 'Regression setup must split all 52 cards 26–26');
-    assert(score.A.cardsMajority === 1 && score.B.cardsMajority === 1, 'A 26–26 captured-card tie should split the two points 1–1');
+    assert(score.A.cardsMajority === 0 && score.B.cardsMajority === 0, 'A 26–26 captured-card tie should award no majority bonus');
     assert(score.A.clubsMajority === 0 && score.B.clubsMajority === 2, 'With 13 clubs, one side must always win the clubs majority 2–0');
-    assert(awarded === 42, `Expected the no-Brasta/no-burn baseline to award 42 total points, got ${awarded}`);
+    assert(awarded === 40, `Expected the no-Brasta/no-burn baseline to award 40 total points, got ${awarded}`);
   }
 
   console.log('4 release regression tests passed');
