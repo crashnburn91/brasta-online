@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
-        <Script src="/competitive-ui.js?v=0.7.0" strategy="afterInteractive" />
+        <Script src="/competitive-ui.js?v=0.7.5" strategy="afterInteractive" />
         <Script src="/competitive-account.js?v=0.7.0" strategy="afterInteractive" />
         <Script src="/ranked-match-transition.js?v=0.7.2" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.7.3" strategy="afterInteractive" />
