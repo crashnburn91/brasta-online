@@ -3,8 +3,12 @@ import Script from 'next/script';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://brasta.app'),
   title: 'Brasta',
   description: 'Online Brasta card game',
+  alternates: {
+    canonical: '/',
+  },
 };
 
 export const viewport: Viewport = {
