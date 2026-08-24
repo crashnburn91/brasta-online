@@ -8,6 +8,15 @@
   font-size:15px;
 }
 
+/* Private-room play is the main unranked online mode. */
+.online-card > h2{
+  font-size:0;
+}
+.online-card > h2::after{
+  content:"Private Match";
+  font-size:24px;
+}
+
 /* The legacy second landing card used to host Local Hot-Seat. Retain the card
    as the tutorial entry point, while removing every local-game affordance. */
 .landing-card:has([data-newmode]) > h2{
@@ -33,5 +42,6 @@
 
 @media(max-width:800px){
   .landing.landing-wide > p::after{font-size:14px}
+  .online-card > h2::after,
   .landing-card:has([data-newmode]) > h2::after{font-size:22px}
 }
