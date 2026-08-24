@@ -33,10 +33,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.20" />
         <link rel="stylesheet" href="/burn-callout.css?v=0.5.25" />
         <link rel="stylesheet" href="/account-ui.css?v=0.6.1" />
+        <link rel="stylesheet" href="/competitive-ui.css?v=0.7.0" />
       </head>
       <body>
         {children}
         <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
+        <Script src="/competitive-ui.js?v=0.7.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=4" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.5.23" strategy="afterInteractive" />
