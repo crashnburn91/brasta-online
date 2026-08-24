@@ -74,11 +74,6 @@ const newOpening = `  export function resolveOpening(state: GameState, choice: '
 if (!body.includes(oldOpening)) throw new Error('Could not locate resolveOpening for opening-order patch');
 body = body.replace(oldOpening, newOpening);
 
-const oldCards = "    if (cardsA > cardsB) A.cardsMajority = 2;\n    else if (cardsB > cardsA) B.cardsMajority = 2;";
-const newCards = "    if (cardsA > cardsB) A.cardsMajority = 2;\n    else if (cardsB > cardsA) B.cardsMajority = 2;\n    else { A.cardsMajority = 1; B.cardsMajority = 1; }";
-if (!body.includes(oldCards)) throw new Error('Could not locate captured-card majority rule for tie-split patch');
-body = body.replace(oldCards, newCards);
-
 const exportedWrappers = [
   ['export function getBuildDeclarationOptions(', 'function getBuildDeclarationOptionsBase('],
   ['export function legalActionsForCard(', 'function legalActionsForCardBase('],
@@ -94,4 +89,4 @@ fs.writeFileSync(
   path.join(root, 'lib/game-engine.ts'),
   '// GENERATED from src/game.ts. Do not hand-edit.\n' + body.trimStart() + '\n\n' + buildRules.trim() + '\n',
 );
-console.log('Synced lib/game-engine.ts with opening order, tie scoring, and build ownership rules');
+console.log('Synced lib/game-engine.ts with opening order and build ownership rules');
