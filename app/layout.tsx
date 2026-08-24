@@ -32,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=4" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.5.23" strategy="afterInteractive" />
