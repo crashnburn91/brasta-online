@@ -51,7 +51,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/build-owner-ui.js?v=0.5.24" strategy="afterInteractive" />
         <Script src="/burn-callout.js?v=0.5.25" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
-        <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
     </html>
