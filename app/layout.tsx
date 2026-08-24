@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/seat-picker.css?v=0.5.18" />
         <link rel="stylesheet" href="/dealer-marker.css?v=0.5.19" />
         <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.20" />
+        <link rel="stylesheet" href="/burn-callout.css?v=0.5.25" />
       </head>
       <body>
         {children}
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/dealer-marker.js?v=0.5.19" strategy="afterInteractive" />
         <Script src="/build-owner-ui.js?v=0.5.24" strategy="afterInteractive" />
+        <Script src="/burn-callout.js?v=0.5.25" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/scoring-tie-fix.js?v=0.5.12" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
