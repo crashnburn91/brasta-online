@@ -4,6 +4,28 @@
 
   let queued = false;
 
+  function playerNameForSeat(seat) {
+    for (const chip of document.querySelectorAll('.player-chip')) {
+      const seatLabel = chip.querySelector('.seat-label')?.textContent?.trim();
+      if (seatLabel !== `Seat ${seat}`) continue;
+      return chip.querySelector('b')?.textContent?.trim() || '';
+    }
+    return '';
+  }
+
+  function initialsForName(name, seat) {
+    const clean = String(name || '').trim();
+    if (!clean || clean === `Seat ${seat}`) return `S${seat}`;
+
+    const parts = clean.split(/[\s._-]+/).filter(Boolean);
+    if (parts.length > 1) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+
+    const compact = (parts[0] || clean).replace(/[^a-z0-9]/gi, '');
+    return (compact.slice(0, 2) || `S${seat}`).toUpperCase();
+  }
+
   function enhance() {
     queued = false;
     const owners = window.__BRASTA_BUILD_OWNERS__;
@@ -13,15 +35,25 @@
       const id = el.getAttribute('data-build') || '';
       const seat = owners.get(id);
       el.classList.remove('build-owner-seat-1', 'build-owner-seat-2', 'build-owner-seat-3', 'build-owner-seat-4');
-      el.querySelector('.build-owner-badge')?.remove();
-      if (!seat) return;
+
+      let badge = el.querySelector('.build-owner-badge');
+      if (!seat) {
+        badge?.remove();
+        return;
+      }
+
+      const playerName = playerNameForSeat(seat);
+      const initials = initialsForName(playerName, seat);
 
       el.classList.add(`build-owner-seat-${seat}`);
-      const badge = document.createElement('span');
-      badge.className = 'build-owner-badge';
-      badge.textContent = `S${seat}`;
-      badge.title = `Owned by Seat ${seat}`;
-      el.appendChild(badge);
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'build-owner-badge';
+        el.appendChild(badge);
+      }
+      badge.textContent = initials;
+      badge.title = playerName ? `Owned by ${playerName}` : `Owned by Seat ${seat}`;
+      badge.setAttribute('aria-label', badge.title);
     });
   }
 
