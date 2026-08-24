@@ -42,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/competitive-ui.js?v=0.7.0" strategy="afterInteractive" />
         <Script src="/competitive-account.js?v=0.7.0" strategy="afterInteractive" />
         <Script src="/ranked-match-transition.js?v=0.7.2" strategy="afterInteractive" />
+        <Script src="/ranked-postmatch.js?v=0.7.3" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=4" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.5.23" strategy="afterInteractive" />
