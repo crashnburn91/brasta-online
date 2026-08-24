@@ -23,7 +23,6 @@ type OAuthProvider = 'google' | 'apple' | 'discord';
 const PROVIDERS: Array<{ id: OAuthProvider; label: string; mark: string }> = [
   { id: 'google', label: 'Google', mark: 'G' },
   { id: 'discord', label: 'Discord', mark: 'D' },
-  { id: 'apple', label: 'Apple', mark: '●' },
 ];
 
 function authReturnPath(): string {
@@ -254,7 +253,6 @@ export default function AccountBridge() {
                 <p>Accounts are optional for private games. Ranked play, matchmaking, leaderboards, and persistent stats will use your Brasta account.</p>
                 <div className="account-provider-grid">
                   <button type="button" disabled={busy} onClick={() => void signIn('google')}><span>G</span>Continue with Google</button>
-                  <button type="button" disabled={busy} onClick={() => void signIn('apple')}><span>●</span>Continue with Apple</button>
                   <button type="button" disabled={busy} onClick={() => void signIn('discord')}><span>D</span>Continue with Discord</button>
                 </div>
                 <div className="account-divider"><span>or</span></div>
@@ -268,7 +266,7 @@ export default function AccountBridge() {
               <>
                 <div className="account-eyebrow">ONE LAST STEP</div>
                 <h2>Choose your Brasta username</h2>
-                <p>This will be your persistent competitive identity. It can be different from the name supplied by Google, Apple, or Discord.</p>
+                <p>This will be your persistent competitive identity. It can be different from the name supplied by Google or Discord.</p>
                 <form onSubmit={saveUsername} className="account-email-form">
                   <label>Username<input autoFocus maxLength={20} autoCapitalize="none" autoCorrect="off" value={username} onChange={(event) => setUsername(event.target.value.replace(/\s+/g, ''))} placeholder="Donny" /></label>
                   <small>3–20 characters · letters, numbers, underscore</small>
