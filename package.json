@@ -23,6 +23,7 @@
     "@vercel/functions": "latest",
     "ioredis": "^5.4.1",
     "next": "latest",
+    "openskill": "^5.0.1",
     "react": "latest",
     "react-dom": "latest",
     "ws": "latest"
