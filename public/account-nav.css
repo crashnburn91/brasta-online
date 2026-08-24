@@ -1,0 +1,34 @@
+.brasta-site-nav{height:58px;position:sticky;top:0;z-index:1100;background:rgba(5,22,16,.96);border-bottom:1px solid rgba(255,255,255,.09);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.brasta-site-nav-inner{height:100%;max-width:1400px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brasta-site-brand{display:inline-flex;align-items:center;color:#f7f2df;text-decoration:none;font-size:22px;font-weight:900;letter-spacing:.035em;line-height:1}
+.brasta-site-brand:hover{color:#fff8e8}
+.brasta-site-nav-account-space{width:150px;height:40px;flex:0 0 auto}
+
+/* The account control now belongs to the global navigation rather than
+   floating over the game surface. AccountBridge still owns the button and
+   modal; this layer only places/stylizes the trigger in the nav. */
+.account-dock{position:fixed!important;top:9px!important;right:max(16px,env(safe-area-inset-right))!important;bottom:auto!important;z-index:1200!important;min-height:40px;max-width:min(210px,42vw);padding:5px 11px 5px 5px!important;border-radius:10px!important;background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.14)!important;box-shadow:none!important;backdrop-filter:none!important;transition:background .15s ease,border-color .15s ease}
+.account-dock:hover{background:rgba(255,255,255,.11)!important;border-color:rgba(216,183,94,.48)!important}
+.account-dock>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-dock img,.account-dock .account-avatar-fallback{width:30px;height:30px}
+
+/* The legacy topbar becomes a contextual match/status bar beneath the global
+   app navigation. Brasta branding lives in the global nav, so don't repeat it. */
+.topbar{top:58px!important;z-index:900!important}
+.topbar>div:first-child>strong:first-child{display:none}
+.topbar>div:first-child{display:flex;align-items:center;min-width:0}
+.landing{min-height:calc(100vh - 58px)!important}
+.privacy-cover{inset:122px 0 0!important}
+
+@media(max-width:700px){
+  .brasta-site-nav{height:52px}
+  .brasta-site-nav-inner{padding:0 10px}
+  .brasta-site-brand{font-size:19px}
+  .brasta-site-nav-account-space{width:124px;height:38px}
+  .account-dock{top:6px!important;right:max(8px,env(safe-area-inset-right))!important;min-height:40px;max-width:46vw;padding-right:9px!important}
+  .account-dock img,.account-dock .account-avatar-fallback{width:28px;height:28px}
+  .account-dock>span:last-child{font-size:12px}
+  .topbar{top:52px!important}
+  .landing{min-height:calc(100vh - 52px)!important}
+  .privacy-cover{inset:116px 0 0!important}
+}
