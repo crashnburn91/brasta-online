@@ -1,6 +1,8 @@
 import {
+  getCompetitiveStatus,
   getRankedLeaderboard,
   getRecentRankedMatches,
+  publicCompetitiveStatus,
 } from '../../../lib/competitive';
 import {
   monitorRankedRoom,
@@ -43,6 +45,13 @@ export async function POST(request: Request) {
     if (action === 'leaderboard') {
       const leaderboard = await getRankedLeaderboard('1v1', Number(body.limit) || 50);
       return json({ state: 'ok', leaderboard });
+    }
+
+    if (action === 'profile') {
+      const token = bearerToken(request);
+      if (!token) return json({ error: 'Sign in to view your competitive profile.' }, 401);
+      const status = await getCompetitiveStatus(token, '1v1');
+      return json({ state: 'ok', competitive: publicCompetitiveStatus(status) });
     }
 
     if (action === 'history') {
