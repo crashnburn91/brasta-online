@@ -1,4 +1,6 @@
 create extension if not exists citext;
+create schema if not exists private;
+revoke all on schema private from public;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -13,28 +15,34 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+grant select on public.profiles to anon, authenticated;
+grant insert, update on public.profiles to authenticated;
+revoke delete on public.profiles from anon, authenticated;
+
 create policy "Profiles are publicly readable"
 on public.profiles
 for select
+to anon, authenticated
 using (true);
 
 create policy "Users can create their own profile"
 on public.profiles
 for insert
 to authenticated
-with check (auth.uid() = id);
+with check ((select auth.uid()) = id);
 
 create policy "Users can update their own profile"
 on public.profiles
 for update
 to authenticated
-using (auth.uid() = id)
-with check (auth.uid() = id);
+using ((select auth.uid()) = id)
+with check ((select auth.uid()) = id);
 
-create or replace function public.handle_new_brasta_user()
+create or replace function private.handle_new_brasta_user()
 returns trigger
 language plpgsql
-security definer set search_path = public
+security definer
+set search_path = ''
 as $$
 declare
   suggested_name text;
@@ -60,14 +68,17 @@ begin
 end;
 $$;
 
+revoke all on function private.handle_new_brasta_user() from public, anon, authenticated;
+
 drop trigger if exists on_auth_user_created_brasta_profile on auth.users;
 create trigger on_auth_user_created_brasta_profile
 after insert on auth.users
-for each row execute procedure public.handle_new_brasta_user();
+for each row execute procedure private.handle_new_brasta_user();
 
-create or replace function public.touch_profile_updated_at()
+create or replace function private.touch_profile_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -75,7 +86,9 @@ begin
 end;
 $$;
 
+revoke all on function private.touch_profile_updated_at() from public, anon, authenticated;
+
 drop trigger if exists profiles_touch_updated_at on public.profiles;
 create trigger profiles_touch_updated_at
 before update on public.profiles
-for each row execute procedure public.touch_profile_updated_at();
+for each row execute procedure private.touch_profile_updated_at();
