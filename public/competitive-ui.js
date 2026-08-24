@@ -7,17 +7,23 @@
   const MARKER_PREFIX = 'brasta-ranked-room:';
   const LAST_NAME_KEY = 'brasta-online-last-name';
   const POLL_MS = 2000;
-  const MONITOR_MS = 1600;
+  const MONITOR_WAIT_MS = 1200;
+  const MONITOR_RETRY_MS = 2500;
+  const MONITOR_FINALIZE_MS = 700;
 
   let profile = null;
   let profileLoading = false;
   let queueInfo = null;
   let queueTimer = null;
+  let queueInFlight = false;
   let monitorTimer = null;
+  let monitorInFlight = false;
+  let monitorState = 'idle';
   let leaderboardOpen = false;
   let historyOpen = false;
   let backendUnavailable = '';
   let lastMonitorError = '';
+  let observerQueued = false;
 
   function token() {
     try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
@@ -200,37 +206,50 @@
     }
   }
 
-  function startQueuePolling() {
-    if (queueTimer) return;
-    queueTimer = window.setInterval(() => void pollQueue(), POLL_MS);
+  function startQueuePolling(delay = POLL_MS) {
+    if (queueTimer || queueInFlight) return;
+    queueTimer = window.setTimeout(() => {
+      queueTimer = null;
+      void pollQueue();
+    }, delay);
   }
 
   function stopQueuePolling() {
-    if (queueTimer) window.clearInterval(queueTimer);
+    if (queueTimer) window.clearTimeout(queueTimer);
     queueTimer = null;
   }
 
   async function pollQueue() {
+    if (queueInFlight) return;
     if (!token()) return cancelQueue(false);
+    queueInFlight = true;
+    let shouldContinue = false;
     try {
       const data = await api('status');
-      if (data.state === 'matched') return handleMatched(data.assignment);
+      if (data.state === 'matched') {
+        handleMatched(data.assignment);
+        return;
+      }
       if (data.state === 'queued') {
         queueInfo = data;
         if (data.competitive) profile = data.competitive;
         showQueueModal(data);
         renderCard();
+        shouldContinue = true;
         return;
       }
       if (data.state === 'unavailable') {
         backendUnavailable = data.message || 'Ranked matchmaking is unavailable.';
       }
-      stopQueuePolling();
       queueInfo = null;
       closeModal('competitive-queue-modal');
       renderCard();
     } catch (error) {
       document.querySelector('[data-queue-detail]')?.replaceChildren(document.createTextNode(error.message || 'Reconnecting to matchmaking…'));
+      shouldContinue = true;
+    } finally {
+      queueInFlight = false;
+      if (shouldContinue) startQueuePolling();
     }
   }
 
@@ -365,31 +384,65 @@
     document.querySelectorAll('.lobby-hero .eyebrow').forEach((node) => { node.textContent = 'RANKED MATCH'; });
   }
 
-  function startRankedMonitor() {
+  function scheduleRankedMonitor(code, delay) {
+    if (!code || monitorTimer || monitorInFlight) return;
+    monitorTimer = window.setTimeout(() => {
+      monitorTimer = null;
+      void monitorRanked(code);
+    }, Math.max(0, delay));
+  }
+
+  function startRankedMonitor(force = false) {
     const code = roomCodeFromUrl();
     if (!code || !marker(code) || !token()) return;
     applyRankedDecor();
-    if (monitorTimer) return;
-    const run = () => void monitorRanked(code);
-    run();
-    monitorTimer = window.setInterval(run, MONITOR_MS);
+    if (monitorTimer || monitorInFlight) return;
+
+    const phaseNeedsMonitor = Boolean(document.querySelector('.round-end'));
+    if (!force && monitorState === 'playing' && !phaseNeedsMonitor) return;
+    scheduleRankedMonitor(code, 0);
   }
 
   async function monitorRanked(code) {
+    if (monitorInFlight) return;
+    monitorInFlight = true;
+    let nextDelay = null;
     try {
       const data = await api('monitor', { roomCode: code });
       lastMonitorError = '';
+      monitorState = data.state || 'playing';
       applyRankedDecor();
-      if (data.state === 'waiting') showRankedWaiting(data.message || 'Waiting for your opponent to connect.');
-      else removeRankedWaiting();
-      if (data.state === 'completed' && data.result) {
-        if (monitorTimer) window.clearInterval(monitorTimer);
+
+      if (data.state === 'waiting') {
+        showRankedWaiting(data.message || 'Waiting for your opponent to connect.');
+        nextDelay = MONITOR_WAIT_MS;
+      } else {
+        removeRankedWaiting();
+      }
+
+      if (data.state === 'roundEnd') {
+        const remaining = Number(data.advanceInMs || 0);
+        nextDelay = Math.max(250, remaining + 80);
+      } else if (data.state === 'finalizing') {
+        nextDelay = MONITOR_FINALIZE_MS;
+      } else if (data.state === 'completed' && data.result) {
+        monitorState = 'completed';
+        if (monitorTimer) window.clearTimeout(monitorTimer);
         monitorTimer = null;
         showRankedResult(code, data.result);
+      } else if (data.state === 'playing') {
+        // Normal gameplay is already live over WebSocket. Do not poll the
+        // competitive API until the DOM reaches roundEnd/matchEnd again.
+        nextDelay = null;
       }
     } catch (error) {
       lastMonitorError = error.message || 'Ranked match monitor interrupted.';
+      monitorState = 'error';
       console.warn('[Brasta ranked monitor]', lastMonitorError);
+      nextDelay = MONITOR_RETRY_MS;
+    } finally {
+      monitorInFlight = false;
+      if (nextDelay != null && monitorState !== 'completed') scheduleRankedMonitor(code, nextDelay);
     }
   }
 
@@ -439,14 +492,21 @@
   }
 
   const observer = new MutationObserver(() => {
-    injectCard();
-    applyRankedDecor();
+    if (observerQueued) return;
+    observerQueued = true;
+    requestAnimationFrame(() => {
+      observerQueued = false;
+      injectCard();
+      applyRankedDecor();
+      const code = roomCodeFromUrl();
+      if (code && marker(code) && document.querySelector('.round-end')) startRankedMonitor(true);
+    });
   });
 
   function boot() {
     observer.observe(document.documentElement, { childList: true, subtree: true });
     injectCard();
-    startRankedMonitor();
+    startRankedMonitor(true);
   }
 
   window.addEventListener('brasta-auth-changed', (event) => {
