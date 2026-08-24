@@ -37,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.0" strategy="afterInteractive" />
         <Script src="/competitive-account.js?v=0.7.0" strategy="afterInteractive" />
