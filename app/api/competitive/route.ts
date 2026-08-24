@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     return json({ error: 'Unsupported competitive action.' }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Competitive service request failed.';
-    const authError = /sign in|authentication|required|profile/i.test(message);
+    const authError = /sign in|authentication required|missing.*token|invalid.*token|session.*expired/i.test(message);
     console.error('[brasta competitive api]', error);
     return json({ error: message }, authError ? 401 : 400);
   }
