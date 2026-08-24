@@ -20,6 +20,12 @@ type BrastaProfile = {
 
 type OAuthProvider = 'google' | 'apple' | 'discord';
 
+const PROVIDERS: Array<{ id: OAuthProvider; label: string; mark: string }> = [
+  { id: 'google', label: 'Google', mark: 'G' },
+  { id: 'discord', label: 'Discord', mark: 'D' },
+  { id: 'apple', label: 'Apple', mark: '●' },
+];
+
 function authReturnPath(): string {
   return `${location.pathname}${location.search}${location.hash}` || '/';
 }
@@ -46,6 +52,23 @@ export default function AccountBridge() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [identitiesLoading, setIdentitiesLoading] = useState(false);
+  const [linkedProviders, setLinkedProviders] = useState<Set<OAuthProvider>>(new Set());
+
+  const refreshIdentities = useCallback(async () => {
+    if (!supabase) return;
+    setIdentitiesLoading(true);
+    const { data, error } = await supabase.auth.getUserIdentities();
+    setIdentitiesLoading(false);
+    if (error) {
+      setLinkedProviders(new Set());
+      return;
+    }
+    const providers = (data.identities || [])
+      .map((identity) => identity.provider)
+      .filter((provider): provider is OAuthProvider => provider === 'google' || provider === 'apple' || provider === 'discord');
+    setLinkedProviders(new Set(providers));
+  }, [supabase]);
 
   const syncSession = useCallback(async (nextSession: Session | null) => {
     setSession(nextSession);
@@ -54,11 +77,13 @@ export default function AccountBridge() {
       try { localStorage.removeItem(BRASTA_AUTH_TOKEN_KEY); } catch {}
       setProfile(null);
       setUsername('');
+      setLinkedProviders(new Set());
       window.dispatchEvent(new CustomEvent('brasta-auth-changed', { detail: { signedIn: false } }));
       return;
     }
 
     try { localStorage.setItem(BRASTA_AUTH_TOKEN_KEY, nextSession.access_token); } catch {}
+    void refreshIdentities();
     setProfileLoading(true);
     const { data, error } = await supabase
       .from('profiles')
@@ -87,7 +112,7 @@ export default function AccountBridge() {
     window.dispatchEvent(new CustomEvent('brasta-auth-changed', {
       detail: { signedIn: true, userId: nextSession.user.id, username: nextProfile?.username || null },
     }));
-  }, [supabase]);
+  }, [refreshIdentities, supabase]);
 
   useEffect(() => {
     if (!configured || !supabase) return;
@@ -121,6 +146,24 @@ export default function AccountBridge() {
     });
     if (error) {
       setMessage(error.message);
+      setBusy(false);
+    }
+  }
+
+  async function linkProvider(provider: OAuthProvider) {
+    if (!user || linkedProviders.has(provider)) return;
+    setBusy(true);
+    setMessage('');
+    try { sessionStorage.setItem(BRASTA_AUTH_RETURN_KEY, authReturnPath()); } catch {}
+    const { error } = await supabase!.auth.linkIdentity({
+      provider,
+      options: { redirectTo: `${location.origin}/auth/callback` },
+    });
+    if (error) {
+      const manualLinkingDisabled = /manual linking|identity linking|linking is disabled/i.test(error.message);
+      setMessage(manualLinkingDisabled
+        ? 'Account linking is not enabled in Supabase yet. Enable Manual Linking under Authentication settings and try again.'
+        : error.message);
       setBusy(false);
     }
   }
@@ -242,6 +285,32 @@ export default function AccountBridge() {
                 <div className="account-status-card">
                   <span>Competitive profile</span><b>Unranked</b>
                   <small>Ranked play and matchmaking are the next competitive layer.</small>
+                </div>
+                <div className="account-connections-card">
+                  <div className="account-connections-head">
+                    <span>Connected accounts</span>
+                    <small>Use any linked provider to sign in to this same Brasta profile.</small>
+                  </div>
+                  {PROVIDERS.map((provider) => {
+                    const connected = linkedProviders.has(provider.id);
+                    return (
+                      <div className="account-connection-row" key={provider.id}>
+                        <span className="account-provider-mark">{provider.mark}</span>
+                        <div className="account-connection-copy">
+                          <b>{provider.label}</b>
+                          <small>{connected ? 'Connected' : 'Not connected'}</small>
+                        </div>
+                        <button
+                          type="button"
+                          className={connected ? 'connected' : ''}
+                          disabled={busy || identitiesLoading || connected}
+                          onClick={() => void linkProvider(provider.id)}
+                        >
+                          {connected ? '✓ Connected' : 'Connect'}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button className="account-secondary" disabled={busy} type="button" onClick={() => void signOut()}>Sign Out</button>
               </>
