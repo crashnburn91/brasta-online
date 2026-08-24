@@ -6,6 +6,7 @@ const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
 const PRESENCE_MS = 45_000;
 const EVENT_CHANNEL = 'brasta:room-events';
+const BURN_CLAIM_MS = 30_000;
 const memoryRooms = new Map<string, StoredRoom>();
 const localConnections = new Set<Connection>();
 let subscriberStarted = false;
@@ -17,6 +18,22 @@ export type WireSocket = {
 
 type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
+type BurnPickupOption = {
+  id: string;
+  label: string;
+  kind: 'loose' | 'build';
+  looseIds: Brasta.CardId[];
+  buildId?: string;
+  captureCount: number;
+};
+type CallableBurn = {
+  id: string;
+  offenderSeat: Brasta.Seat;
+  cardId: Brasta.CardId;
+  options: BurnPickupOption[];
+  claimedBySeat: Brasta.Seat | null;
+  claimedAt: number | null;
+};
 type StoredRoom = {
   code: string;
   mode: Brasta.Mode;
@@ -29,6 +46,7 @@ type StoredRoom = {
   seats: Record<string, Participant>;
   spectators: Record<string, Spectator>;
   gameState: Brasta.GameState | null;
+  callableBurn: CallableBurn | null;
 };
 export type ConnectionRole = 'player' | 'spectator' | null;
 export type Connection = {
@@ -51,6 +69,7 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 function normalizeRoom(room: StoredRoom): StoredRoom {
   if (!room.spectators) room.spectators = {};
+  if (room.callableBurn === undefined) room.callableBurn = null;
   return room;
 }
 function activeSeats(room: StoredRoom): Brasta.Seat[] { return Brasta.activeSeats(room.mode); }
@@ -106,6 +125,145 @@ function applyNames(room: StoredRoom) {
     const p = room.seats[String(player.seat)];
     if (p) player.name = p.name;
   }
+}
+
+function cardIdsInBuild(build: Brasta.Build): Brasta.CardId[] {
+  return [...build.groups.flat(), ...build.modifiers];
+}
+function cardListLabel(state: Brasta.GameState, ids: Brasta.CardId[]): string {
+  return ids.map((id) => Brasta.cardLabel(state.cards[id])).join(' + ');
+}
+function maximalNumericLooseSets(state: Brasta.GameState, target: number): Brasta.CardId[][] {
+  const sets = Brasta.findNumericSubsets(state, state.loose, target);
+  if (!sets.length) return [];
+
+  let bestSize = 0;
+  const best = new Map<string, Brasta.CardId[]>();
+  const search = (start: number, used: Set<Brasta.CardId>) => {
+    if (used.size > bestSize) {
+      bestSize = used.size;
+      best.clear();
+    }
+    if (used.size === bestSize && used.size > 0) {
+      const ids = [...used].sort();
+      best.set(ids.join('|'), ids);
+    }
+    for (let i = start; i < sets.length; i++) {
+      const set = sets[i];
+      if (set.some((id) => used.has(id))) continue;
+      const next = new Set(used);
+      set.forEach((id) => next.add(id));
+      search(i + 1, next);
+    }
+  };
+  search(0, new Set());
+  return [...best.values()];
+}
+function maximalLooseSetsForCard(state: Brasta.GameState, cardId: Brasta.CardId): Brasta.CardId[][] {
+  const card = state.cards[cardId];
+  if (!card) return [];
+  if (card.value != null) return maximalNumericLooseSets(state, card.value);
+  if (card.rank === 'Q' || card.rank === 'K') {
+    const ids = state.loose.filter((id) => state.cards[id]?.rank === card.rank);
+    return ids.length ? [ids] : [];
+  }
+  return [];
+}
+function looseSetsForBuild(state: Brasta.GameState, build: Brasta.Build): Brasta.CardId[][] {
+  if (build.kind === 'numeric' && build.declaredValue != null) {
+    const sets = maximalNumericLooseSets(state, build.declaredValue);
+    return sets.length ? sets : [[]];
+  }
+  const rank = build.declaredRank;
+  if (rank === 'Q' || rank === 'K') {
+    const ids = state.loose.filter((id) => state.cards[id]?.rank === rank);
+    return [ids];
+  }
+  return [[]];
+}
+function burnPickupOptions(state: Brasta.GameState, offenderSeat: Brasta.Seat, cardId: Brasta.CardId): BurnPickupOption[] {
+  const legal = Brasta.legalActionsForCard(state, offenderSeat, cardId);
+  const canLoose = legal.some((action) => action.type === 'CAPTURE_LOOSE');
+  const canBuild = legal.some((action) => action.type === 'CAPTURE_BUILD');
+  if (!canLoose && !canBuild) return [];
+
+  const raw: Omit<BurnPickupOption, 'id'>[] = [];
+  if (canLoose) {
+    for (const looseIds of maximalLooseSetsForCard(state, cardId)) {
+      if (!looseIds.length) continue;
+      raw.push({
+        label: `Loose: ${cardListLabel(state, looseIds)}`,
+        kind: 'loose',
+        looseIds,
+        captureCount: looseIds.length + 1,
+      });
+    }
+  }
+
+  if (canBuild) {
+    for (const build of Brasta.getCapturableBuilds(state, cardId)) {
+      for (const looseIds of looseSetsForBuild(state, build)) {
+        const extra = looseIds.length ? ` + ${cardListLabel(state, looseIds)}` : '';
+        raw.push({
+          label: `${Brasta.buildLabel(build)}${extra}`,
+          kind: 'build',
+          buildId: build.id,
+          looseIds,
+          captureCount: cardIdsInBuild(build).length + looseIds.length + 1,
+        });
+      }
+    }
+  }
+
+  const deduped = new Map<string, Omit<BurnPickupOption, 'id'>>();
+  for (const option of raw) {
+    const key = `${option.kind}:${option.buildId || ''}:${[...option.looseIds].sort().join(',')}`;
+    deduped.set(key, option);
+  }
+  return [...deduped.values()]
+    .sort((a, b) => b.captureCount - a.captureCount || a.label.localeCompare(b.label))
+    .slice(0, 12)
+    .map((option, index) => ({ ...option, id: `burn-option-${index + 1}` }));
+}
+function specialCaptureAnnouncement(state: Brasta.GameState, team: Brasta.Team, ids: Brasta.CardId[]): string | null {
+  const big2 = ids.some((id) => state.cards[id]?.rank === '2' && state.cards[id]?.suit === 'clubs');
+  const big10 = ids.some((id) => state.cards[id]?.rank === '10' && state.cards[id]?.suit === 'diamonds');
+  if (big2 && big10) return `BIG 2 + BIG 10! Team ${team}`;
+  if (big2) return `BIG 2! Team ${team}`;
+  if (big10) return `BIG 10! Team ${team}`;
+  return null;
+}
+function resolveBurn(room: StoredRoom, burn: CallableBurn, callerSeat: Brasta.Seat, option: BurnPickupOption): void {
+  const state = room.gameState;
+  if (!state || state.phase !== 'play') throw new Error('There is no active burn to resolve.');
+  if (!state.loose.includes(burn.cardId)) throw new Error('The burned card is no longer on the table.');
+  if (!option.looseIds.every((id) => state.loose.includes(id))) throw new Error('That burn pickup is no longer available.');
+
+  const captured: Brasta.CardId[] = [burn.cardId];
+  const looseToRemove = new Set<Brasta.CardId>([burn.cardId, ...option.looseIds]);
+  captured.push(...option.looseIds);
+
+  if (option.kind === 'build') {
+    const buildIndex = state.builds.findIndex((build) => build.id === option.buildId);
+    if (buildIndex < 0) throw new Error('That build is no longer available.');
+    captured.push(...cardIdsInBuild(state.builds[buildIndex]));
+    state.builds.splice(buildIndex, 1);
+  }
+
+  state.loose = state.loose.filter((id) => !looseToRemove.has(id));
+  const team = Brasta.teamForSeat(state.mode, callerSeat);
+  state.captured[team].push(...captured);
+  state.lastPickupSeat = callerSeat;
+  state.lastPickupTeam = team;
+
+  const callerName = state.players.find((player) => player.seat === callerSeat)?.name || `Seat ${callerSeat}`;
+  const offenderName = state.players.find((player) => player.seat === burn.offenderSeat)?.name || `Seat ${burn.offenderSeat}`;
+  const brasta = state.loose.length === 0 && state.builds.length === 0;
+  if (brasta) state.roundStats.brastas[team] += 1;
+  const special = specialCaptureAnnouncement(state, team, captured);
+  const suffix = [brasta ? `BRASTA! Team ${team} +10` : null, special].filter(Boolean).join(' • ');
+  state.event = `BURN! ${callerName} caught ${offenderName}${suffix ? ` • ${suffix}` : ''}`;
+  state.lastMove = `${callerName} called burn on ${offenderName} and took ${option.label}.`;
 }
 
 async function loadRoom(code: string): Promise<StoredRoom | null> {
@@ -337,7 +495,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       for (let i = 0; i < 25 && !room; i++) {
         const code = await makeRoomCode();
         const p: Participant = { seat: 1, name, token, connectionId: conn.id, lastSeen: Date.now() };
-        const candidate: StoredRoom = { code, mode, targetScore, createdAt: Date.now(), lastActivity: Date.now(), started: false, revision: 0, hostToken: token, seats: { '1': p }, spectators: {}, gameState: null };
+        const candidate: StoredRoom = { code, mode, targetScore, createdAt: Date.now(), lastActivity: Date.now(), started: false, revision: 0, hostToken: token, seats: { '1': p }, spectators: {}, gameState: null, callableBurn: null };
         if (await createRoomIfAbsent(candidate)) room = candidate;
       }
       if (!room) return sendError(conn, 'Could not create a room. Try again.');
@@ -428,36 +586,96 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (room.started) throw new Error('The game has already started.');
         if (!activeSeats(room).every((s) => !!room.seats[String(s)])) throw new Error('All seats must be filled before starting.');
         room.gameState = Brasta.startMatch(room.mode, crypto.randomInt(1, 0x7fffffff), room.targetScore);
-        applyNames(room); room.started = true; room.revision++; return;
+        room.callableBurn = null;
+        applyNames(room); room.started = true; room.revision++; return null;
       }
       if (!room.started || !room.gameState) throw new Error('The game has not started yet.');
+
+      if (msg.type === 'CALL_BURN') {
+        const burn = room.callableBurn;
+        if (!burn || room.gameState.phase !== 'play' || burn.offenderSeat === p.seat) {
+          return { type: 'BURN_RESULT', valid: false, message: 'No valid burn to call.' };
+        }
+        if (burn.claimedBySeat && burn.claimedAt && Date.now() - burn.claimedAt < BURN_CLAIM_MS && burn.claimedBySeat !== p.seat) {
+          return { type: 'BURN_RESULT', valid: false, message: 'That burn has already been called.' };
+        }
+        burn.claimedBySeat = p.seat;
+        burn.claimedAt = Date.now();
+        if (burn.options.length === 1) {
+          resolveBurn(room, burn, p.seat, burn.options[0]);
+          room.callableBurn = null;
+          room.revision++;
+          return { type: 'BURN_RESOLVED', valid: true };
+        }
+        return {
+          type: 'BURN_OPTIONS',
+          burnId: burn.id,
+          options: burn.options.map((option) => ({ id: option.id, label: option.label })),
+        };
+      }
+
+      if (msg.type === 'RESOLVE_BURN') {
+        const burn = room.callableBurn;
+        if (!burn || burn.id !== String(msg.burnId || '') || burn.claimedBySeat !== p.seat) {
+          return { type: 'BURN_RESULT', valid: false, message: 'That burn is no longer available.' };
+        }
+        const option = burn.options.find((candidate) => candidate.id === String(msg.optionId || ''));
+        if (!option) return { type: 'BURN_RESULT', valid: false, message: 'Choose a valid burn pickup.' };
+        resolveBurn(room, burn, p.seat, option);
+        room.callableBurn = null;
+        room.revision++;
+        return { type: 'BURN_RESOLVED', valid: true };
+      }
+
       if (msg.type === 'OPENING_CHOICE') {
         if (room.gameState.phase !== 'openingChoice') throw new Error('The opening choice is not active.');
         if (room.gameState.starterSeat !== p.seat) throw new Error('Only this round’s starter can make the opening choice.');
         if (msg.choice !== 'keep' && msg.choice !== 'put') throw new Error('Opening choice must be keep or put.');
         const result = Brasta.resolveOpening(room.gameState, msg.choice);
         if (!result.ok) throw new Error(result.error || 'Opening choice rejected.');
-        room.gameState = result.state; applyNames(room); room.revision++; return;
+        room.callableBurn = null;
+        room.gameState = result.state; applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'COMMAND') {
         if (!msg.command || typeof msg.command.type !== 'string') throw new Error('A game command is required.');
+        if (room.callableBurn?.claimedBySeat && room.callableBurn.claimedAt && Date.now() - room.callableBurn.claimedAt < BURN_CLAIM_MS) {
+          throw new Error('A burn call is being resolved.');
+        }
         const safe = { ...msg.command, seat: p.seat } as Brasta.Command;
+        const before = clone(room.gameState);
         const result = Brasta.applyCommand(room.gameState, safe);
         if (!result.ok) throw new Error(result.error || 'Move rejected.');
-        room.gameState = result.state; applyNames(room); room.revision++; return;
+
+        room.callableBurn = null;
+        if (safe.type === 'PLAY_LOOSE' && result.state.phase === 'play') {
+          const options = burnPickupOptions(before, p.seat, safe.cardId);
+          if (options.length) {
+            room.callableBurn = {
+              id: crypto.randomUUID(),
+              offenderSeat: p.seat,
+              cardId: safe.cardId,
+              options,
+              claimedBySeat: null,
+              claimedAt: null,
+            };
+          }
+        }
+        room.gameState = result.state; applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'NEXT_ROUND') {
         requireHost();
         const result = Brasta.nextRound(room.gameState);
         if (!result.ok) throw new Error(result.error || 'Unable to start next round.');
-        room.gameState = result.state; applyNames(room); room.revision++; return;
+        room.callableBurn = null;
+        room.gameState = result.state; applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'END_MATCH') {
-        requireHost(); room.gameState = Brasta.endMatch(room.gameState); room.revision++; return;
+        requireHost(); room.callableBurn = null; room.gameState = Brasta.endMatch(room.gameState); room.revision++; return null;
       }
       throw new Error('Unsupported room command.');
     });
     if (!changed) return sendError(conn, 'That room no longer exists.');
+    if (changed.result && typeof changed.result === 'object' && 'type' in changed.result) sendJson(conn, changed.result);
   } catch (err) {
     console.error('[brasta action]', err);
     sendError(conn, err instanceof Error ? err.message : 'The server could not process that action. No game state was changed.');
