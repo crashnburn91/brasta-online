@@ -123,7 +123,7 @@
     if (!grid || grid.querySelector('[data-competitive-2v2-card]')) return;
     const card = document.createElement('section');
     card.className = 'landing-card competitive-card competitive-card-2v2';
-    card.dataset.competitive2v2Card = '1';
+    card.setAttribute('data-competitive-2v2-card', '1');
     const one = grid.querySelector('[data-competitive-card]');
     if (one) one.insertAdjacentElement('afterend', card);
     else grid.prepend(card);
