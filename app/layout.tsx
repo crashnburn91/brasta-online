@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/account-ui.css?v=0.6.1" />
         <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.0" />
-        <link rel="stylesheet" href="/product-surface.css?v=0.7.8" />
+        <link rel="stylesheet" href="/product-surface.css?v=0.7.9" />
       </head>
       <body>
         {children}
