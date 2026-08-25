@@ -89,7 +89,6 @@ function serviceHeaders(): Record<string, string> {
   if (!secretKey) throw new Error('Player experience backend is not configured.');
   return {
     apikey: secretKey,
-    Authorization: `Bearer ${secretKey}`,
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
