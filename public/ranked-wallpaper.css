@@ -1,24 +1,28 @@
-/* Dense branded suit wallpaper for the Competitive Brasta card. */
+/* Structured luxury suit wallpaper for the Competitive Brasta card. */
 .ranked-tabs-shell{
   background:
-    radial-gradient(circle at 12% 110%,rgba(47,122,85,.13) 0 22%,transparent 48%),
-    linear-gradient(145deg,#0b2b20 0%,#071d16 56%,#102619 100%)!important;
+    radial-gradient(circle at 88% 18%,rgba(172,184,75,.24) 0%,rgba(150,164,66,.14) 17%,transparent 39%),
+    radial-gradient(circle at 12% 110%,rgba(47,122,85,.15) 0 22%,transparent 48%),
+    linear-gradient(145deg,#0b2b20 0%,#071d16 55%,#243c20 100%)!important;
 }
 
+/* A strict 2x2 suit tile: spade/diamond above club/heart. Every tile repeats
+   on the same 72px grid so the texture reads as patterned fabric, not confetti. */
 .ranked-tabs-shell::before{
   content:""!important;
   position:absolute!important;
   inset:0!important;
   z-index:0!important;
   pointer-events:none!important;
-  opacity:.11!important;
+  opacity:.085!important;
   color:transparent!important;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='82' height='82' viewBox='0 0 82 82'%3E%3Cg fill='%23d4af37' fill-opacity='.50' font-family='Georgia,serif'%3E%3Ctext x='7' y='19' font-size='13'%3E%26%239824;%3C/text%3E%3Ctext x='33' y='18' font-size='12'%3E%26%239830;%3C/text%3E%3Ctext x='57' y='20' font-size='13'%3E%26%239827;%3C/text%3E%3Ctext x='18' y='43' font-size='12'%3E%26%239829;%3C/text%3E%3Ctext x='45' y='44' font-size='13'%3E%26%239824;%3C/text%3E%3Ctext x='7' y='68' font-size='12'%3E%26%239827;%3C/text%3E%3Ctext x='33' y='66' font-size='13'%3E%26%239829;%3C/text%3E%3Ctext x='58' y='68' font-size='12'%3E%26%239830;%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='%23d4af37' fill-opacity='.56' font-family='Georgia,serif' text-anchor='middle'%3E%3Ctext x='18' y='22' font-size='12'%3E%26%239824;%3C/text%3E%3Ctext x='54' y='22' font-size='12'%3E%26%239830;%3C/text%3E%3Ctext x='18' y='58' font-size='12'%3E%26%239827;%3C/text%3E%3Ctext x='54' y='58' font-size='12'%3E%26%239829;%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
   background-repeat:repeat!important;
-  background-size:82px 82px!important;
+  background-size:72px 72px!important;
   background-position:0 0!important;
 }
 
+/* No concentric-ring decoration; the brighter upper-right gradient remains. */
 .ranked-tabs-shell.competitive-card::after{
   content:none!important;
   display:none!important;
