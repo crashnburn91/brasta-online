@@ -1,19 +1,31 @@
-/* Home hero brand mark: render the supplied artwork as image content rather than a CSS background.
-   This is intentionally a static CSS override so mobile browsers cannot reserve the hero space
-   while dropping the background image. */
+/* Home hero brand mark: render the supplied artwork on the existing real logo element.
+   Avoid pseudo-element image rendering, which was unreliable on Samsung Internet. */
 .landing.landing-wide::before{
-  content:url("/brasta-wordmark.webp?v=2")!important;
+  content:none!important;
+  display:none!important;
+}
+
+.landing.landing-wide > .logo-mark{
   display:block!important;
   width:min(560px,90vw)!important;
   height:auto!important;
-  aspect-ratio:auto!important;
+  aspect-ratio:3 / 1!important;
   flex:0 0 auto!important;
-  background:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background-color:transparent!important;
+  background-image:url("/brasta-wordmark.webp?v=3")!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  background-size:contain!important;
+  color:transparent!important;
+  font-size:0!important;
   line-height:0!important;
+  overflow:visible!important;
 }
 
 @media(max-width:800px){
-  .landing.landing-wide::before{
-    width:min(460px,92vw)!important;
+  .landing.landing-wide > .logo-mark{
+    width:min(620px,92vw)!important;
   }
 }
