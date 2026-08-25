@@ -1,0 +1,112 @@
+/* Account-wide Brasta experience: activity, not competitive skill. */
+.account-dock-copy{
+  display:grid;
+  min-width:0;
+  gap:2px;
+  text-align:left;
+  line-height:1.05;
+  white-space:normal!important;
+}
+.account-dock-copy b{
+  overflow:hidden;
+  color:#f7f2e8;
+  font-size:13px;
+  font-weight:850;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.account-dock-copy small{
+  overflow:hidden;
+  color:#d4af37;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.035em;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.account-xp-track,
+.account-experience-track{
+  position:relative;
+  overflow:hidden;
+  display:block;
+  border:1px solid #d4af373f;
+  background:#020d09c7;
+  box-shadow:inset 0 1px 3px #0008;
+}
+.account-xp-track{
+  width:100%;
+  height:4px;
+  margin-top:1px;
+  border-radius:999px;
+}
+.account-xp-track i,
+.account-experience-track i{
+  position:absolute;
+  inset:0 auto 0 0;
+  display:block;
+  min-width:2px;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#b98d2e,#f1d779 62%,#d4af37);
+  box-shadow:0 0 8px #d4af374f,inset 0 1px 0 #fff7;
+}
+.account-dock:has(.account-xp-track){
+  min-width:174px;
+  max-width:min(230px,48vw);
+  padding-right:10px!important;
+}
+.brasta-site-nav-account-space{width:196px}
+
+.account-experience-card{
+  display:grid;
+  gap:10px;
+  margin:0 0 14px;
+  padding:16px;
+  border:1px solid #d4af3755;
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 92% 0,#d4af3714,transparent 35%),
+    linear-gradient(145deg,#0d3024,#081e17);
+  box-shadow:inset 0 1px 0 #ffffff10,0 8px 22px #0002;
+}
+.account-experience-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+}
+.account-experience-head span{
+  color:#bda258;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.account-experience-head b{
+  color:#f5f1e6;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:16px;
+  text-align:right;
+}
+.account-experience-track{
+  width:100%;
+  height:9px;
+  border-radius:999px;
+}
+.account-experience-card>small{
+  color:#8da096;
+  font-size:10px;
+  line-height:1.4;
+}
+
+@media(max-width:700px){
+  .brasta-site-nav-account-space{width:164px}
+  .account-dock:has(.account-xp-track){
+    min-width:156px;
+    max-width:50vw;
+    padding-right:8px!important;
+  }
+  .account-dock-copy b{font-size:12px}
+  .account-dock-copy small{font-size:8px}
+  .account-experience-head{align-items:flex-start;flex-direction:column;gap:3px}
+  .account-experience-head b{text-align:left}
+}
