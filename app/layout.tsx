@@ -52,7 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.0" />
         <link rel="stylesheet" href="/competitive-account.css?v=0.8.0" />
-        <link rel="stylesheet" href="/product-surface.css?v=0.8.0" />
+        <link rel="stylesheet" href="/product-surface.css?v=0.8.2" />
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
       </head>
       <body>
