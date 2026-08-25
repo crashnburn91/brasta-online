@@ -7,6 +7,9 @@
   let wasYourTurn = false;
   let lastHandSeen = false;
   let turnToastTimer = null;
+  let polishScheduled = false;
+  let rankedTabMode = '1v1';
+  let requested2v2Refresh = false;
 
   function unlockAudio() {
     try {
@@ -111,6 +114,100 @@
     duplicateSpectatorAction?.remove();
   }
 
+  function updateRankedTabs(shell) {
+    const one = shell.querySelector('[data-competitive-card]');
+    const two = shell.querySelector('[data-competitive-2v2-card]');
+    if (!one || !two) return;
+
+    const activeOne = rankedTabMode !== '2v2';
+    one.hidden = !activeOne;
+    two.hidden = activeOne;
+    one.classList.toggle('active', activeOne);
+    two.classList.toggle('active', !activeOne);
+
+    shell.querySelectorAll('[data-ranked-home-tab]').forEach((button) => {
+      const active = button.dataset.rankedHomeTab === rankedTabMode;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+      button.tabIndex = active ? 0 : -1;
+    });
+
+    if (!activeOne && !String(two.textContent || '').trim()) {
+      two.innerHTML = '<div class="ranked-tab-loading"><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2><p>Loading your 2v2 competitive profile…</p></div>';
+      if (!requested2v2Refresh) {
+        requested2v2Refresh = true;
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('brasta-competitive-updated'));
+          window.setTimeout(() => { requested2v2Refresh = false; schedulePolish(); }, 250);
+        }, 0);
+      }
+    }
+  }
+
+  function syncRankedTabs() {
+    if (new URLSearchParams(location.search).get('room') || new URLSearchParams(location.search).get('spectate') || location.hash === '#lab') return;
+    const grid = document.querySelector('.landing.landing-wide .landing-grid');
+    if (!grid) return;
+
+    let shell = grid.querySelector('[data-ranked-tabs-shell]');
+    let one = grid.querySelector('[data-competitive-card]');
+    let two = grid.querySelector('[data-competitive-2v2-card]');
+
+    if (!one || !two) return;
+
+    if (!shell) {
+      shell = document.createElement('section');
+      shell.className = 'landing-card competitive-card ranked-tabs-shell';
+      shell.dataset.rankedTabsShell = '1';
+      shell.innerHTML = '<div class="ranked-mode-tabs" role="tablist" aria-label="Ranked mode"><button type="button" data-ranked-home-tab="1v1" role="tab">1v1</button><button type="button" data-ranked-home-tab="2v2" role="tab">2v2</button></div>';
+      one.insertAdjacentElement('beforebegin', shell);
+
+      [one, two].forEach((panel) => {
+        panel.classList.remove('landing-card', 'competitive-card', 'competitive-card-2v2');
+        panel.classList.add('ranked-tab-panel');
+        shell.appendChild(panel);
+      });
+
+      shell.querySelectorAll('[data-ranked-home-tab]').forEach((button) => {
+        button.addEventListener('click', () => {
+          rankedTabMode = button.dataset.rankedHomeTab === '2v2' ? '2v2' : '1v1';
+          updateRankedTabs(shell);
+        });
+      });
+    } else {
+      one = shell.querySelector('[data-competitive-card]') || one;
+      two = shell.querySelector('[data-competitive-2v2-card]') || two;
+      if (one.parentElement !== shell) shell.appendChild(one);
+      if (two.parentElement !== shell) shell.appendChild(two);
+    }
+
+    updateRankedTabs(shell);
+  }
+
+  function syncLearnBrastaActions() {
+    const legacyLocalControl = document.querySelector('[data-newmode]');
+    const learnCard = legacyLocalControl?.closest('.landing-card');
+    const tutorial = learnCard?.querySelector('[data-nav="lab"]');
+    const bot = document.querySelector('[data-play-bot]');
+    if (!learnCard || !tutorial || !bot) return;
+
+    let actions = learnCard.querySelector('.learn-brasta-actions');
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.className = 'learn-brasta-actions';
+      tutorial.insertAdjacentElement('beforebegin', actions);
+    }
+
+    if (tutorial.parentElement !== actions) actions.appendChild(tutorial);
+    if (bot.parentElement !== actions) actions.appendChild(bot);
+
+    if (!bot.classList.contains('learn-bot-launch')) {
+      bot.classList.add('learn-bot-launch');
+      bot.innerHTML = '<span class="learn-bot-icon">🤖</span><span class="learn-bot-copy"><b>Play vs Bot</b><small>Practice a private 1v1 match</small></span>';
+      bot.setAttribute('aria-label', 'Play a practice match against the Brasta bot');
+    }
+  }
+
   function updateGameAlerts() {
     const hasGame = !!document.querySelector('.table');
     const activePlayer = document.querySelector('.player-chip.active');
@@ -151,15 +248,24 @@
   }
 
   function polish() {
+    polishScheduled = false;
     polishRoomUi();
+    syncRankedTabs();
+    syncLearnBrastaActions();
     updateGameAlerts();
+  }
+
+  function schedulePolish() {
+    if (polishScheduled) return;
+    polishScheduled = true;
+    requestAnimationFrame(polish);
   }
 
   document.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
   document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
   document.addEventListener('keydown', unlockAudio, { once: true });
 
-  const observer = new MutationObserver(polish);
+  const observer = new MutationObserver(schedulePolish);
   function startObserver() {
     const appRoot = document.getElementById('app');
     if (!appRoot) {
@@ -167,8 +273,11 @@
       return;
     }
     observer.observe(appRoot, { childList: true, subtree: true });
-    polish();
+    schedulePolish();
   }
+
+  window.addEventListener('brasta-auth-changed', schedulePolish);
+  window.addEventListener('brasta-competitive-updated', schedulePolish);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startObserver, { once: true });
