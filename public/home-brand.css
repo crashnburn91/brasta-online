@@ -1,0 +1,19 @@
+/* Home hero brand mark: render the supplied artwork as image content rather than a CSS background.
+   This is intentionally a static CSS override so mobile browsers cannot reserve the hero space
+   while dropping the background image. */
+.landing.landing-wide::before{
+  content:url("/brasta-wordmark.webp?v=2")!important;
+  display:block!important;
+  width:min(560px,90vw)!important;
+  height:auto!important;
+  aspect-ratio:auto!important;
+  flex:0 0 auto!important;
+  background:none!important;
+  line-height:0!important;
+}
+
+@media(max-width:800px){
+  .landing.landing-wide::before{
+    width:min(460px,92vw)!important;
+  }
+}
