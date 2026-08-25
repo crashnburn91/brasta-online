@@ -1,0 +1,24 @@
+{
+  "name": "Brasta",
+  "short_name": "Brasta",
+  "description": "Online Brasta card game",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#071b13",
+  "theme_color": "#071b13",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
