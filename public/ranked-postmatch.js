@@ -5,7 +5,9 @@
   const AUTH_TOKEN_KEY = 'brasta-auth-access-token';
   const SESSION_PREFIX = 'brasta-online-session:player:';
   const MARKER_PREFIX = 'brasta-ranked-room:';
+  const TEAM_MARKER_PREFIX = 'brasta-ranked-2v2-room:';
   const REQUEUE_KEY = 'brasta-ranked-requeue';
+  const TEAM_REQUEUE_KEY = 'brasta-ranked-2v2-requeue';
 
   function roomCode() {
     try {
@@ -18,10 +20,20 @@
     }
   }
 
-  function isRankedRoom(code = roomCode()) {
-    if (!code) return false;
-    try { return Boolean(localStorage.getItem(MARKER_PREFIX + code)); }
-    catch { return false; }
+  function readMarker(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function rankedMarker(code = roomCode()) {
+    if (!code) return null;
+    const team = readMarker(TEAM_MARKER_PREFIX + code);
+    if (team) return { ...team, mode: '2v2' };
+    const solo = readMarker(MARKER_PREFIX + code);
+    if (solo) return { ...solo, mode: '1v1' };
+    return null;
   }
 
   function accessToken() {
@@ -33,7 +45,7 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function confirmResult(code) {
+  async function confirmResult(code, mode) {
     const token = accessToken();
     if (!token) throw new Error('Your Brasta sign-in session is unavailable.');
 
@@ -45,7 +57,7 @@
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ action: 'monitor', roomCode: code }),
+        body: JSON.stringify({ action: 'monitor', roomCode: code, mode }),
         cache: 'no-store',
       });
       const data = await response.json().catch(() => ({}));
@@ -60,6 +72,7 @@
   function clearFinishedRoom(code) {
     try {
       localStorage.removeItem(MARKER_PREFIX + code);
+      localStorage.removeItem(TEAM_MARKER_PREFIX + code);
       localStorage.removeItem(SESSION_PREFIX + code);
     } catch {}
   }
@@ -95,11 +108,13 @@
   }
 
   async function finish(code, requeue, row) {
+    const marker = rankedMarker(code);
+    if (!marker) return;
     setBusy(row, 'Saving ranked result…');
     try {
-      await confirmResult(code);
+      await confirmResult(code, marker.mode);
       if (requeue) {
-        try { sessionStorage.setItem(REQUEUE_KEY, '1'); } catch {}
+        try { sessionStorage.setItem(marker.mode === '2v2' ? TEAM_REQUEUE_KEY : REQUEUE_KEY, '1'); } catch {}
       }
       clearFinishedRoom(code);
       location.assign(location.pathname);
@@ -110,7 +125,7 @@
 
   function decorateCoreMatchEnd() {
     const code = roomCode();
-    if (!isRankedRoom(code)) return;
+    if (!rankedMarker(code)) return;
     const end = document.querySelector('.round-end');
     if (!end || end.querySelector('[data-ranked-postmatch-actions]')) return;
     const heading = String(end.querySelector('h2')?.textContent || '');
@@ -132,11 +147,11 @@
 
   function decorateResultModal() {
     const modal = document.getElementById('competitive-result-modal');
-    if (!modal || modal.querySelector('[data-ranked-play-again]')) return;
+    if (!modal || modal.querySelector('[data-ranked-play-again]') || modal.querySelector('[data-ranked-2v2-again]')) return;
     const row = modal.querySelector('.result-actions');
     if (!row) return;
     const code = roomCode();
-    if (!isRankedRoom(code)) return;
+    if (!rankedMarker(code)) return;
     const playAgain = document.createElement('button');
     playAgain.className = 'primary';
     playAgain.dataset.rankedPlayAgain = '1';
@@ -147,13 +162,16 @@
 
   function tryAutomaticRequeue() {
     if (roomCode()) return;
-    let wantsRequeue = false;
-    try { wantsRequeue = sessionStorage.getItem(REQUEUE_KEY) === '1'; } catch {}
-    if (!wantsRequeue) return;
+    let mode = null;
+    try {
+      if (sessionStorage.getItem(TEAM_REQUEUE_KEY) === '1') mode = '2v2';
+      else if (sessionStorage.getItem(REQUEUE_KEY) === '1') mode = '1v1';
+    } catch {}
+    if (!mode) return;
 
-    const button = document.querySelector('[data-ranked-find]');
+    const button = document.querySelector(mode === '2v2' ? '[data-ranked-2v2-find]' : '[data-ranked-find]');
     if (!button || button.disabled) return;
-    try { sessionStorage.removeItem(REQUEUE_KEY); } catch {}
+    try { sessionStorage.removeItem(mode === '2v2' ? TEAM_REQUEUE_KEY : REQUEUE_KEY); } catch {}
     button.click();
   }
 
@@ -163,10 +181,14 @@
     tryAutomaticRequeue();
   }
 
-  const observer = new MutationObserver(refresh);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  function boot() {
+    const app = document.getElementById('app');
+    if (app) new MutationObserver(refresh).observe(app, { childList: true });
+    refresh();
+  }
+
   window.addEventListener('brasta-competitive-updated', refresh);
   window.addEventListener('brasta-auth-changed', refresh);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh, { once: true });
-  else refresh();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  else boot();
 })();
