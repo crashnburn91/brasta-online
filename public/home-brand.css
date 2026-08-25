@@ -1,31 +1,24 @@
-/* Home hero brand mark: render the supplied artwork on the existing real logo element.
-   Avoid pseudo-element image rendering, which was unreliable on Samsung Internet. */
+/* Brasta home hero. The supplied artwork is rendered as a real <img> by home-wordmark.js. */
 .landing.landing-wide::before{
   content:none!important;
   display:none!important;
 }
 
 .landing.landing-wide > .logo-mark{
-  display:block!important;
-  width:min(560px,90vw)!important;
-  height:auto!important;
-  aspect-ratio:3 / 1!important;
-  flex:0 0 auto!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  background-color:transparent!important;
-  background-image:url("/brasta-wordmark.webp?v=3")!important;
-  background-position:center!important;
-  background-repeat:no-repeat!important;
-  background-size:contain!important;
-  color:transparent!important;
-  font-size:0!important;
-  line-height:0!important;
-  overflow:visible!important;
+  display:none!important;
+}
+
+.brasta-home-wordmark{
+  display:block;
+  width:min(560px,90vw);
+  height:auto;
+  max-width:100%;
+  object-fit:contain;
+  flex:0 0 auto;
 }
 
 @media(max-width:800px){
-  .landing.landing-wide > .logo-mark{
-    width:min(620px,92vw)!important;
+  .brasta-home-wordmark{
+    width:min(620px,92vw);
   }
 }
