@@ -8,8 +8,8 @@
   font-size:15px;
 }
 
-/* Primary Brasta wordmark on the home hero. The legacy B tile + text remain in
-   the dormant renderer for compatibility, but are replaced visually here. */
+/* Primary Brasta wordmark on the home hero. Use the supplied raster artwork
+   directly rather than recreating the mark with CSS/SVG. */
 .landing.landing-wide > .logo-mark,
 .landing.landing-wide > h1{
   display:none;
@@ -17,10 +17,10 @@
 .landing.landing-wide::before{
   content:"";
   display:block;
-  width:min(720px,92vw);
-  height:clamp(120px,20vw,216px);
+  width:min(560px,90vw);
+  aspect-ratio:3 / 1;
   flex:0 0 auto;
-  background:url("/brasta-wordmark.svg?v=1") center/contain no-repeat;
+  background:url("/brasta-wordmark.webp?v=1") center/contain no-repeat;
 }
 
 /* Private-room play is the main unranked online mode. */
@@ -57,8 +57,7 @@
 
 @media(max-width:800px){
   .landing.landing-wide::before{
-    width:min(560px,94vw);
-    height:clamp(92px,29vw,150px);
+    width:min(460px,92vw);
   }
   .landing.landing-wide > p::after{font-size:14px}
   .online-card > h2::after,
