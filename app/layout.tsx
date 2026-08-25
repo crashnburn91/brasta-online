@@ -36,11 +36,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.0" />
         <link rel="stylesheet" href="/product-surface.css?v=0.7.10" />
-        <link rel="stylesheet" href="/home-brand.css?v=0.7.12" />
+        <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
       </head>
       <body>
         {children}
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
+        <Script src="/home-wordmark.js?v=0.7.13" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.5" strategy="afterInteractive" />
         <Script src="/competitive-account.js?v=0.7.0" strategy="afterInteractive" />
