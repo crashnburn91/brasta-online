@@ -1,0 +1,89 @@
+/* Final brand typography + account modal polish.
+   Cinzel is supplied by next/font as --font-brasta-display. */
+
+/* Text-rendered Brasta marks should echo the Roman serif construction of the
+   primary graphic wordmark without changing normal UI/body typography. */
+.brasta-site-brand,
+.account-brand-mark,
+.logo-mark,
+.boot-logo,
+.invite-join-card h1,
+.landing > h1,
+.topbar > div:first-child > strong:first-child {
+  font-family:var(--font-brasta-display),Cinzel,"Trajan Pro",Georgia,"Times New Roman",serif!important;
+  font-weight:700!important;
+}
+
+.brasta-site-brand {
+  letter-spacing:.045em!important;
+  text-transform:uppercase;
+}
+
+.account-brand-mark,
+.logo-mark,
+.boot-logo {
+  letter-spacing:-.035em;
+  line-height:1;
+}
+
+/* Keep the account sheet usable at every viewport size without exposing the
+   native scrollbar. Content can still scroll when a very short viewport
+   requires it. */
+.account-modal-backdrop {
+  padding:12px!important;
+}
+
+.account-modal {
+  width:min(460px,100%)!important;
+  max-height:calc(100dvh - 24px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:22px 24px!important;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  overscroll-behavior:contain;
+}
+
+.account-modal::-webkit-scrollbar {
+  width:0!important;
+  height:0!important;
+  display:none!important;
+}
+
+/* Optical centering for the multiplication-sign close glyph. */
+.account-close {
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  line-height:1!important;
+  font-size:0!important;
+}
+
+.account-close::before {
+  content:"×";
+  display:block;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:23px;
+  font-weight:400;
+  line-height:1;
+  transform:translateY(-1px);
+}
+
+/* Tighten vertical rhythm enough that the normal signed-in account view fits
+   on common desktop/tablet heights without requiring scrolling. */
+.account-profile-head { margin-bottom:14px!important; }
+.account-experience-card { margin-bottom:11px!important; padding:13px 14px!important; gap:7px!important; }
+.account-status-card { margin:11px 0!important; padding:13px 14px!important; }
+.account-connections-card { margin-bottom:11px!important; }
+.account-connections-head { padding:11px 12px 9px!important; }
+.account-connection-row { padding:8px 11px!important; }
+.account-secondary { min-height:40px!important; }
+
+@media(max-width:700px) {
+  .account-modal {
+    padding:20px 17px!important;
+    max-height:calc(100dvh - 16px)!important;
+  }
+  .account-modal-backdrop { padding:8px!important; }
+  .brasta-site-brand { letter-spacing:.035em!important; }
+}
