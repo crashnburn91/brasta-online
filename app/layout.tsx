@@ -6,8 +6,24 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://brasta.app'),
   title: 'Brasta',
   description: 'Online Brasta card game',
+  applicationName: 'Brasta',
   alternates: {
     canonical: '/',
+  },
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Brasta',
+    statusBarStyle: 'black-translucent',
   },
 };
 
