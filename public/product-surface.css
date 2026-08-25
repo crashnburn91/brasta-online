@@ -47,7 +47,6 @@
   border:1px solid #d4af37a8!important;
   border-radius:22px!important;
   background:
-    radial-gradient(circle at 88% 18%,#d4af3717 0 10%,transparent 33%),
     radial-gradient(circle at 12% 110%,#2f7a5520 0 22%,transparent 48%),
     linear-gradient(145deg,#0b2b20 0%,#071d16 56%,#102619 100%)!important;
   box-shadow:
@@ -55,27 +54,29 @@
     inset 0 1px 0 #fff2,
     inset 0 0 0 1px #d4af3712!important;
 }
+
+/* Small, dense suit wallpaper across the entire ranked card. The gold is
+   intentionally subdued so this reads as woven/luxury texture rather than UI. */
 .ranked-tabs-shell::before{
-  content:"♠  ♦  ♣  ♥";
+  content:"";
   position:absolute;
-  right:28px;
-  bottom:12px;
+  inset:0;
   z-index:0;
-  color:#d4af3709;
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:72px;
-  line-height:1;
-  letter-spacing:.06em;
-  white-space:nowrap;
   pointer-events:none;
+  opacity:.11;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='82' height='82' viewBox='0 0 82 82'%3E%3Cg fill='%23d4af37' fill-opacity='.5' font-family='Georgia,serif'%3E%3Ctext x='7' y='19' font-size='13'%3E%26%239824;%3C/text%3E%3Ctext x='33' y='18' font-size='12'%3E%26%239830;%3C/text%3E%3Ctext x='57' y='20' font-size='13'%3E%26%239827;%3C/text%3E%3Ctext x='18' y='43' font-size='12'%3E%26%239829;%3C/text%3E%3Ctext x='45' y='44' font-size='13'%3E%26%239824;%3C/text%3E%3Ctext x='7' y='68' font-size='12'%3E%26%239827;%3C/text%3E%3Ctext x='33' y='66' font-size='13'%3E%26%239829;%3C/text x='58' y='68' font-size='12'%3E%26%239830;%3C/text%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:repeat;
+  background-size:82px 82px;
+  background-position:0 0;
 }
+
+/* Remove the old concentric-circle decoration in the upper-right. */
 .ranked-tabs-shell.competitive-card::after{
-  right:-62px;
-  top:-92px;
-  width:245px;
-  height:245px;
-  border-color:#d4af3722;
-  box-shadow:0 0 0 30px #d4af3708,0 0 0 60px #d4af3704;
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  border:0!important;
+  box-shadow:none!important;
 }
 .ranked-tabs-shell > .ranked-tab-panel{
   display:block;
@@ -277,7 +278,6 @@ button.learn-bot-launch:hover{
   .online-card > h2::after,
   .landing-card:has([data-newmode]) > h2::after{font-size:22px}
   .ranked-tabs-shell{padding:14px 14px 16px}
-  .ranked-tabs-shell::before{right:-20px;bottom:20px;font-size:48px}
   .ranked-mode-tabs{display:grid;width:100%;box-sizing:border-box;margin-bottom:15px}
   .ranked-mode-tabs button{width:100%;padding:7px 10px}
   .ranked-tabs-shell .competitive-title-row h2{font-size:25px}
