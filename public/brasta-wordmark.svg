@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Brasta</title>
+  <desc id="desc">Gold Brasta wordmark with spade, diamond, club, and heart</desc>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff1a8"/>
+      <stop offset=".22" stop-color="#e6c35b"/>
+      <stop offset=".52" stop-color="#b88718"/>
+      <stop offset=".76" stop-color="#f2d46f"/>
+      <stop offset="1" stop-color="#8d6410"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#000" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <text x="600" y="205" text-anchor="middle" font-family="Cinzel, Trajan Pro, Georgia, serif" font-size="214" font-weight="700" letter-spacing="8" fill="url(#gold)" stroke="#6f4a08" stroke-width="4" paint-order="stroke">BRASTA</text>
+    <path d="M58 291 H334" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+    <path d="M866 291 H1142" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+    <path d="M45 291 l13 -8 13 8 -13 8z M1155 291 l-13 -8 -13 8 13 8z" fill="url(#gold)"/>
+    <g font-family="Georgia, Times New Roman, serif" font-size="112" font-weight="700" text-anchor="middle" stroke="url(#gold)" stroke-width="5" paint-order="stroke fill">
+      <text x="430" y="327" fill="#111111">♠</text>
+      <text x="545" y="327" fill="#b72e2e">♦</text>
+      <text x="660" y="327" fill="#111111">♣</text>
+      <text x="775" y="327" fill="#b72e2e">♥</text>
+    </g>
+  </g>
+</svg>
