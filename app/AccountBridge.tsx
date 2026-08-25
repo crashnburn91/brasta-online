@@ -387,7 +387,7 @@ export default function AccountBridge() {
                 <h2>Choose your Brasta username</h2>
                 <p>This will be your persistent competitive identity. It can be different from the name supplied by Google or Discord.</p>
                 <form onSubmit={saveUsername} className="account-email-form">
-                  <label>Username<input autoFocus maxLength={20} autoCapitalize="none" autoCorrect="off" value={username} onChange={(event) => setUsername(event.target.value.replace(/\s+/g, ''))} placeholder="Donny" /></label>
+                  <label>Username<input autoFocus maxLength={20} autoCapitalize="none" autoCorrect="off" value={username} onChange={(event) => setUsername(event.target.value.replace(/\s+/g, ''))} placeholder="Player123" /></label>
                   <small>3–20 characters · letters, numbers, underscore</small>
                   <button className="primary" disabled={busy || profileLoading} type="submit">Create Brasta Profile</button>
                 </form>
