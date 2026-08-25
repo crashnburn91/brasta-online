@@ -3,11 +3,16 @@ import {
   getRankedLeaderboard,
   getRecentRankedMatches,
   publicCompetitiveStatus,
+  type CompetitiveMode,
 } from '../../../lib/competitive';
 import {
   monitorRankedRoom,
   rankedQueueAction,
 } from '../../../lib/ranked-matchmaking';
+import {
+  monitorRanked2v2Room,
+  ranked2v2QueueAction,
+} from '../../../lib/ranked-matchmaking-2v2';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,41 +38,51 @@ function bearerToken(request: Request): string {
   return (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 }
 
+function competitiveMode(value: unknown): CompetitiveMode {
+  return value === '2v2' ? '2v2' : '1v1';
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({})) as {
       action?: string;
       roomCode?: string;
       limit?: number;
+      mode?: CompetitiveMode;
     };
     const action = String(body.action || '');
+    const mode = competitiveMode(body.mode);
 
     if (action === 'leaderboard') {
-      const leaderboard = await getRankedLeaderboard('1v1', Number(body.limit) || 50);
-      return json({ state: 'ok', leaderboard });
+      const leaderboard = await getRankedLeaderboard(mode, Number(body.limit) || 50);
+      return json({ state: 'ok', mode, leaderboard });
     }
 
     if (action === 'profile') {
       const token = bearerToken(request);
       if (!token) return json({ error: 'Sign in to view your competitive profile.' }, 401);
-      const status = await getCompetitiveStatus(token, '1v1');
-      return json({ state: 'ok', competitive: publicCompetitiveStatus(status) });
+      const status = await getCompetitiveStatus(token, mode);
+      return json({ state: 'ok', mode, competitive: publicCompetitiveStatus(status) });
     }
 
     if (action === 'history') {
       const token = bearerToken(request);
       if (!token) return json({ error: 'Sign in to view ranked match history.' }, 401);
-      const matches = await getRecentRankedMatches(token, '1v1', Number(body.limit) || 10);
-      return json({ state: 'ok', matches });
+      const matches = await getRecentRankedMatches(token, mode, Number(body.limit) || 10);
+      return json({ state: 'ok', mode, matches });
     }
 
     if (action === 'monitor') {
-      const result = await monitorRankedRoom(request, String(body.roomCode || ''));
+      const result = mode === '2v2'
+        ? await monitorRanked2v2Room(request, String(body.roomCode || ''))
+        : await monitorRankedRoom(request, String(body.roomCode || ''));
       return json(result);
     }
 
     if (action === 'status' || action === 'join' || action === 'leave') {
-      const result = await rankedQueueAction(request, action);
+      const result = mode === '2v2'
+        ? await ranked2v2QueueAction(request, action)
+        : await rankedQueueAction(request, action);
       return json(sanitizeQueuePayload(result));
     }
 
