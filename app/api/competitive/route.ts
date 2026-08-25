@@ -13,6 +13,7 @@ import {
   monitorRanked2v2Room,
   ranked2v2QueueAction,
 } from '../../../lib/ranked-matchmaking-2v2';
+import { prepareRankedQueueSwitch } from '../../../lib/ranked-queue-coordination';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
     }
 
     if (action === 'status' || action === 'join' || action === 'leave') {
+      if (action === 'join') await prepareRankedQueueSwitch(request, mode);
       const result = mode === '2v2'
         ? await ranked2v2QueueAction(request, action)
         : await rankedQueueAction(request, action);
