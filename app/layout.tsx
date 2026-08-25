@@ -51,6 +51,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/account-ui.css?v=0.6.1" />
         <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.0" />
+        <link rel="stylesheet" href="/competitive-account.css?v=0.8.0" />
         <link rel="stylesheet" href="/product-surface.css?v=0.7.11" />
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
       </head>
@@ -62,9 +63,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.5" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.0" strategy="afterInteractive" />
-        <Script src="/competitive-account.js?v=0.7.0" strategy="afterInteractive" />
-        <Script src="/ranked-match-transition.js?v=0.7.2" strategy="afterInteractive" />
-        <Script src="/ranked-postmatch.js?v=0.7.3" strategy="afterInteractive" />
+        <Script src="/competitive-account.js?v=0.8.0" strategy="afterInteractive" />
+        <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
+        <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=4" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.5.23" strategy="afterInteractive" />
