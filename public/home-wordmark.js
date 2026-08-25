@@ -1,5 +1,5 @@
 (() => {
-  const SRC = '/brasta-wordmark.webp?v=4';
+  const SRC = '/brasta-wordmark.png?v=5';
   let scheduled = false;
 
   function installWordmark() {
@@ -12,9 +12,9 @@
       wordmark.className = 'brasta-home-wordmark';
       wordmark.src = SRC;
       wordmark.alt = 'Brasta';
-      wordmark.width = 1920;
-      wordmark.height = 640;
-      wordmark.decoding = 'async';
+      wordmark.width = 240;
+      wordmark.height = 80;
+      wordmark.decoding = 'sync';
       wordmark.fetchPriority = 'high';
 
       if (legacyMark) legacyMark.replaceWith(wordmark);
