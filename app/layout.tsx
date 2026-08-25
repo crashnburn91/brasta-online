@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { Cinzel } from 'next/font/google';
 import type { ReactNode } from 'react';
+
+const brastaDisplay = Cinzel({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-brasta-display',
+  weight: ['500', '600', '700', '800', '900'],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://brasta.app'),
@@ -36,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={brastaDisplay.variable}>
       <head>
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
@@ -56,6 +64,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/product-surface.css?v=0.8.2" />
         <link rel="stylesheet" href="/private-match-brand.css?v=0.8.3" />
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
+        <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
       </head>
       <body>
         {children}
