@@ -1,26 +1,35 @@
 (() => {
-  if (window.__BRASTA_DIRECT_CAPTURE__) return;
-  window.__BRASTA_DIRECT_CAPTURE__ = true;
+  if (window.__BRASTA_DIRECT_ACTIONS__) return;
+  window.__BRASTA_DIRECT_ACTIONS__ = true;
 
   let queued = false;
 
-  function captureAction(panel) {
-    const heading = (panel.querySelector('h3')?.textContent || '')
+  function actionType(panel) {
+    return (panel.querySelector('h3')?.textContent || '')
       .trim()
       .toUpperCase()
       .replace(/\s+/g, '_');
-    return heading === 'CAPTURE_LOOSE' || heading === 'CAPTURE_BUILD';
+  }
+
+  function isDirectAction(type) {
+    return type === 'CAPTURE_LOOSE'
+      || type === 'CAPTURE_BUILD'
+      || type === 'MAKE_BUILD'
+      || type === 'ADD_TO_BUILD'
+      || type === 'RAISE_BUILD';
   }
 
   function enhance() {
     queued = false;
     for (const panel of document.querySelectorAll('.action-panel')) {
-      if (!captureAction(panel)) continue;
-      const submit = panel.querySelector('[data-submit]');
-      if (!submit || submit.disabled || panel.dataset.directCaptureCommitted === '1') continue;
+      const type = actionType(panel);
+      if (!isDirectAction(type)) continue;
 
-      panel.dataset.directCaptureCommitted = '1';
-      panel.classList.add('direct-capture-committing');
+      const submit = panel.querySelector('[data-submit]');
+      if (!submit || submit.disabled || panel.dataset.directActionCommitted === '1') continue;
+
+      panel.dataset.directActionCommitted = '1';
+      panel.classList.add('direct-action-committing');
       requestAnimationFrame(() => submit.click());
     }
   }
