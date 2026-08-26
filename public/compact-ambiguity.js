@@ -3,6 +3,7 @@
   window.__BRASTA_COMPACT_AMBIGUITY__ = true;
 
   function polishAmbiguousBuildChoice() {
+    if (document.body.classList.contains('brasta-ranked-active') || document.querySelector('.ranked-pill')) return;
     const selectedHand = document.querySelector('.hand .card.selected[aria-label]');
     const panel = Array.from(document.querySelectorAll('.action-panel'))
       .find((candidate) => candidate.querySelector('[data-legal]'));
