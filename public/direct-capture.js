@@ -21,6 +21,12 @@
 
   function enhance() {
     queued = false;
+
+    // Board-first selection flow reconstructs its staged build/loose targets inside
+    // the native pending-action UI. Do not auto-submit until that replay finishes;
+    // selection-flow-v2 submits the completed action itself.
+    if (document.documentElement.dataset.selectionV2Replay === '1') return;
+
     for (const panel of document.querySelectorAll('.action-panel')) {
       const type = actionType(panel);
       if (!isDirectAction(type)) continue;
@@ -30,7 +36,14 @@
 
       panel.dataset.directActionCommitted = '1';
       panel.classList.add('direct-action-committing');
-      requestAnimationFrame(() => submit.click());
+      requestAnimationFrame(() => {
+        if (document.documentElement.dataset.selectionV2Replay === '1') {
+          panel.dataset.directActionCommitted = '0';
+          panel.classList.remove('direct-action-committing');
+          return;
+        }
+        submit.click();
+      });
     }
   }
 
