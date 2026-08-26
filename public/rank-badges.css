@@ -1,0 +1,107 @@
+/* Scalable competitive rank emblems. Suit symbols inherit tier color; no red/black suit coloring. */
+.rank-badge.rank-visual{
+  --rank-color:#9aa6ab;
+  --rank-deep:#283136;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  min-width:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--rank-color);
+  box-shadow:none;
+  font-weight:900;
+  letter-spacing:.035em;
+  white-space:nowrap;
+}
+.rank-badge.rank-visual.rank-unranked{--rank-color:#8e999e;--rank-deep:#242b2e}
+.rank-badge.rank-visual[class*="rank-bronze-"]{--rank-color:#c78655;--rank-deep:#422b1c}
+.rank-badge.rank-visual[class*="rank-silver-"]{--rank-color:#cbd4d9;--rank-deep:#353d42}
+.rank-badge.rank-visual[class*="rank-gold-"]{--rank-color:#e4bc4e;--rank-deep:#493b15}
+.rank-badge.rank-visual[class*="rank-platinum-"]{--rank-color:#70c9bf;--rank-deep:#163f3b}
+.rank-badge.rank-visual[class*="rank-diamond-"]{--rank-color:#5aaaff;--rank-deep:#173d64}
+.rank-badge.rank-visual.rank-master{--rank-color:#a779e4;--rank-deep:#35224f}
+.rank-badge.rank-visual.rank-grandmaster{--rank-color:#ef6256;--rank-deep:#551d19}
+
+.rank-emblem{
+  flex:0 0 auto;
+  width:44px;
+  height:48px;
+  overflow:visible;
+  filter:drop-shadow(0 4px 7px #0007);
+}
+.rank-shield{
+  fill:color-mix(in srgb,var(--rank-deep) 86%,#08100d 14%);
+  stroke:var(--rank-color);
+  stroke-width:2.5;
+  stroke-linejoin:round;
+}
+.rank-shield-inner{
+  fill:none;
+  stroke:color-mix(in srgb,var(--rank-color) 58%,transparent);
+  stroke-width:1.2;
+  stroke-linejoin:round;
+}
+.rank-emblem-symbol{
+  fill:var(--rank-color);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:27px;
+  font-weight:700;
+}
+.rank-emblem-gem,.rank-emblem-crown{
+  fill:none;
+  stroke:var(--rank-color);
+  stroke-width:2.5;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+}
+.rank-emblem-gem path:first-child{
+  fill:color-mix(in srgb,var(--rank-color) 23%,transparent);
+}
+.rank-emblem-crown path:first-child{
+  fill:color-mix(in srgb,var(--rank-color) 16%,transparent);
+}
+.rank-emblem-crown-grand path:last-child{
+  fill:var(--rank-color);
+  stroke-width:1.5;
+}
+.rank-division-mark{
+  fill:none;
+  stroke:var(--rank-color);
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.rank-badge-copy{color:var(--rank-color);line-height:1}
+
+.rank-size-large{gap:10px;font-size:18px}
+.rank-size-large .rank-emblem{width:64px;height:70px}
+.rank-size-medium{font-size:13px}
+.rank-size-medium .rank-emblem{width:44px;height:48px}
+.rank-size-small{gap:5px;font-size:10px;letter-spacing:.02em}
+.rank-size-small .rank-emblem{width:27px;height:30px}
+.rank-size-small .rank-division-mark{display:none}
+
+.queue-modal .rank-badge.rank-visual{margin:5px auto 4px;justify-content:center}
+.result-rank.rank-visual{margin:12px auto 5px;justify-content:center}
+.mini-rank.rank-visual{padding:0;border:0;background:none}
+.competitive-title-row .rank-visual{margin-top:-5px}
+
+.account-competitive-rank{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+.account-competitive-rank .rank-size-small{font-size:13px}
+.account-competitive-rank .rank-size-small .rank-emblem{width:32px;height:35px}
+
+@media(max-width:800px){
+  .competitive-title-row .rank-size-medium .rank-emblem{width:38px;height:42px}
+  .competitive-title-row .rank-size-medium{font-size:11px}
+}
+@media(max-width:520px){
+  .rank-size-small .rank-emblem{width:24px;height:27px}
+}
