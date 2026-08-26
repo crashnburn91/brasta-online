@@ -94,14 +94,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/hard-bot.js?v=0.18.0" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
-        <Script src="/selection-flow-v2.js?v=0.15.1" strategy="afterInteractive" />
-        <Script src="/dist/compact.js?v=0.13.1" strategy="afterInteractive" />
-        <Script src="/direct-capture.js?v=0.14.3" strategy="afterInteractive" />
-        <Script src="/selection-flow-build-options.js?v=0.14.4" strategy="afterInteractive" />
+        <Script src="/selection-flow-v2.js?v=0.16.0" strategy="afterInteractive" />
+        <Script src="/dist/compact.js?v=0.14.0" strategy="afterInteractive" />
+        <Script src="/direct-capture.js?v=0.15.0" strategy="afterInteractive" />
+        <Script src="/selection-flow-build-options.js?v=0.15.0" strategy="afterInteractive" />
         <Script src="/selection-explanation.js?v=0.14.5" strategy="afterInteractive" />
         <Script src="/selection-cleanup.js?v=0.14.7" strategy="afterInteractive" />
         <Script src="/team-branding.js?v=0.15.2" strategy="afterInteractive" />
-        <Script src="/compact-ambiguity.js?v=0.5.22" strategy="afterInteractive" />
+        <Script src="/compact-ambiguity.js?v=0.6.0" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
