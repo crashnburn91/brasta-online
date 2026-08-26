@@ -1,9 +1,12 @@
-/* v0.5.4 compact/direct-manipulation gameplay */
+/* v0.13.0 selection-first compact gameplay */
 .compact-auto-action{display:none!important}
+.compact-hidden-native{display:none!important}
 .compact-invalid-declaration{display:none!important}
 .compact-probe{cursor:pointer!important;touch-action:manipulation}
 .compact-probe:hover{filter:brightness(1.08)}
 .compact-probe:active{transform:translateY(-2px) scale(.985)}
+.card.compact-staged{outline:3px solid #d8b75e!important;outline-offset:2px;transform:translateY(-4px);box-shadow:0 8px 24px #0008,0 0 0 2px #d8b75e33}
+.build.compact-staged{border-color:#d8b75e!important;box-shadow:0 0 0 2px #d8b75e55,0 10px 28px #0008;transform:translateY(-2px)}
 
 .action-panel.compact-action-dock{z-index:32;background:#071d16f2;border-color:#d8b75e66;box-shadow:0 10px 34px #0009;backdrop-filter:blur(14px)}
 .action-panel.compact-action-dock h3{font-size:13px;letter-spacing:.06em;margin:0 0 6px;color:#f7e8aa}
@@ -15,6 +18,12 @@
 .action-panel.compact-action-dock [data-cancel]{opacity:.82}
 .action-panel.compact-initial-action .actions{gap:7px}
 .action-panel.compact-initial-action .actions button{min-width:110px}
+.action-panel.compact-selection-first .actions{margin-bottom:0}
+.action-panel.compact-selection-first.compact-has-targets .actions{margin-bottom:6px}
+.compact-context-actions{display:flex;align-items:center;justify-content:flex-start;gap:7px;flex-wrap:wrap;padding-top:6px;border-top:1px solid #ffffff17}
+.compact-context-action{min-width:104px;font-weight:900}
+.compact-context-note{font-size:11px;color:#bdc8c2;padding:5px 1px}
+.action-panel.compact-jack-action .actions button{min-width:120px}
 .action-panel.compact-target-chosen .target-list:has([data-buildchoice]){display:none}
 .action-panel.compact-pending-action:not(.compact-ambiguous-declaration) .target-list:has([data-decl].selected){display:none}
 
@@ -49,7 +58,8 @@
   .action-panel.compact-action-dock>p{display:none}
   .action-panel.compact-action-dock .target-list{margin:3px 0;gap:5px}
   .action-panel.compact-action-dock .target-list button,
-  .action-panel.compact-action-dock .button-row button{padding:8px 11px}
+  .action-panel.compact-action-dock .button-row button,
+  .compact-context-actions button{padding:8px 11px}
   .action-panel.compact-action-dock [data-submit]{min-width:150px}
   .selection-summary{font-size:10px}
 }
@@ -100,6 +110,8 @@
   .action-panel.compact-action-dock .button-row button{white-space:nowrap;flex:0 0 auto}
   .action-panel.compact-action-dock [data-submit]{min-width:132px}
   .action-panel.compact-pending-action .target-list{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start}
+  .compact-context-actions{flex-wrap:nowrap;overflow-x:auto;padding-bottom:1px}
+  .compact-context-actions button{white-space:nowrap;flex:0 0 auto}
 }
 
 @media (max-width:430px){
