@@ -71,6 +71,15 @@ namespace BrastaApp {
   }
   function currentPlayerName(seat: Brasta.Seat): string { return state?.players.find((p) => p.seat === seat)?.name || `Seat ${seat}`; }
 
+  function playerRankBadge(rankName: string | null | undefined): string {
+    if (!rankName) return '';
+    const renderer = (window as any).BrastaRankBadge?.render;
+    if (typeof renderer === 'function') {
+      return `<span class="player-rank-badge">${renderer(rankName, { size: 'small', className: 'player-card-rank' })}</span>`;
+    }
+    return `<span class="player-rank-fallback">${escapeHtml(rankName)}</span>`;
+  }
+
   function hasBoardSelection(): boolean {
     return selectedLoose.size > 0 || !!selectedBuildId;
   }
@@ -207,7 +216,8 @@ namespace BrastaApp {
       const lobby = lobbyBySeat.get(p.seat);
       const disconnected = context === 'online' && lobby && !lobby.connected;
       const you = context === 'online' && onlineSession?.seat === p.seat;
-      return `<div class="player-chip ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}"><div><b>${escapeHtml(p.name || `Seat ${p.seat}`)}</b> <span class="seat-label">Seat ${p.seat}</span> <span class="team-${team}">${teamName(team)}</span>${starter ? '<span class="starter">starts</span>' : ''}${you ? '<span class="you-badge">you</span>' : ''}</div><div>${p.hand.length} cards${disconnected ? ' · disconnected' : ''}</div></div>`;
+      const rank = lobby?.rankName || null;
+      return `<div class="player-chip ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}"><div class="player-chip-primary"><span class="player-chip-name"><b>${escapeHtml(p.name || `Seat ${p.seat}`)}</b> <span class="seat-label">Seat ${p.seat}</span> <span class="team-${team}">${teamName(team)}</span>${starter ? '<span class="starter">starts</span>' : ''}${you ? '<span class="you-badge">you</span>' : ''}</span>${playerRankBadge(rank)}</div><div>${p.hand.length} cards${disconnected ? ' · disconnected' : ''}</div></div>`;
     }).join('')}</div>`;
   }
 
