@@ -1,4 +1,4 @@
-/* v0.13.0 selection-first compact gameplay */
+/* v0.14.0 selection-first compact gameplay */
 .compact-auto-action{display:none!important}
 .compact-hidden-native{display:none!important}
 .compact-invalid-declaration{display:none!important}
@@ -26,6 +26,17 @@
 .action-panel.compact-jack-action .actions button{min-width:120px}
 .action-panel.compact-target-chosen .target-list:has([data-buildchoice]){display:none}
 .action-panel.compact-pending-action:not(.compact-ambiguous-declaration) .target-list:has([data-decl].selected){display:none}
+
+/* v2 board-first interaction layer */
+.selection-v2-probe{cursor:pointer!important;touch-action:manipulation}
+.card.selection-v2-selected{outline:3px solid #d8b75e!important;outline-offset:2px;transform:translateY(-4px);box-shadow:0 8px 24px #0008,0 0 0 2px #d8b75e33}
+.build.selection-v2-selected{border-color:#d8b75e!important;box-shadow:0 0 0 2px #d8b75e55,0 10px 28px #0008;transform:translateY(-2px)}
+.selection-v2-hide-play-loose{display:none!important}
+.selection-v2-options{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.selection-v2-action{min-width:110px!important;min-height:42px;border-radius:14px!important;padding:9px 16px!important;font-weight:800!important;box-shadow:none!important}
+.selection-v2-note{font-size:12px;color:#bdc8c2;padding:8px 2px}
+.action-panel.selection-v2-has-target .button-row.actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.action-panel.selection-v2-has-target .selection-v2-options{display:flex;align-items:center;justify-content:center;gap:8px}
 
 @media (max-height:1080px), (max-width:900px){
   main{padding:10px 12px 22px}
@@ -112,6 +123,8 @@
   .action-panel.compact-pending-action .target-list{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start}
   .compact-context-actions{flex-wrap:nowrap;overflow-x:auto;padding-bottom:1px}
   .compact-context-actions button{white-space:nowrap;flex:0 0 auto}
+  .action-panel.selection-v2-has-target .button-row.actions,.action-panel.selection-v2-has-target .selection-v2-options{flex-wrap:nowrap;overflow-x:auto;justify-content:center}
+  .selection-v2-action{white-space:nowrap;flex:0 0 auto}
 }
 
 @media (max-width:430px){
