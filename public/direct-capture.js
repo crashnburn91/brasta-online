@@ -22,6 +22,8 @@
   function enhance() {
     queued = false;
 
+    if (document.body.classList.contains('brasta-ranked-active') || document.querySelector('.ranked-pill')) return;
+
     // Board-first selection flow reconstructs its staged build/loose targets inside
     // the native pending-action UI. Do not auto-submit until that replay finishes;
     // selection-flow-v2 submits the completed action itself.
