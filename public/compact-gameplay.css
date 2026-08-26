@@ -1,4 +1,4 @@
-/* v0.14.1 selection-first compact gameplay */
+/* v0.14.2 selection-first compact gameplay */
 .compact-auto-action{display:none!important}
 .compact-hidden-native{display:none!important}
 .compact-invalid-declaration{display:none!important}
@@ -37,6 +37,9 @@
 .selection-v2-note{font-size:12px;color:#bdc8c2;padding:8px 2px}
 .action-panel.selection-v2-has-target .button-row.actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 .action-panel.selection-v2-has-target .selection-v2-options{display:flex;align-items:center;justify-content:center;gap:8px}
+/* A board-first selection already expresses intent, so the legacy "Click a card in your hand" prompt is misleading. */
+.action-panel.selection-v2-has-target > h3,
+.action-panel.selection-v2-has-target > p{display:none!important}
 /* The selection-v2 row is the only visible contextual action row once a board target is staged.
    Native legal-action buttons stay in the DOM for execution, but hiding them prevents duplicate
    Capture/Build buttons beside the selection-v2 button. */
