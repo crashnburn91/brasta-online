@@ -1,0 +1,169 @@
+/* Ranked-only forfeit control and confirmation UI. */
+.ranked-forfeit-button{
+  border-color:rgba(186,72,72,.62)!important;
+  background:linear-gradient(180deg,rgba(111,34,39,.72),rgba(72,23,27,.82))!important;
+  color:#ffd9d4!important;
+  font-weight:800!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.ranked-forfeit-button:hover{
+  border-color:rgba(222,102,95,.9)!important;
+  background:linear-gradient(180deg,rgba(137,43,48,.86),rgba(88,27,31,.92))!important;
+}
+.ranked-forfeit-short{display:none}
+
+.ranked-forfeit-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:220;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(2,10,7,.82);
+  backdrop-filter:blur(8px);
+}
+.ranked-forfeit-card{
+  width:min(430px,100%);
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(197,76,76,.68);
+  border-radius:20px;
+  padding:24px;
+  background:
+    radial-gradient(circle at 90% 0%,rgba(160,46,48,.18),transparent 38%),
+    linear-gradient(160deg,#0b2d21 0%,#071d16 62%,#121c16 100%);
+  color:#f8f1e2;
+  box-shadow:0 28px 80px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.ranked-forfeit-card::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:3px;
+  background:linear-gradient(90deg,#7f292d,#d46a61,#7f292d);
+}
+.ranked-forfeit-eyebrow{
+  margin-bottom:8px;
+  color:#e68f83;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.17em;
+}
+.ranked-forfeit-card h2{
+  margin:0 0 9px;
+  font-family:var(--font-brasta-display),Georgia,serif;
+  font-size:25px;
+  line-height:1.15;
+  color:#fff7e8;
+}
+.ranked-forfeit-card>p{
+  margin:0;
+  color:#bfcfc6;
+  font-size:13px;
+  line-height:1.55;
+}
+.ranked-forfeit-warning{
+  margin-top:16px;
+  padding:12px 13px;
+  border:1px solid rgba(196,85,76,.28);
+  border-radius:11px;
+  background:rgba(105,31,34,.18);
+  color:#d7c9c3;
+  font-size:12px;
+  line-height:1.45;
+}
+.ranked-forfeit-warning strong{color:#ffd4cd}
+.ranked-forfeit-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:9px;
+  margin-top:18px;
+}
+.ranked-forfeit-actions button{
+  min-width:112px;
+  border:1px solid rgba(255,255,255,.17);
+  border-radius:10px;
+  padding:10px 14px;
+  background:rgba(255,255,255,.06);
+  color:#f7f1e3;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.ranked-forfeit-actions button:hover:not(:disabled){background:rgba(255,255,255,.11)}
+.ranked-forfeit-actions button:disabled{opacity:.5;cursor:wait}
+.ranked-forfeit-actions .ranked-forfeit-confirm{
+  border-color:#d56f66;
+  background:linear-gradient(180deg,#a43a3e,#72272d);
+  color:#fff5ef;
+}
+.ranked-forfeit-actions .ranked-forfeit-confirm:hover:not(:disabled){
+  background:linear-gradient(180deg,#bb494b,#852e33);
+}
+.ranked-forfeit-card>[data-ranked-forfeit-status]{
+  display:block;
+  min-height:16px;
+  margin-top:10px;
+  color:#efaaa0;
+  font-size:11px;
+  text-align:right;
+}
+.ranked-forfeit-result{
+  margin:10px 0 4px;
+  padding:9px 12px;
+  border:1px solid rgba(207,93,84,.34);
+  border-radius:10px;
+  background:rgba(112,34,37,.16);
+  color:#f0c1b8;
+  font-size:12px;
+  text-align:center;
+}
+.ranked-forfeit-toast{
+  position:fixed;
+  left:50%;
+  bottom:max(20px,env(safe-area-inset-bottom));
+  z-index:240;
+  transform:translateX(-50%);
+  max-width:min(420px,calc(100vw - 28px));
+  padding:10px 14px;
+  border:1px solid rgba(216,183,94,.46);
+  border-radius:10px;
+  background:#0a2b20f2;
+  color:#f7f1df;
+  box-shadow:0 12px 35px rgba(0,0,0,.45);
+  font-size:12px;
+  font-weight:700;
+  text-align:center;
+}
+.ranked-forfeit-toast.error{
+  border-color:rgba(218,93,85,.58);
+  background:#3c171aeF;
+  color:#ffd9d3;
+}
+
+@media(max-width:800px){
+  .ranked-forfeit-button{
+    padding-left:7px!important;
+    padding-right:7px!important;
+  }
+  .ranked-forfeit-card{
+    padding:21px 18px 18px;
+    border-radius:17px;
+  }
+}
+
+@media(max-width:430px){
+  .ranked-forfeit-full{display:none}
+  .ranked-forfeit-short{display:inline}
+  .ranked-forfeit-button{
+    font-size:9px!important;
+    padding:5px 6px!important;
+  }
+  .ranked-forfeit-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .ranked-forfeit-actions button{min-width:0}
+}
