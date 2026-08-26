@@ -179,7 +179,7 @@
     backdrop.onmousedown = (event) => {
       if (event.target === backdrop) closeModal();
     };
-    confirm?.focus();
+    cancel?.focus();
   }
 
   function decorateForfeitResult() {
@@ -222,24 +222,32 @@
     queued = false;
     decorateForfeitResult();
 
-    const existing = document.querySelector('[data-ranked-forfeit]');
+    const existing = document.querySelector('[data-ranked-forfeit-group]');
     if (!shouldShowButton()) {
       existing?.remove();
       return;
     }
     if (existing) return;
 
-    const nav = document.querySelector('.topbar nav');
-    if (!nav) return;
+    const panel = document.querySelector('.topbar [data-match-menu-panel]');
+    if (!panel) return;
+
+    const group = document.createElement('div');
+    group.className = 'match-menu-danger ranked-forfeit-menu-group';
+    group.dataset.rankedForfeitGroup = '1';
+
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'ranked-forfeit-button';
+    button.className = 'match-menu-item ranked-forfeit-menu-button';
     button.dataset.rankedForfeit = '1';
+    button.setAttribute('role', 'menuitem');
     button.title = 'Forfeit this ranked match';
     button.setAttribute('aria-label', 'Forfeit ranked match');
-    button.innerHTML = '<span class="ranked-forfeit-full">Forfeit Match</span><span class="ranked-forfeit-short">Forfeit</span>';
+    button.textContent = 'Forfeit Match';
     button.onclick = openModal;
-    nav.appendChild(button);
+
+    group.appendChild(button);
+    panel.appendChild(group);
   }
 
   function queueEnhance() {
@@ -252,13 +260,14 @@
     const app = document.getElementById('app');
     if (app && !appObserver) {
       appObserver = new MutationObserver(queueEnhance);
-      appObserver.observe(app, { childList: true });
+      appObserver.observe(app, { childList: true, subtree: true });
     }
     queueEnhance();
   }
 
   window.addEventListener('brasta-auth-changed', queueEnhance);
   window.addEventListener('brasta-competitive-updated', queueEnhance);
+  window.addEventListener('brasta-match-menu-ready', queueEnhance);
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeModal();
   });

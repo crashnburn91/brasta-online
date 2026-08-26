@@ -68,6 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
         <link rel="stylesheet" href="/live-score-ui.css?v=0.10.0" />
+        <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
       </head>
       <body>
@@ -75,7 +76,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/live-score-ui.js?v=0.10.0" strategy="beforeInteractive" />
-        <Script src="/ranked-forfeit.js?v=0.11.0" strategy="beforeInteractive" />
+        <Script src="/match-menu.js?v=0.12.0" strategy="beforeInteractive" />
+        <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
