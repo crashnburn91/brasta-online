@@ -12,40 +12,71 @@
     return out;
   }
 
+  function playerCards() {
+    const explicit = Array.from(document.querySelectorAll('.player-chip'));
+    if (explicit.length) return explicit;
+    const players = document.querySelector('.players');
+    return players ? Array.from(players.children).filter((el) => el instanceof HTMLElement) : [];
+  }
+
+  function getTeamFromCard(card) {
+    const saved = card.dataset.brastaTeam || '';
+    if (saved === 'A' || saved === 'B') return saved;
+    const text = (card.textContent || '').replace(/\s+/g, ' ').trim();
+    const match = text.match(/\bTeam\s+([AB])\b/i);
+    if (!match) return '';
+    const team = match[1].toUpperCase();
+    card.dataset.brastaTeam = team;
+    return team;
+  }
+
+  function getPlayerName(card) {
+    const text = (card.textContent || '').replace(/\s+/g, ' ').trim();
+    const match = text.match(/^(.*?)\s+Team\s+[AB]\b/i);
+    return (match?.[1] || '').replace(/\s*(YOU|Dealer|D)\s*$/i, '').trim();
+  }
+
   function playerInfo() {
     const teams = { A: [], B: [] };
-    document.querySelectorAll('.player-chip').forEach((chip) => {
-      const text = (chip.textContent || '').replace(/\s+/g, ' ').trim();
-      const match = text.match(/^(.*?)\s+Team\s+([AB])\b/i);
-      if (!match) return;
-      const name = match[1].replace(/\s*(YOU|Dealer|D)\s*$/i, '').trim();
-      const team = match[2].toUpperCase();
-      if (name && !teams[team].includes(name)) teams[team].push(name);
-    });
+    for (const card of playerCards()) {
+      const team = getTeamFromCard(card);
+      const name = getPlayerName(card);
+      if (team && name && !teams[team].includes(name)) teams[team].push(name);
+    }
     return teams;
   }
 
   function brandPlayerCards() {
-    document.querySelectorAll('.player-chip').forEach((chip) => {
-      let team = chip.dataset.brastaTeam || '';
-      if (!team) {
-        const text = chip.textContent || '';
-        const match = text.match(/\bTeam\s+([AB])\b/i);
-        if (!match) return;
-        team = match[1].toUpperCase();
-        chip.dataset.brastaTeam = team;
+    for (const card of playerCards()) {
+      const team = getTeamFromCard(card);
+      if (!team) continue;
+
+      card.classList.toggle('team-blue-player', team === 'A');
+      card.classList.toggle('team-red-player', team === 'B');
+
+      const name = getPlayerName(card);
+      for (const node of textNodes(card)) {
+        const raw = node.nodeValue || '';
+        if (/\bTeam\s+[AB]\b/i.test(raw)) {
+          node.nodeValue = raw.replace(/\s*Team\s+[AB]\b/ig, '');
+        }
       }
 
-      chip.classList.toggle('team-blue-player', team === 'A');
-      chip.classList.toggle('team-red-player', team === 'B');
-
-      for (const node of textNodes(chip)) {
-        if (!/\bTeam\s+[AB]\b/i.test(node.nodeValue || '')) continue;
-        const parent = node.parentElement;
-        node.nodeValue = (node.nodeValue || '').replace(/\s*Team\s+[AB]\b/ig, '');
-        parent?.classList.add('team-colored-name');
+      if (name) {
+        for (const el of card.querySelectorAll('*')) {
+          const ownText = Array.from(el.childNodes)
+            .filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => n.nodeValue || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (ownText.includes(name)) {
+            el.classList.add('team-colored-name');
+            break;
+          }
+        }
       }
-    });
+    }
   }
 
   function mostLikelyActor(team, teams) {
@@ -77,7 +108,7 @@
     for (const node of textNodes(app)) {
       const parent = node.parentElement;
       if (!parent) continue;
-      if (parent.closest('.player-chip,.live-score-strip,.event,.event-banner,.round-event,.turn-event,.game-event,.last-hand-banner')) continue;
+      if (parent.closest('.players,.live-score-strip,.event,.event-banner,.round-event,.turn-event,.game-event,.last-hand-banner')) continue;
       let text = node.nodeValue || '';
       if (/Team A/i.test(text)) text = text.replace(/Team A/gi, 'Blue Team');
       if (/Team B/i.test(text)) text = text.replace(/Team B/gi, 'Red Team');
