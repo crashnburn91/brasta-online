@@ -31,15 +31,14 @@
 }
 .live-team{
   font-size:12px;
-  font-weight:700;
+  font-weight:800;
 }
 .live-team b{
-  margin-left:2px;
-  color:#fff8e8;
+  margin-left:0;
   font-size:15px;
 }
-.team-a-live{color:#8ed4ff}
-.team-b-live{color:#ffad91}
+.team-a-live,.team-a-live b{color:#5eb8ff}
+.team-b-live,.team-b-live b{color:#ff6f67}
 .live-score-dash{color:#71877b}
 .live-score-divider{
   width:1px;
