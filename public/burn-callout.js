@@ -6,11 +6,27 @@
   let pendingBurnId = null;
   let queued = false;
 
+  function isGameSocket(ws) {
+    if (!ws) return false;
+    try {
+      const actual = new URL(ws.url, location.href);
+      if (actual.host === location.host && actual.pathname === '/api/ws') return true;
+
+      const configured = String(window.__BRASTA_REALTIME_URL__ || '').trim();
+      if (configured) {
+        const expected = new URL(configured, location.href);
+        // The production client rewrites /api/ws to the configured Railway
+        // endpoint. In that case ws.url is the Railway URL (often with '/'),
+        // not '/api/ws', so compare against the configured endpoint instead.
+        if (actual.origin === expected.origin && actual.pathname === expected.pathname) return true;
+      }
+    } catch {}
+    return false;
+  }
+
   function attachSocket(ws) {
     if (!ws || ws.__brastaBurnAttached) return;
-    let path = '';
-    try { path = new URL(ws.url, location.href).pathname; } catch {}
-    if (path !== '/api/ws') return;
+    if (!isGameSocket(ws)) return;
     ws.__brastaBurnAttached = true;
     activeSocket = ws;
     ws.addEventListener('message', (event) => {
