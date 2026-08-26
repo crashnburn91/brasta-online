@@ -249,6 +249,45 @@ namespace BrastaApp {
     else if (pendingAction === 'CAPTURE_BUILD') { if (!selectedBuildId) { lastError = 'Choose a build.'; render(); return; } execute({ type: 'CAPTURE_BUILD', seat, cardId: selectedCard, buildId: selectedBuildId, looseIds: [...selectedLoose] }); }
   }
 
+  // Stable bridge for the board-first UI. This bypasses DOM click replay and
+  // sends capture commands through the exact same server-authoritative execute()
+  // path as the native action panel.
+  (window as any).__BRASTA_DIRECT_SELECTION_ACTION__ = (request: {
+    type: 'CAPTURE_LOOSE' | 'CAPTURE_BUILD';
+    cardId: string;
+    looseLabels?: string[];
+    buildId?: string;
+  }): boolean => {
+    if (!state || !canLocalPlayerAct() || !request?.cardId) return false;
+
+    const seat = actionSeat();
+    const hand = state.players.find((player) => player.seat === seat)?.hand || [];
+    if (!hand.includes(request.cardId)) return false;
+
+    const labels = Array.isArray(request.looseLabels) ? request.looseLabels : [];
+    const looseIds: string[] = [];
+    for (const label of labels) {
+      const id = state.loose.find((candidate) => Brasta.cardLabel(state!.cards[candidate]) === label && !looseIds.includes(candidate));
+      if (!id) return false;
+      looseIds.push(id);
+    }
+
+    selectedCard = request.cardId;
+    selectedLoose = new Set(looseIds);
+    selectedBuildId = request.buildId || null;
+    pendingAction = request.type;
+
+    if (request.type === 'CAPTURE_LOOSE') {
+      if (!looseIds.length) return false;
+      execute({ type: 'CAPTURE_LOOSE', seat, cardId: request.cardId, looseIds });
+      return true;
+    }
+
+    if (!request.buildId) return false;
+    execute({ type: 'CAPTURE_BUILD', seat, cardId: request.cardId, buildId: request.buildId, looseIds });
+    return true;
+  };
+
   function bindCommonGameControls(): void {
     document.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => el.onclick = () => {
       if (!state || !canLocalPlayerAct()) return; const id = el.dataset.card!;
