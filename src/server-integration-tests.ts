@@ -75,15 +75,37 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   await send(server, host, { type: 'OPENING_CHOICE', choice });
   assertSynced(hostSocket, guestSocket, 'play');
 
-  const hostAfter = hostSocket.latest('ROOM_STATE');
-  const guestAfter = guestSocket.latest('ROOM_STATE');
-  assert(hostAfter.update.state.loose.length === 4, `${choice}: opening board must contain four cards`);
-  assert(hostAfter.update.state.players.find((p: any) => p.seat === 1)?.hand.length === 4, `${choice}: host must have four cards after opening`);
-  assert(guestAfter.update.state.players.find((p: any) => p.seat === 2)?.hand.length === 4, `${choice}: guest must have four cards after opening`);
-  assert(hostAfter.update.state.loose.every((id: string) => hostAfter.update.state.cards[id]?.rank !== 'J'), `${choice}: opening board contains a Jack`);
+  const hostAfterOpening = hostSocket.latest('ROOM_STATE');
+  const guestAfterOpening = guestSocket.latest('ROOM_STATE');
+  assert(hostAfterOpening.update.state.loose.length === 4, `${choice}: opening board must contain four cards`);
+  assert(hostAfterOpening.update.state.players.find((p: any) => p.seat === 1)?.hand.length === 4, `${choice}: host must have four cards after opening`);
+  assert(guestAfterOpening.update.state.players.find((p: any) => p.seat === 2)?.hand.length === 4, `${choice}: guest must have four cards after opening`);
+  assert(hostAfterOpening.update.state.loose.every((id: string) => hostAfterOpening.update.state.cards[id]?.rank !== 'J'), `${choice}: opening board contains a Jack`);
 
-  const revisionAfterOpening = guestAfter.update.room.revision;
-  const guestHandBeforeReconnect = [...guestAfter.update.state.players.find((p: any) => p.seat === 2).hand];
+  // Progress the live hand before disconnecting. This makes the reconnect test
+  // prove that we restore the current authoritative hand, not just the initial
+  // post-opening snapshot.
+  const hostPlayer = hostAfterOpening.update.state.players.find((p: any) => p.seat === 1);
+  assert(hostPlayer?.hand?.length, `${choice}: host hand missing before progress test`);
+  const nonJack = hostPlayer.hand.find((id: string) => hostAfterOpening.update.state.cards[id]?.rank !== 'J');
+  const playCard = nonJack || hostPlayer.hand[0];
+  const playRank = hostAfterOpening.update.state.cards[playCard]?.rank;
+  const revisionBeforePlay = hostAfterOpening.update.room.revision;
+  await send(server, host, {
+    type: 'COMMAND',
+    command: playRank === 'J'
+      ? { type: 'JACK_ACTION', seat: 1, cardId: playCard }
+      : { type: 'PLAY_LOOSE', seat: 1, cardId: playCard },
+  });
+  assertSynced(hostSocket, guestSocket, 'play');
+
+  const hostAfterPlay = hostSocket.latest('ROOM_STATE');
+  const guestAfterPlay = guestSocket.latest('ROOM_STATE');
+  assert(hostAfterPlay.update.room.revision === revisionBeforePlay + 1, `${choice}: gameplay did not advance room revision`);
+  assert(hostAfterPlay.update.state.currentSeat === 2, `${choice}: turn did not advance to guest after host move`);
+  const authoritativeAfterPlay = JSON.stringify(publicState(hostAfterPlay.update));
+  const revisionAfterPlay = hostAfterPlay.update.room.revision;
+  const guestHandBeforeReconnect = [...guestAfterPlay.update.state.players.find((p: any) => p.seat === 2).hand];
 
   await server.unregisterSocket(guest);
 
@@ -100,10 +122,17 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const reconnectedRoom = reconnectSocket.latest('ROOM_STATE');
   assert(reconnectedSession?.token === guestSession.token, `${choice}: reconnect token changed`);
   assert(reconnectedRoom, `${choice}: reconnect did not receive ROOM_STATE`);
-  assert(reconnectedRoom.update.room.revision === revisionAfterOpening, `${choice}: reconnect changed game revision unexpectedly`);
+  assert(reconnectedRoom.update.room.revision === revisionAfterPlay, `${choice}: reconnect changed or rewound game revision`);
   assert(reconnectedRoom.update.state?.phase === 'play', `${choice}: reconnect did not restore play phase`);
+  assert(JSON.stringify(publicState(reconnectedRoom.update)) === authoritativeAfterPlay, `${choice}: reconnect did not restore the latest progressed hand`);
   const guestHandAfterReconnect = [...reconnectedRoom.update.state.players.find((p: any) => p.seat === 2).hand];
-  assert(JSON.stringify(guestHandAfterReconnect) === JSON.stringify(guestHandBeforeReconnect), `${choice}: reconnect did not restore the same hand`);
+  assert(JSON.stringify(guestHandAfterReconnect) === JSON.stringify(guestHandBeforeReconnect), `${choice}: reconnect did not restore the same private hand`);
+
+  // The still-connected opponent must remain on the exact same revision/state;
+  // reconnecting one player must never require the other player to refresh.
+  const hostAfterReconnect = hostSocket.latest('ROOM_STATE');
+  assert(hostAfterReconnect.update.room.revision === revisionAfterPlay, `${choice}: opponent revision changed during reconnect`);
+  assert(JSON.stringify(publicState(hostAfterReconnect.update)) === authoritativeAfterPlay, `${choice}: opponent state changed during reconnect`);
 
   await server.unregisterSocket(reconnect);
   await server.unregisterSocket(host);
@@ -114,7 +143,7 @@ async function main(): Promise<void> {
   const server = await import('../lib/brasta-server');
   await runOpeningScenario(server, 'keep');
   await runOpeningScenario(server, 'put');
-  console.log('2 online opening sync/reconnect integration scenarios passed');
+  console.log('2 progressed-hand online reconnect integration scenarios passed');
 }
 
 main()
