@@ -67,6 +67,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/private-match-brand.css?v=0.8.3" />
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
+        <link rel="stylesheet" href="/learn-brasta-polish.css?v=0.19.0" />
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.0" />
         <link rel="stylesheet" href="/team-branding.css?v=0.15.4" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
@@ -91,7 +92,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/private-postmatch.js?v=0.16.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=5" strategy="afterInteractive" />
         <Script src="/hard-bot.js?v=0.18.0" strategy="afterInteractive" />
-        <Script src="/bot-launcher-fix.js?v=0.18.0" strategy="afterInteractive" />
+        <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/selection-flow-v2.js?v=0.14.8" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.13.0" strategy="afterInteractive" />
