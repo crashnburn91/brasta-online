@@ -288,7 +288,15 @@
         }
         const label = looseLabels[i++];
         const target = Array.from(document.querySelectorAll('.loose-row .card[data-card][aria-label]')).find((el) => el.getAttribute('aria-label') === label);
-        target?.click();
+        if (target) {
+          // compact.ts also installs a capture-phase board probe. Temporarily
+          // remove that probe marker so this replay click reaches the native
+          // pending-action handler instead of being swallowed by compact.
+          const compactProbe = target.getAttribute('data-compact-loose-probe');
+          if (compactProbe !== null) target.removeAttribute('data-compact-loose-probe');
+          target.click();
+          if (compactProbe !== null) target.setAttribute('data-compact-loose-probe', compactProbe);
+        }
         window.setTimeout(clickNext, 0);
       };
       clickNext();
