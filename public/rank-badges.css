@@ -127,3 +127,54 @@
 .rank-badge.rank-visual[class*="rank-gold-"] .rank-emblem{
   filter:drop-shadow(0 3px 5px #0008) drop-shadow(0 0 5px #e7bd4526);
 }
+
+
+/* In-match player cards */
+.player-chip-primary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-width:0;
+}
+.player-chip-name{
+  min-width:0;
+}
+.player-rank-badge{
+  display:inline-flex;
+  align-items:center;
+  flex:0 0 auto;
+  margin-left:auto;
+}
+.player-card-rank{
+  gap:4px;
+  font-size:9px;
+  letter-spacing:.01em;
+}
+.player-card-rank .rank-emblem{
+  width:25px;
+  height:28px;
+  filter:drop-shadow(0 2px 4px #0006);
+}
+.player-card-rank .rank-badge-copy{
+  max-width:70px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.player-rank-fallback{
+  flex:0 0 auto;
+  margin-left:auto;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.04em;
+  color:#d8b75e;
+}
+@media(max-width:800px){
+  .player-card-rank .rank-emblem{width:22px;height:25px}
+  .player-card-rank{font-size:8px}
+  .player-card-rank .rank-badge-copy{max-width:58px}
+}
+@media(max-width:430px){
+  .player-card-rank .rank-badge-copy{display:none}
+  .player-card-rank .rank-emblem{width:23px;height:26px}
+}
