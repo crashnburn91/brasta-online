@@ -484,14 +484,53 @@ namespace BrastaApp {
     bindLab();
   }
   function bindLab(): void {
-    document.querySelectorAll<HTMLElement>('[data-scenario]').forEach((el) => el.onclick = () => { state = Brasta.scenario(el.dataset.scenario!); resetInteraction(); covered = false; renderLab(); });
-    document.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => el.onclick = () => { const id = el.dataset.card!; if (state!.loose.includes(id)) { if (pendingAction) { selectedLoose.has(id) ? selectedLoose.delete(id) : selectedLoose.add(id); renderLab(); } } else { selectedCard = id; pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; renderLab(); } });
-    document.querySelectorAll<HTMLElement>('[data-legal]').forEach((el) => el.onclick = () => { if (!state || !selectedCard) return; const action = el.dataset.legal as Brasta.LegalActionType; if (action === 'PLAY_LOOSE') labExecute({ type: 'PLAY_LOOSE', seat: 1, cardId: selectedCard }); else if (action === 'JACK_SWEEP' || action === 'BURN_JACK') labExecute({ type: 'JACK_ACTION', seat: 1, cardId: selectedCard }); else { pendingAction = action; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; renderLab(); } });
-    document.querySelectorAll<HTMLElement>('[data-submit]').forEach((el) => el.onclick = labSubmitPending);
-    document.querySelectorAll<HTMLElement>('[data-cancel]').forEach((el) => el.onclick = () => { pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; renderLab(); });
-    document.querySelectorAll<HTMLElement>('[data-buildchoice],[data-build]').forEach((el) => el.onclick = () => { if (!pendingAction) return; selectedBuildId = el.dataset.buildchoice || el.dataset.build || null; renderLab(); });
-    document.querySelectorAll<HTMLElement>('[data-decl]').forEach((el) => el.onclick = () => { if (!state || !selectedCard) return; selectedDeclaration = Brasta.getBuildDeclarationOptions(state, 1, selectedCard)[Number(el.dataset.decl)]; renderLab(); });
-    document.querySelectorAll<HTMLElement>('[data-nav="game"],[data-action="new"]').forEach((el) => el.onclick = () => { location.hash = ''; context = null; state = null; resetInteraction(); renderLanding(); });
+    document.querySelectorAll<HTMLElement>('[data-scenario]').forEach((el) => el.onclick = () => {
+      state = Brasta.scenario(el.dataset.scenario!);
+      resetInteraction();
+      covered = false;
+      renderLab();
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => el.onclick = () => {
+      if (!state) return;
+      const id = el.dataset.card!;
+      if (state.loose.includes(id)) {
+        selectedLoose.has(id) ? selectedLoose.delete(id) : selectedLoose.add(id);
+        pendingAction = null;
+        selectedDeclaration = null;
+        renderLab();
+        return;
+      }
+      const ownHand = state.players[0]?.hand || [];
+      if (!ownHand.includes(id)) return;
+      selectedCard = id;
+      pendingAction = null;
+      selectedDeclaration = null;
+      renderLab();
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-build]').forEach((el) => el.onclick = () => {
+      const id = el.dataset.build || '';
+      if (!id) return;
+      selectedBuildId = selectedBuildId === id ? null : id;
+      pendingAction = null;
+      selectedDeclaration = null;
+      renderLab();
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-direct-action]').forEach((el) => el.onclick = () => {
+      const index = Number(el.dataset.directAction);
+      const action = directActions[index];
+      if (action) labExecute(action.command);
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-nav="game"],[data-action="new"]').forEach((el) => el.onclick = () => {
+      location.hash = '';
+      context = null;
+      state = null;
+      resetInteraction();
+      renderLanding();
+    });
   }
   function labExecute(command: Brasta.Command): void { if (!state) return; const result = Brasta.applyCommand(state, command); if (result.ok) { state = result.state; resetInteraction(); state.message = 'Rules Lab'; state.phase = 'play'; state.currentSeat = 1; } else lastError = result.error || 'Rejected'; renderLab(); }
   function labSubmitPending(): void {
