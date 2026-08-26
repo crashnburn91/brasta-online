@@ -1,0 +1,14 @@
+/* Red / Blue team presentation. Team A is Blue; Team B is Red internally. */
+.player-chip.team-blue-player .team-colored-name,
+.player-chip.team-blue-player > div:first-child,
+.player-chip.team-blue-player > strong:first-child{
+  color:#5eb8ff!important;
+}
+.player-chip.team-red-player .team-colored-name,
+.player-chip.team-red-player > div:first-child,
+.player-chip.team-red-player > strong:first-child{
+  color:#ff6f67!important;
+}
+
+.team-blue-text{color:#5eb8ff!important}
+.team-red-text{color:#ff6f67!important}
