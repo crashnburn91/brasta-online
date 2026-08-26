@@ -110,32 +110,53 @@
     document.body.appendChild(modal);
   }
 
-  function shouldShowButton() {
-    return !!document.querySelector('.topbar .room-pill')
+  function actionPanel() {
+    return Array.from(document.querySelectorAll('.action-panel'))
+      .find((panel) => !panel.classList.contains('opening-panel')) || null;
+  }
+
+  function shouldShowButton(panel) {
+    return !!panel
+      && !!document.querySelector('.topbar .room-pill')
       && !!document.querySelector('.table')
       && !document.querySelector('.topbar .spectator-pill');
   }
 
+  function unwrapActionRow() {
+    const row = document.querySelector('[data-game-action-row]');
+    if (!row) return;
+    const panel = row.querySelector('.action-panel');
+    if (panel && row.parentNode) row.parentNode.insertBefore(panel, row);
+    row.remove();
+  }
+
   function enhance() {
     queued = false;
-    const existing = document.querySelector('[data-call-burn]');
-    if (!shouldShowButton()) {
-      existing?.remove();
+    const panel = actionPanel();
+    if (!shouldShowButton(panel)) {
+      unwrapActionRow();
       closeOptions();
       return;
     }
-    if (existing) return;
 
-    const nav = document.querySelector('.topbar nav');
-    if (!nav) return;
+    const existingRow = panel.closest('[data-game-action-row]');
+    if (existingRow) return;
+
+    const row = document.createElement('div');
+    row.className = 'game-action-row';
+    row.dataset.gameActionRow = '1';
+    panel.parentNode.insertBefore(row, panel);
+    row.appendChild(panel);
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'burn-call-button';
     button.dataset.callBurn = 'true';
-    button.textContent = 'Call Burn';
     button.title = 'Call out the previous player for missing a legal pickup';
+    button.setAttribute('aria-label', 'Call Burn');
+    button.innerHTML = '<span class="burn-call-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M13.7 2.1c.4 3.2-1.5 4.6-2.8 6.1-1.1 1.2-1.8 2.5-1.2 4.2.4-1.2 1.2-2.1 2.3-3 .2 2.3 2.1 3.4 3.1 5.1 1 1.6.9 3.2.1 4.4 3.3-1 5.7-4 5.7-7.6 0-4.4-2.6-7.7-7.9-12.2-.5-.4-1.2-.1-1.3.6zM8.9 14.2c-.8.9-1.4 1.9-1.4 3.1 0 2.5 2 4.5 4.5 4.5s4.5-2 4.5-4.5c0-1.7-.8-3.1-2.5-4.7.1 2.1-.8 3.1-1.7 4-.6.7-1 1.3-.8 2.2-1.7-.8-2.7-2.4-2.6-4.6z"/></svg></span><span class="burn-call-label">Call Burn</span>';
     button.onclick = callBurn;
-    nav.prepend(button);
+    row.appendChild(button);
   }
 
   function queueEnhance() {
