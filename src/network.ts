@@ -1,6 +1,6 @@
 namespace BrastaNet {
   export type SessionRole = 'player' | 'spectator';
-  export interface RoomPlayer { seat: Brasta.Seat; name: string; connected: boolean; occupied: boolean; }
+  export interface RoomPlayer { seat: Brasta.Seat; name: string; connected: boolean; occupied: boolean; rankName?: string | null; }
   export interface RoomSpectator { name: string; connected: boolean; }
   export interface RoomSnapshot {
     code: string;
