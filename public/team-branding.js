@@ -1,6 +1,6 @@
 (() => {
-  if (window.__BRASTA_TEAM_BRANDING__) return;
-  window.__BRASTA_TEAM_BRANDING__ = true;
+  if (window.__BRASTA_TEAM_BRANDING_V2__) return;
+  window.__BRASTA_TEAM_BRANDING_V2__ = true;
 
   let queued = false;
 
@@ -13,34 +13,30 @@
   }
 
   function playerCards() {
-    const explicit = Array.from(document.querySelectorAll('.player-chip'));
-    if (explicit.length) return explicit;
     const players = document.querySelector('.players');
-    return players ? Array.from(players.children).filter((el) => el instanceof HTMLElement) : [];
+    if (!players) return [];
+    return Array.from(players.children).filter((el) => el instanceof HTMLElement);
   }
 
-  function getTeamFromCard(card) {
-    const saved = card.dataset.brastaTeam || '';
-    if (saved === 'A' || saved === 'B') return saved;
-    const text = (card.textContent || '').replace(/\s+/g, ' ').trim();
-    const match = text.match(/\bTeam\s+([AB])\b/i);
-    if (!match) return '';
-    const team = match[1].toUpperCase();
-    card.dataset.brastaTeam = team;
-    return team;
+  function teamFromText(text) {
+    const match = String(text || '').match(/\bTeam\s+([AB])\b/i);
+    return match ? match[1].toUpperCase() : '';
   }
 
-  function getPlayerName(card) {
-    const text = (card.textContent || '').replace(/\s+/g, ' ').trim();
-    const match = text.match(/^(.*?)\s+Team\s+[AB]\b/i);
+  function nameFromText(text) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    const match = clean.match(/^(.*?)\s+Team\s+[AB]\b/i);
     return (match?.[1] || '').replace(/\s*(YOU|Dealer|D)\s*$/i, '').trim();
   }
 
   function playerInfo() {
     const teams = { A: [], B: [] };
     for (const card of playerCards()) {
-      const team = getTeamFromCard(card);
-      const name = getPlayerName(card);
+      const raw = (card.textContent || '').replace(/\s+/g, ' ').trim();
+      const team = card.dataset.brastaTeam || teamFromText(raw);
+      const name = card.dataset.brastaPlayerName || nameFromText(raw);
+      if (team) card.dataset.brastaTeam = team;
+      if (name) card.dataset.brastaPlayerName = name;
       if (team && name && !teams[team].includes(name)) teams[team].push(name);
     }
     return teams;
@@ -48,29 +44,27 @@
 
   function brandPlayerCards() {
     for (const card of playerCards()) {
-      const team = getTeamFromCard(card);
+      const raw = (card.textContent || '').replace(/\s+/g, ' ').trim();
+      const team = card.dataset.brastaTeam || teamFromText(raw);
       if (!team) continue;
-
+      card.dataset.brastaTeam = team;
       card.classList.toggle('team-blue-player', team === 'A');
       card.classList.toggle('team-red-player', team === 'B');
 
-      const name = getPlayerName(card);
+      const name = card.dataset.brastaPlayerName || nameFromText(raw);
+      if (name) card.dataset.brastaPlayerName = name;
+
       for (const node of textNodes(card)) {
-        const raw = node.nodeValue || '';
-        if (/\bTeam\s+[AB]\b/i.test(raw)) {
-          node.nodeValue = raw.replace(/\s*Team\s+[AB]\b/ig, '');
-        }
+        const original = node.nodeValue || '';
+        if (!/\bTeam\s+[AB]\b/i.test(original)) continue;
+        const hadName = name && original.includes(name);
+        node.nodeValue = original.replace(/\s*Team\s+[AB]\b/ig, '');
+        if (hadName && node.parentElement) node.parentElement.classList.add('team-colored-name');
       }
 
-      if (name) {
+      if (name && !card.querySelector('.team-colored-name')) {
         for (const el of card.querySelectorAll('*')) {
-          const ownText = Array.from(el.childNodes)
-            .filter((n) => n.nodeType === Node.TEXT_NODE)
-            .map((n) => n.nodeValue || '')
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (ownText.includes(name)) {
+          if ((el.textContent || '').includes(name)) {
             el.classList.add('team-colored-name');
             break;
           }
@@ -82,12 +76,10 @@
   function mostLikelyActor(team, teams) {
     const last = document.querySelector('.last-move-banner');
     const text = (last?.textContent || '').replace(/^\s*LAST MOVE\s*/i, '').trim();
-    if (text) {
-      for (const name of teams[team]) {
-        if (text.toLowerCase().startsWith(name.toLowerCase())) return name;
-      }
+    for (const name of teams[team] || []) {
+      if (text.toLowerCase().startsWith(name.toLowerCase())) return name;
     }
-    return teams[team][0] || (team === 'A' ? 'Blue Team' : 'Red Team');
+    return (teams[team] || [])[0] || (team === 'A' ? 'Blue Team' : 'Red Team');
   }
 
   function rewriteEventBanners(teams) {
@@ -95,8 +87,8 @@
     document.querySelectorAll(selectors).forEach((banner) => {
       for (const node of textNodes(banner)) {
         let text = node.nodeValue || '';
-        if (/Team A/i.test(text)) text = text.replace(/Team A/gi, mostLikelyActor('A', teams));
-        if (/Team B/i.test(text)) text = text.replace(/Team B/gi, mostLikelyActor('B', teams));
+        text = text.replace(/Team A/gi, mostLikelyActor('A', teams));
+        text = text.replace(/Team B/gi, mostLikelyActor('B', teams));
         node.nodeValue = text;
       }
     });
@@ -107,11 +99,9 @@
     if (!app) return;
     for (const node of textNodes(app)) {
       const parent = node.parentElement;
-      if (!parent) continue;
-      if (parent.closest('.players,.live-score-strip,.event,.event-banner,.round-event,.turn-event,.game-event,.last-hand-banner')) continue;
+      if (!parent || parent.closest('.players,.live-score-strip,.event,.event-banner,.round-event,.turn-event,.game-event,.last-hand-banner')) continue;
       let text = node.nodeValue || '';
-      if (/Team A/i.test(text)) text = text.replace(/Team A/gi, 'Blue Team');
-      if (/Team B/i.test(text)) text = text.replace(/Team B/gi, 'Red Team');
+      text = text.replace(/Team A/gi, 'Blue Team').replace(/Team B/gi, 'Red Team');
       node.nodeValue = text;
     }
   }
