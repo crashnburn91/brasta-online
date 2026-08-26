@@ -67,7 +67,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/private-match-brand.css?v=0.8.3" />
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
-        <link rel="stylesheet" href="/live-score-ui.css?v=0.10.0" />
+        <link rel="stylesheet" href="/live-score-ui.css?v=0.15.0" />
+        <link rel="stylesheet" href="/team-branding.css?v=0.15.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
       </head>
@@ -75,7 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
-        <Script src="/live-score-ui.js?v=0.10.0" strategy="beforeInteractive" />
+        <Script src="/live-score-ui.js?v=0.15.0" strategy="beforeInteractive" />
         <Script src="/match-menu.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
@@ -94,6 +95,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/selection-flow-build-options.js?v=0.14.4" strategy="afterInteractive" />
         <Script src="/selection-explanation.js?v=0.14.5" strategy="afterInteractive" />
         <Script src="/selection-cleanup.js?v=0.14.7" strategy="afterInteractive" />
+        <Script src="/team-branding.js?v=0.15.0" strategy="afterInteractive" />
         <Script src="/compact-ambiguity.js?v=0.5.22" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
