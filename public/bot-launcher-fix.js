@@ -11,44 +11,9 @@
     try { return localStorage.getItem(DIFFICULTY_KEY) === 'hard' ? 'hard' : 'normal'; }
     catch { return 'normal'; }
   }
+
   function setDifficulty(value) {
     try { localStorage.setItem(DIFFICULTY_KEY, value === 'hard' ? 'hard' : 'normal'); } catch {}
-  }
-
-  function normalizedText(el) {
-    return String(el?.textContent || '').replace(/\s+/g, ' ').trim();
-  }
-
-  function findVisiblePlayCard() {
-    const candidates = Array.from(document.querySelectorAll('button,a,[role="button"],div'));
-    const exact = candidates.filter((el) => {
-      const text = normalizedText(el);
-      if (!/^🤖?\s*Play vs Bot(?:\s+Practice a private 1v1 match)?$/i.test(text)) return false;
-      const rect = el.getBoundingClientRect?.();
-      return !rect || (rect.width > 0 && rect.height > 0);
-    });
-    if (!exact.length) return null;
-
-    // Prefer the smallest matching visible element so we get the actual card/row, not a large ancestor.
-    exact.sort((a, b) => {
-      const ar = a.getBoundingClientRect?.();
-      const br = b.getBoundingClientRect?.();
-      return ((ar?.width || 9999) * (ar?.height || 9999)) - ((br?.width || 9999) * (br?.height || 9999));
-    });
-    return exact[0];
-  }
-
-  function findLearnCard(playCard) {
-    const headings = Array.from(document.querySelectorAll('h1,h2,h3,strong'));
-    const heading = headings.find((el) => /^learn brasta$/i.test(normalizedText(el)));
-    if (!heading || !playCard) return null;
-
-    let node = playCard;
-    while (node && node !== document.body) {
-      if (node.contains(heading)) return node;
-      node = node.parentElement;
-    }
-    return heading.parentElement?.parentElement || heading.parentElement || null;
   }
 
   function ensureStyles() {
@@ -57,11 +22,11 @@
     style.id = 'brasta-bot-launcher-style';
     style.textContent = `
       [data-bot-difficulty]{display:none!important}
-      .bot-difficulty-panel{display:block!important;visibility:visible!important;opacity:1!important;margin:14px 0 10px;padding:12px 14px;border:1px solid rgba(224,188,86,.34);border-radius:18px;background:rgba(7,27,19,.5)}
-      .bot-difficulty-label{display:block!important;margin-bottom:9px;font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#d6bd76}
-      .bot-difficulty-options{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
-      .bot-difficulty-options button{display:flex!important;align-items:center;justify-content:center;visibility:visible!important;opacity:1!important;min-height:44px;width:100%;border-radius:14px;border:1px solid rgba(224,188,86,.34);background:rgba(8,40,27,.74);font-weight:800;color:#f5f0df}
-      .bot-difficulty-options button.active{background:#dfbd59;color:#18160f;border-color:#f0d477;box-shadow:0 0 0 1px rgba(240,212,119,.18) inset}
+      .learn-brasta-actions .bot-difficulty-panel{display:block!important;margin:0;padding:11px 13px;border:1px solid #d8b75e66;border-radius:12px;background:linear-gradient(135deg,#123428,#0a241b);box-sizing:border-box}
+      .learn-brasta-actions .bot-difficulty-label{display:block;margin:0 0 8px;color:#d8b75e;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+      .learn-brasta-actions .bot-difficulty-options{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+      .learn-brasta-actions .bot-difficulty-options button{display:flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:38px!important;margin:0!important;padding:8px 12px!important;border:1px solid #d8b75e55!important;border-radius:9px!important;background:#0d2a20!important;color:#f8f1d2!important;font:inherit!important;font-size:12px!important;font-weight:800!important;cursor:pointer!important}
+      .learn-brasta-actions .bot-difficulty-options button.active{border-color:#f0d77f!important;background:linear-gradient(180deg,#ead06d,#cda33d)!important;color:#211906!important;box-shadow:inset 0 1px 0 #fff7,0 4px 10px #0003!important}
     `;
     document.head.appendChild(style);
   }
@@ -77,18 +42,23 @@
 
   function ensureDifficultyPanel() {
     ensureStyles();
-    const playCard = findVisiblePlayCard();
-    if (!playCard) return;
-    const learnCard = findLearnCard(playCard);
+
+    // product-surface.css visually renames the legacy local card to “Learn Brasta”.
+    // The stable DOM identity is the card containing [data-newmode].
+    const learnCard = document.querySelector('.landing-card:has([data-newmode])');
     if (!learnCard) return;
+
+    const actions = learnCard.querySelector('.learn-brasta-actions');
+    const botButton = actions?.querySelector('.learn-bot-launch, [data-play-bot]');
+    if (!actions || !botButton) return;
 
     document.querySelectorAll('[data-bot-difficulty]').forEach((el) => el.remove());
 
-    let panel = document.querySelector('.bot-difficulty-panel');
+    let panel = actions.querySelector('.bot-difficulty-panel');
     if (!panel) {
       panel = document.createElement('div');
       panel.className = 'bot-difficulty-panel';
-      panel.innerHTML = '<span class="bot-difficulty-label">Bot difficulty</span><div class="bot-difficulty-options"><button type="button" data-bot-difficulty-choice="normal">Normal</button><button type="button" data-bot-difficulty-choice="hard">Hard</button></div>';
+      panel.innerHTML = '<span class="bot-difficulty-label">Bot Difficulty</span><div class="bot-difficulty-options"><button type="button" data-bot-difficulty-choice="normal">Normal</button><button type="button" data-bot-difficulty-choice="hard">Hard</button></div>';
       panel.addEventListener('click', (event) => {
         const button = event.target instanceof Element ? event.target.closest('[data-bot-difficulty-choice]') : null;
         if (!(button instanceof HTMLElement)) return;
@@ -97,9 +67,8 @@
       });
     }
 
-    // Always re-anchor it directly above the visible Play vs Bot card.
-    if (playCard.parentElement && panel.nextElementSibling !== playCard) {
-      playCard.parentElement.insertBefore(panel, playCard);
+    if (panel.parentElement !== actions || panel.nextElementSibling !== botButton) {
+      actions.insertBefore(panel, botButton);
     }
     syncButtons(panel);
   }
@@ -114,11 +83,8 @@
   }
 
   document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-    const playCard = target.closest('[data-play-bot]') || target.closest('button,a,[role="button"],div');
-    if (!playCard || !/^🤖?\s*Play vs Bot/i.test(normalizedText(playCard))) return;
-
+    const playBot = event.target instanceof Element ? event.target.closest('[data-play-bot]') : null;
+    if (!playBot) return;
     const input = document.querySelector('#create-name');
     if (input instanceof HTMLInputElement && !input.value.trim()) {
       input.value = preferredGuestName();
@@ -140,8 +106,8 @@
     };
     new MutationObserver(refresh).observe(root, { childList: true, subtree: true });
     ensureDifficultyPanel();
-    setTimeout(ensureDifficultyPanel, 250);
-    setTimeout(ensureDifficultyPanel, 1000);
+    window.setTimeout(ensureDifficultyPanel, 100);
+    window.setTimeout(ensureDifficultyPanel, 500);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
