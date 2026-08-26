@@ -511,6 +511,9 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const code = cleanCode(msg.code);
       const name = cleanName(msg.name);
       const reconnectToken = typeof msg.token === 'string' ? msg.token : '';
+      // Persist the membership/session change under the room lock, but wait to
+      // publish until the new socket is attached. Never save `changed.room`
+      // again afterward: another player may have advanced the game meanwhile.
       const changed = await mutateRoom(code, (room) => {
         if (reconnectToken) {
           const existing = participantForToken(room, reconnectToken);
@@ -529,10 +532,12 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now() };
         room.seats[String(seat)] = p;
         return p;
-      });
+      }, false);
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
       await attachPlayer(conn, changed.room, changed.result);
-      await saveRoom(changed.room);
+      // publishRoom re-loads the latest authoritative room from storage, so if
+      // gameplay advanced while the socket was attaching, the reconnecting
+      // player receives that newer state rather than an older snapshot.
       await publishRoom(changed.room.code);
       return;
     }
@@ -558,10 +563,9 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         const spectator: Spectator = { name, token, connectionId: conn.id, lastSeen: Date.now() };
         room.spectators[token] = spectator;
         return spectator;
-      });
+      }, false);
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
       await attachSpectator(conn, changed.room, changed.result);
-      await saveRoom(changed.room);
       await publishRoom(changed.room.code);
       return;
     }
