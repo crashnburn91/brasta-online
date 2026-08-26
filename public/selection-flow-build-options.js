@@ -5,6 +5,10 @@
   const SUITS = new Set(['♣', '♦', '♥', '♠']);
   const originalReplaceChildren = Element.prototype.replaceChildren;
 
+  function isRankedMatch() {
+    return document.body.classList.contains('brasta-ranked-active') || !!document.querySelector('.ranked-pill');
+  }
+
   function parseCard(label) {
     const text = String(label || '').trim();
     const suit = text.slice(-1);
@@ -154,7 +158,7 @@
   // exact render point so existing-build actions are part of the same render,
   // rather than racing the selection observer with a second asynchronous rewrite.
   Element.prototype.replaceChildren = function(...nodes) {
-    if (this instanceof HTMLElement && this.matches('[data-selection-v2-options]')) {
+    if (!isRankedMatch() && this instanceof HTMLElement && this.matches('[data-selection-v2-options]')) {
       const replacements = replacementButtons();
       if (replacements.length) return originalReplaceChildren.apply(this, replacements);
     }
@@ -162,6 +166,7 @@
   };
 
   function refreshCurrentHost() {
+    if (isRankedMatch()) return;
     const host = document.querySelector('[data-selection-v2-options]');
     if (!host) return;
     const replacements = replacementButtons();
