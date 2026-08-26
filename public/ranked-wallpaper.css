@@ -6,9 +6,9 @@
     linear-gradient(145deg,#0b2b20 0%,#071d16 55%,#243c20 100%)!important;
 }
 
-/* A tighter 2x2 suit tile with larger marks: spade/diamond above club/heart.
+/* A tighter 2x2 suit tile with substantially larger marks: spade/diamond above club/heart.
    The denser repeat keeps the wallpaper feeling like patterned fabric while
-   making the suits easier to read at a glance. */
+   making the suits more prominent without competing with the card content. */
 .ranked-tabs-shell::before{
   content:""!important;
   position:absolute!important;
@@ -17,9 +17,9 @@
   pointer-events:none!important;
   opacity:.08!important;
   color:transparent!important;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='68' height='68' viewBox='0 0 68 68'%3E%3Cg fill='%23d4af37' fill-opacity='.56' font-family='Georgia,serif' text-anchor='middle'%3E%3Ctext x='17' y='23' font-size='16'%3E%26%239824;%3C/text%3E%3Ctext x='51' y='23' font-size='16'%3E%26%239830;%3C/text%3E%3Ctext x='17' y='57' font-size='16'%3E%26%239827;%3C/text%3E%3Ctext x='51' y='57' font-size='16'%3E%26%239829;%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23d4af37' fill-opacity='.56' font-family='Georgia,serif' text-anchor='middle'%3E%3Ctext x='15' y='21' font-size='18'%3E%26%239824;%3C/text%3E%3Ctext x='45' y='21' font-size='18'%3E%26%239830;%3C/text%3E%3Ctext x='15' y='51' font-size='18'%3E%26%239827;%3C/text%3E%3Ctext x='45' y='51' font-size='18'%3E%26%239829;%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
   background-repeat:repeat!important;
-  background-size:68px 68px!important;
+  background-size:60px 60px!important;
   background-position:0 0!important;
 }
 
