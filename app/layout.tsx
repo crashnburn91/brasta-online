@@ -88,7 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=5" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
-        <Script src="/selection-flow-v2.js?v=0.14.0" strategy="afterInteractive" />
+        <Script src="/selection-flow-v2.js?v=0.14.2" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.13.0" strategy="afterInteractive" />
         <Script src="/direct-capture.js?v=0.14.1" strategy="afterInteractive" />
         <Script src="/compact-ambiguity.js?v=0.5.22" strategy="afterInteractive" />
