@@ -1,6 +1,7 @@
 namespace BrastaApp {
   type Context = 'local' | 'online' | 'lab' | null;
   type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+  type DirectAction = { label: string; command: Brasta.Command };
 
   let context: Context = null;
   let state: Brasta.GameState | null = null;
@@ -13,6 +14,7 @@ namespace BrastaApp {
   let lastError: string | null = null;
   let notice: string | null = null;
   let commandPending = false;
+  let directActions: DirectAction[] = [];
 
   let onlineClient: BrastaNet.Client | null = null;
   let onlineSession: BrastaNet.SessionInfo | null = null;
@@ -36,6 +38,7 @@ namespace BrastaApp {
     selectedDeclaration = null;
     lastError = null;
     commandPending = false;
+    directActions = [];
   }
 
   function suitClass(card: Brasta.Card): string { return card.suit === 'diamonds' || card.suit === 'hearts' ? 'red' : 'black'; }
@@ -67,6 +70,118 @@ namespace BrastaApp {
     return !covered;
   }
   function currentPlayerName(seat: Brasta.Seat): string { return state?.players.find((p) => p.seat === seat)?.name || `Seat ${seat}`; }
+
+  function hasBoardSelection(): boolean {
+    return selectedLoose.size > 0 || !!selectedBuildId;
+  }
+
+  function commandIsValid(command: Brasta.Command): boolean {
+    if (!state) return false;
+    return Brasta.applyCommand(state, command).ok;
+  }
+
+  function directActionsForCard(cardId: string): DirectAction[] {
+    if (!state) return [];
+    const seat = actionSeat();
+    const card = state.cards[cardId];
+    if (!card) return [];
+
+    const looseIds = [...selectedLoose];
+    const actions: DirectAction[] = [];
+
+    if (!hasBoardSelection()) {
+      if (card.rank === 'J') {
+        actions.push({
+          label: state.loose.length ? 'Sweep' : 'Burn Jack −10',
+          command: { type: 'JACK_ACTION', seat, cardId },
+        });
+      } else {
+        actions.push({
+          label: `Play ${Brasta.cardLabel(card)} Loose`,
+          command: { type: 'PLAY_LOOSE', seat, cardId },
+        });
+      }
+      return actions.filter((action) => commandIsValid(action.command));
+    }
+
+    if (selectedBuildId) {
+      const captureBuild: Brasta.Command = {
+        type: 'CAPTURE_BUILD',
+        seat,
+        cardId,
+        buildId: selectedBuildId,
+        looseIds,
+      };
+      if (commandIsValid(captureBuild)) actions.push({ label: 'Capture', command: captureBuild });
+
+      const addToBuild: Brasta.Command = {
+        type: 'ADD_TO_BUILD',
+        seat,
+        cardId,
+        buildId: selectedBuildId,
+        looseIds,
+      };
+      if (commandIsValid(addToBuild)) actions.push({ label: 'Add to Build', command: addToBuild });
+
+      if (!looseIds.length) {
+        const raiseBuild: Brasta.Command = {
+          type: 'RAISE_BUILD',
+          seat,
+          cardId,
+          buildId: selectedBuildId,
+        };
+        if (commandIsValid(raiseBuild)) {
+          const build = state.builds.find((candidate) => candidate.id === selectedBuildId);
+          const nextValue = build?.declaredValue != null && card.value != null ? build.declaredValue + card.value : null;
+          actions.push({ label: nextValue != null ? `Raise to ${nextValue}` : 'Raise Build', command: raiseBuild });
+        }
+      }
+      return actions;
+    }
+
+    if (looseIds.length) {
+      const captureLoose: Brasta.Command = { type: 'CAPTURE_LOOSE', seat, cardId, looseIds };
+      if (commandIsValid(captureLoose)) actions.push({ label: 'Capture', command: captureLoose });
+
+      for (const declaration of Brasta.getBuildDeclarationOptions(state, seat, cardId)) {
+        const makeBuild: Brasta.Command = {
+          type: 'MAKE_BUILD',
+          seat,
+          cardId,
+          declaredValue: declaration.value,
+          declaredRank: declaration.rank,
+          looseIds,
+        };
+        if (commandIsValid(makeBuild)) actions.push({ label: declaration.label, command: makeBuild });
+      }
+    }
+
+    return actions;
+  }
+
+  function selectionActions(): DirectAction[] {
+    if (!state) return [];
+    if (selectedCard) return directActionsForCard(selectedCard);
+
+    if (!hasBoardSelection()) return [];
+    const hand = state.players.find((player) => player.seat === actionSeat())?.hand || [];
+    const actions: DirectAction[] = [];
+    for (const cardId of hand) {
+      const card = state.cards[cardId];
+      if (!card) continue;
+      for (const action of directActionsForCard(cardId)) {
+        actions.push({ ...action, label: `${Brasta.cardLabel(card)} · ${action.label}` });
+      }
+    }
+    return actions;
+  }
+
+  function renderDirectButtons(actions: DirectAction[]): string {
+    directActions = actions;
+    return actions.map((action, index) =>
+      `<button class="primary selection-v2-action" data-direct-action="${index}">${escapeHtml(action.label)}</button>`
+    ).join('');
+  }
 
   function renderHeader(): string {
     if (!state && context !== 'online') return '';
@@ -100,13 +215,13 @@ namespace BrastaApp {
     if (!state) return '';
     const cards = [...build.groups.flat(), ...build.modifiers];
     const selected = selectedBuildId === build.id;
-    const canSelect = canLocalPlayerAct() && !!pendingAction && ['ADD_TO_BUILD', 'RAISE_BUILD', 'CAPTURE_BUILD'].includes(pendingAction);
+    const canSelect = state.phase === 'play' && canLocalPlayerAct();
     return `<div class="build ${selected ? 'selected' : ''} ${canSelect ? 'clickable' : ''}" data-build="${escapeAttr(build.id)}" role="button" aria-disabled="${canSelect ? 'false' : 'true'}" tabindex="${canSelect ? '0' : '-1'}"><div class="build-label">${Brasta.buildLabel(build)}</div><div class="build-cards">${cards.map((id) => cardHtml(id, { tiny: true })).join('')}</div>${build.modifiers.length ? `<div class="modifier-note">raised +${build.modifiers.map((id) => state!.cards[id]?.value ?? '?').join('+')}</div>` : ''}</div>`;
   }
 
   function renderBoard(): string {
     if (!state) return '';
-    const looseSelectable = canLocalPlayerAct() && !!pendingAction && ['CAPTURE_LOOSE', 'MAKE_BUILD', 'ADD_TO_BUILD', 'CAPTURE_BUILD'].includes(pendingAction);
+    const looseSelectable = state.phase === 'play' && canLocalPlayerAct();
     return `<section class="table"><div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
   }
 
@@ -141,15 +256,24 @@ namespace BrastaApp {
 
   function renderActions(): string {
     if (!state || state.phase !== 'play') return '';
-    const seat = actionSeat();
     if (isSpectator()) return `<div class="action-panel waiting spectator-panel"><p><b>Spectating</b> · ${escapeHtml(currentPlayerName(state.currentSeat))} (Seat ${state.currentSeat}) is playing.</p></div>`;
     if (context === 'online' && onlineSession?.seat !== state.currentSeat) return `<div class="action-panel waiting"><p>Waiting for <b>${escapeHtml(currentPlayerName(state.currentSeat))}</b> (Seat ${state.currentSeat}).</p></div>`;
     if (commandPending) return `<div class="action-panel"><p>Sending move to server…</p></div>`;
-    if (!selectedCard) return `<div class="action-panel"><p>Click a card in your hand.</p></div>`;
-    const legal = Brasta.legalActionsForCard(state, seat, selectedCard);
-    if (!legal.length) return `<div class="action-panel"><p>No legal actions for this card.</p></div>`;
-    if (pendingAction) return renderPendingAction();
-    return `<div class="action-panel"><h3>${Brasta.cardLabel(state.cards[selectedCard])}</h3><div class="button-row actions">${legal.map((a) => `<button data-legal="${a.type}">${a.label}</button>`).join('')}</div></div>`;
+
+    const boardSelected = hasBoardSelection();
+    if (!selectedCard && !boardSelected) {
+      directActions = [];
+      return `<div class="action-panel"><p>Select a card in your hand or select cards on the table.</p></div>`;
+    }
+
+    const actions = selectionActions();
+    const title = selectedCard ? Brasta.cardLabel(state.cards[selectedCard]) : 'Table selection';
+    if (!actions.length) {
+      directActions = [];
+      return `<div class="action-panel ${boardSelected ? 'selection-v2-has-target' : ''}"><h3>${escapeHtml(title)}</h3><div class="selection-v2-note">No valid action for this selection.</div></div>`;
+    }
+
+    return `<div class="action-panel ${boardSelected ? 'selection-v2-has-target' : ''}"><h3>${escapeHtml(title)}</h3><div class="button-row actions">${renderDirectButtons(actions)}</div></div>`;
   }
 
   function renderHand(): string {
@@ -249,61 +373,47 @@ namespace BrastaApp {
     else if (pendingAction === 'CAPTURE_BUILD') { if (!selectedBuildId) { lastError = 'Choose a build.'; render(); return; } execute({ type: 'CAPTURE_BUILD', seat, cardId: selectedCard, buildId: selectedBuildId, looseIds: [...selectedLoose] }); }
   }
 
-  // Stable bridge for the board-first UI. This bypasses DOM click replay and
-  // sends capture commands through the exact same server-authoritative execute()
-  // path as the native action panel.
-  (window as any).__BRASTA_DIRECT_SELECTION_ACTION__ = (request: {
-    type: 'CAPTURE_LOOSE' | 'CAPTURE_BUILD';
-    cardId: string;
-    looseLabels?: string[];
-    buildId?: string;
-  }): boolean => {
-    if (!state || !canLocalPlayerAct() || !request?.cardId) return false;
-
-    const seat = actionSeat();
-    const hand = state.players.find((player) => player.seat === seat)?.hand || [];
-    if (!hand.includes(request.cardId)) return false;
-
-    const labels = Array.isArray(request.looseLabels) ? request.looseLabels : [];
-    const looseIds: string[] = [];
-    for (const label of labels) {
-      const id = state.loose.find((candidate) => Brasta.cardLabel(state!.cards[candidate]) === label && !looseIds.includes(candidate));
-      if (!id) return false;
-      looseIds.push(id);
-    }
-
-    selectedCard = request.cardId;
-    selectedLoose = new Set(looseIds);
-    selectedBuildId = request.buildId || null;
-    pendingAction = request.type;
-
-    if (request.type === 'CAPTURE_LOOSE') {
-      if (!looseIds.length) return false;
-      execute({ type: 'CAPTURE_LOOSE', seat, cardId: request.cardId, looseIds });
-      return true;
-    }
-
-    if (!request.buildId) return false;
-    execute({ type: 'CAPTURE_BUILD', seat, cardId: request.cardId, buildId: request.buildId, looseIds });
-    return true;
-  };
-
   function bindCommonGameControls(): void {
     document.querySelectorAll<HTMLElement>('[data-card]').forEach((el) => el.onclick = () => {
-      if (!state || !canLocalPlayerAct()) return; const id = el.dataset.card!;
-      if (state.loose.includes(id)) { if (pendingAction) { selectedLoose.has(id) ? selectedLoose.delete(id) : selectedLoose.add(id); render(); } }
-      else { const ownHand = state.players.find((p) => p.seat === actionSeat())?.hand || []; if (!ownHand.includes(id)) return; selectedCard = id; pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; lastError = null; render(); }
+      if (!state || !canLocalPlayerAct()) return;
+      const id = el.dataset.card!;
+
+      if (state.loose.includes(id)) {
+        selectedLoose.has(id) ? selectedLoose.delete(id) : selectedLoose.add(id);
+        pendingAction = null;
+        selectedDeclaration = null;
+        lastError = null;
+        render();
+        return;
+      }
+
+      const ownHand = state.players.find((player) => player.seat === actionSeat())?.hand || [];
+      if (!ownHand.includes(id)) return;
+      selectedCard = id;
+      pendingAction = null;
+      selectedDeclaration = null;
+      lastError = null;
+      render();
     });
-    document.querySelectorAll<HTMLElement>('[data-legal]').forEach((el) => el.onclick = () => {
-      if (!state || !selectedCard || !canLocalPlayerAct()) return; const action = el.dataset.legal as Brasta.LegalActionType; const seat = actionSeat();
-      if (action === 'PLAY_LOOSE') execute({ type: 'PLAY_LOOSE', seat, cardId: selectedCard });
-      else if (action === 'JACK_SWEEP' || action === 'BURN_JACK') execute({ type: 'JACK_ACTION', seat, cardId: selectedCard });
-      else { pendingAction = action; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; render(); }
+
+    document.querySelectorAll<HTMLElement>('[data-build]').forEach((el) => el.onclick = () => {
+      if (!state || !canLocalPlayerAct()) return;
+      const id = el.dataset.build || '';
+      if (!id) return;
+      selectedBuildId = selectedBuildId === id ? null : id;
+      pendingAction = null;
+      selectedDeclaration = null;
+      lastError = null;
+      render();
     });
-    document.querySelectorAll<HTMLElement>('[data-buildchoice],[data-build]').forEach((el) => el.onclick = () => { if (!pendingAction || !canLocalPlayerAct()) return; selectedBuildId = el.dataset.buildchoice || el.dataset.build || null; render(); });
-    document.querySelectorAll<HTMLElement>('[data-decl]').forEach((el) => el.onclick = () => { if (!state || !selectedCard || !canLocalPlayerAct()) return; const opts = Brasta.getBuildDeclarationOptions(state, actionSeat(), selectedCard); selectedDeclaration = opts[Number(el.dataset.decl)]; render(); });
-    document.querySelectorAll<HTMLElement>('[data-submit]').forEach((el) => el.onclick = submitPending);
-    document.querySelectorAll<HTMLElement>('[data-cancel]').forEach((el) => el.onclick = () => { pendingAction = null; selectedLoose.clear(); selectedBuildId = null; selectedDeclaration = null; render(); });
+
+    document.querySelectorAll<HTMLElement>('[data-direct-action]').forEach((el) => el.onclick = () => {
+      if (!state || !canLocalPlayerAct()) return;
+      const index = Number(el.dataset.directAction);
+      const action = directActions[index];
+      if (!action) return;
+      execute(action.command);
+    });
   }
 
   function bindGame(): void {
