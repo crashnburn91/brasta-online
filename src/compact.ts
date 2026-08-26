@@ -466,9 +466,47 @@ namespace BrastaCompact {
     panel.classList.toggle('compact-target-chosen', !!selectedBuildChoice);
   }
 
+  function isRankedMatch(): boolean {
+    return document.body.classList.contains('brasta-ranked-active') || !!document.querySelector('.ranked-pill');
+  }
+
+  function restoreNativeRankedUi(): void {
+    clearStaged();
+    document.querySelectorAll<HTMLElement>('[data-legal]').forEach((button) => {
+      button.classList.remove('compact-hidden-native', 'compact-auto-action');
+    });
+    document.querySelectorAll<HTMLElement>('[data-compact-loose-probe]').forEach((el) => {
+      delete el.dataset.compactLooseProbe;
+      el.classList.remove('compact-probe', 'compact-staged');
+    });
+    document.querySelectorAll<HTMLElement>('[data-compact-build-probe]').forEach((el) => {
+      delete el.dataset.compactBuildProbe;
+      el.classList.remove('compact-probe', 'compact-staged');
+    });
+    document.querySelectorAll<HTMLElement>('.action-panel').forEach((panel) => {
+      panel.classList.remove(
+        'compact-action-dock',
+        'compact-initial-action',
+        'compact-selection-first',
+        'compact-has-targets',
+        'compact-jack-action',
+        'compact-pending-action',
+        'compact-target-chosen',
+        'compact-ambiguous-declaration',
+        'compact-build-ambiguous'
+      );
+      panel.querySelector('[data-compact-context-actions]')?.remove();
+    });
+  }
+
   function enhance(): void {
     const table = document.querySelector('.table');
     document.documentElement.classList.toggle('brasta-gameplay-active', !!table);
+
+    if (isRankedMatch()) {
+      restoreNativeRankedUi();
+      return;
+    }
 
     const panel = Array.from(document.querySelectorAll<HTMLElement>('.action-panel')).find((candidate) => !candidate.classList.contains('opening-panel'));
     if (!panel) return;
@@ -484,7 +522,7 @@ namespace BrastaCompact {
 
   function onProbeClick(event: Event): void {
     const target = event.target as HTMLElement | null;
-    if (!target || busy) return;
+    if (!target || busy || isRankedMatch()) return;
 
     // selection-flow-v2 replays staged board targets through the native pending
     // action UI. Those synthetic clicks must reach the native game handler;
