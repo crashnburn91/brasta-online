@@ -16,7 +16,7 @@ export type WireSocket = {
   close(code?: number, reason?: string): void;
 };
 
-type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number };
+type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
 type BurnPickupOption = {
   id: string;
@@ -100,8 +100,8 @@ function roomSnapshot(room: StoredRoom) {
   const players = seats.map((seat) => {
     const p = room.seats[String(seat)];
     return p
-      ? { seat, name: p.name, connected: now - p.lastSeen < PRESENCE_MS, occupied: true }
-      : { seat, name: '', connected: false, occupied: false };
+      ? { seat, name: p.name, connected: now - p.lastSeen < PRESENCE_MS, occupied: true, rankName: p.rankName || null }
+      : { seat, name: '', connected: false, occupied: false, rankName: null };
   });
   const spectators = Object.values(room.spectators)
     .map((s) => ({ name: s.name, connected: now - s.lastSeen < PRESENCE_MS }))
