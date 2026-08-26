@@ -139,6 +139,32 @@
     return Array.from(document.querySelectorAll('.action-panel')).find((panel) => !panel.classList.contains('opening-panel')) || null;
   }
 
+  function isRankedMatch() {
+    return document.body.classList.contains('brasta-ranked-active') || !!document.querySelector('.ranked-pill');
+  }
+
+  function restoreNativeRankedUi() {
+    clearSelection();
+    delete document.documentElement.dataset.selectionV2Replay;
+    busy = false;
+    document.querySelectorAll('[data-selection-v2-options]').forEach((el) => el.remove());
+    document.querySelectorAll('[data-selection-v2-loose]').forEach((el) => {
+      el.classList.remove('selection-v2-probe', 'selection-v2-selected');
+      delete el.dataset.selectionV2Loose;
+    });
+    document.querySelectorAll('[data-selection-v2-build]').forEach((el) => {
+      el.classList.remove('selection-v2-probe', 'selection-v2-selected');
+      delete el.dataset.selectionV2Build;
+    });
+    document.querySelectorAll('.action-panel').forEach((panel) => {
+      panel.classList.remove('selection-v2-has-target');
+      panel.querySelectorAll('[data-legal]').forEach((button) => {
+        button.classList.remove('selection-v2-hide-play-loose');
+        button.style.removeProperty('display');
+      });
+    });
+  }
+
   function clearSelection() {
     stagedLoose.clear();
     stagedBuildId = '';
@@ -395,6 +421,10 @@
 
   function enhance() {
     queued = false;
+    if (isRankedMatch()) {
+      restoreNativeRankedUi();
+      return;
+    }
     if (!document.querySelector('.table')) {
       clearSelection();
       delete document.documentElement.dataset.selectionV2Replay;
@@ -413,7 +443,7 @@
 
   function onBoardClick(event) {
     const target = event.target instanceof Element ? event.target : null;
-    if (!target || busy) return;
+    if (!target || busy || isRankedMatch()) return;
     const loose = target.closest('[data-selection-v2-loose]');
     if (loose) {
       event.preventDefault();
@@ -439,7 +469,7 @@
 
   function onHandClick(event) {
     const target = event.target instanceof Element ? event.target.closest('.hand .card[data-card]') : null;
-    if (!target) return;
+    if (!target || isRankedMatch()) return;
     window.setTimeout(queueEnhance, 0);
   }
 
