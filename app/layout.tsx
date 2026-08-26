@@ -50,7 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
-        <link rel="stylesheet" href="/compact-gameplay.css?v=0.14.0" />
+        <link rel="stylesheet" href="/compact-gameplay.css?v=0.14.1" />
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.17" />
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
         <link rel="stylesheet" href="/seat-picker.css?v=0.5.18" />
