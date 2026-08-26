@@ -91,6 +91,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/selection-flow-v2.js?v=0.14.2" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.13.0" strategy="afterInteractive" />
         <Script src="/direct-capture.js?v=0.14.2" strategy="afterInteractive" />
+        <Script src="/selection-flow-build-options.js?v=0.14.3" strategy="afterInteractive" />
         <Script src="/compact-ambiguity.js?v=0.5.22" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
