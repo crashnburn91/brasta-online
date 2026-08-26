@@ -46,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={brastaDisplay.variable}>
       <head>
+        <meta name="brasta-realtime-url" content={process.env.NEXT_PUBLIC_BRASTA_REALTIME_URL || ''} />
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/live-score-ui.js?v=0.10.0" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.11.0" strategy="beforeInteractive" />
