@@ -37,6 +37,13 @@
     return `rank-${String(rank || 'unranked').toLowerCase().replace(/\s+/g, '-')}`;
   }
 
+  function rankBadge(rank, options = {}) {
+    if (window.BrastaRankBadge?.render) return window.BrastaRankBadge.render(rank, options);
+    const extra = options.className ? ` ${esc(options.className)}` : '';
+    const label = options.label == null ? String(rank || 'Unranked') : String(options.label);
+    return `<span class="rank-badge ${rankClass(rank)}${extra}">${esc(label)}</span>`;
+  }
+
   function roomCodeFromUrl() {
     try {
       return String(new URLSearchParams(location.search).get('room') || '')
@@ -78,7 +85,7 @@
     if (!card) return;
     if (!token()) {
       card.innerHTML = `
-        <div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div><span class="rank-badge rank-unranked">Unranked</span></div>
+        <div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div>${rankBadge('Unranked')}</div>
         <p>Queue solo. Brasta finds three players and balances the teams by hidden skill.</p>
         <div class="competitive-actions"><button class="primary" data-ranked-2v2-signin>Sign In to Play 2v2</button><button data-ranked-2v2-leaderboard>2v2 Leaderboard</button></div>
         <div class="server-note">Your 2v2 rank is completely separate from your 1v1 rank.</div>`;
@@ -87,13 +94,13 @@
     }
 
     if (!profile) {
-      card.innerHTML = `<div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div><span class="rank-badge rank-unranked">…</span></div><p>Loading your 2v2 competitive profile…</p>`;
+      card.innerHTML = `<div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div>${rankBadge('Unranked', { label: '…' })}</div><p>Loading your 2v2 competitive profile…</p>`;
       return;
     }
 
     const rank = profile.rankName || 'Unranked';
     card.innerHTML = `
-      <div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div><span class="rank-badge ${rankClass(rank)}">${esc(rank)}</span></div>
+      <div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div>${rankBadge(rank)}</div>
       <p>${rank === 'Unranked' ? 'Complete five team placement matches to receive your first 2v2 rank.' : 'Queue solo and climb the separate 2v2 ranked ladder.'}</p>
       <div class="competitive-statline">
         <span><small>Record</small><b>${profile.wins}–${profile.losses}</b></span>
@@ -246,7 +253,7 @@
       <div class="queue-pulse"><i></i><i></i><i></i></div>
       <div class="eyebrow">RANKED 2v2</div>
       <h2>Finding a team match…</h2>
-      <span class="rank-badge ${rankClass(rank)}">${esc(rank)}</span>
+      ${rankBadge(rank)}
       <p data-queue-2v2-detail>${seconds < 12 ? 'Looking for three players near your skill level.' : seconds < 32 ? 'Expanding the four-player search.' : 'Searching a wider range for a balanced match.'}</p>
       <div class="queue-time">${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}</div>
       <button data-ranked-2v2-cancel>Cancel Search</button>
@@ -302,7 +309,7 @@
       const data = await api('leaderboard', { limit: 50 }, false);
       const rows = data.leaderboard || [];
       modal.querySelector('.competitive-list-modal').innerHTML = `<button class="competitive-close" aria-label="Close">×</button><div class="eyebrow">RANKED 2v2</div><h2>2v2 Leaderboard</h2>
-        ${rows.length ? `<div class="competitive-table-wrap"><table class="competitive-table"><thead><tr><th>#</th><th>Player</th><th>Rank</th><th>W–L</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${row.leaderboardPosition}</td><td><b>${esc(row.username)}</b></td><td><span class="mini-rank ${rankClass(row.rankName)}">${esc(row.rankName)}</span></td><td>${row.wins}–${row.losses}</td></tr>`).join('')}</tbody></table></div>` : '<div class="competitive-empty">No players have completed 2v2 placements yet.</div>'}`;
+        ${rows.length ? `<div class="competitive-table-wrap"><table class="competitive-table"><thead><tr><th>#</th><th>Player</th><th>Rank</th><th>W–L</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${row.leaderboardPosition}</td><td><b>${esc(row.username)}</b></td><td>${rankBadge(row.rankName, { size: 'small', className: 'mini-rank' })}</td><td>${row.wins}–${row.losses}</td></tr>`).join('')}</tbody></table></div>` : '<div class="competitive-empty">No players have completed 2v2 placements yet.</div>'}`;
       modal.querySelector('.competitive-close').onclick = () => modal.remove();
     } catch (error) {
       modal.querySelector('p').textContent = error.message || 'Could not load 2v2 leaderboard.';
@@ -423,7 +430,7 @@
     modal.innerHTML = `<section class="competitive-modal result-modal" role="dialog" aria-modal="true">
       <div class="result-word ${result.won ? 'win' : 'loss'}">${result.won ? 'VICTORY' : 'DEFEAT'}</div>
       ${placementsDoneNow ? '<div class="eyebrow">2v2 PLACEMENTS COMPLETE</div>' : '<div class="eyebrow">RANKED 2v2</div>'}
-      <span class="rank-badge result-rank ${rankClass(rank)}">${esc(rank)}</span>
+      ${rankBadge(rank, { size: 'large', className: 'result-rank' })}
       <p>${rank === 'Unranked' ? `Placement ${Math.min(result.placementGamesAfter, 5)} / 5 complete.` : `${result.winsAfter} wins · ${result.lossesAfter} losses`}</p>
       ${result.rankBefore !== result.rankAfter && result.rankBefore !== 'Unranked' ? `<div class="rank-change">${esc(result.rankBefore)} → <b>${esc(result.rankAfter)}</b></div>` : ''}
       <div class="competitive-actions result-actions"><button class="primary" data-ranked-2v2-again>Play Again</button><button data-ranked-2v2-home>Return Home</button><button data-result-2v2-leaderboard>Leaderboard</button></div>
