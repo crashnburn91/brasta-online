@@ -261,15 +261,33 @@
     return document.querySelector(`[data-legal="${type}"]`);
   }
 
-  function finishReplay(type) {
+  function nativeSelectedLooseCount() {
+    return document.querySelectorAll('.loose-row .card.selected[data-card][aria-label]').length;
+  }
+
+  function finishReplay(type, expectedLooseCount, tries = 0) {
     const submit = document.querySelector('.action-panel [data-submit]');
-    if (submit) {
-      // We have reconstructed the exact board-first selection in the native pending-action UI.
-      // Submit only now, after every staged target has been replayed.
+    const nativeReady = nativeSelectedLooseCount() >= expectedLooseCount;
+
+    // The app fully re-renders after every native board selection. On a fast
+    // local game that can finish in the same tick, but ranked/network matches
+    // can take a few frames. Wait until the native UI actually reflects every
+    // replayed target before submitting the move.
+    if (submit && nativeReady && !submit.disabled) {
       submit.click();
+      delete document.documentElement.dataset.selectionV2Replay;
+      busy = false;
+      return;
     }
-    delete document.documentElement.dataset.selectionV2Replay;
-    busy = false;
+
+    if (tries >= 40) {
+      delete document.documentElement.dataset.selectionV2Replay;
+      busy = false;
+      queueEnhance();
+      return;
+    }
+
+    window.setTimeout(() => finishReplay(type, expectedLooseCount, tries + 1), 25);
   }
 
   function replayTargets(type) {
@@ -280,25 +298,53 @@
         const choice = Array.from(document.querySelectorAll('[data-buildchoice]')).find((el) => el.dataset.buildchoice === buildId);
         choice?.click();
       }
+
       let i = 0;
       const clickNext = () => {
         if (i >= looseLabels.length) {
-          window.setTimeout(() => finishReplay(type), 0);
+          finishReplay(type, looseLabels.length);
           return;
         }
-        const label = looseLabels[i++];
-        const target = Array.from(document.querySelectorAll('.loose-row .card[data-card][aria-label]')).find((el) => el.getAttribute('aria-label') === label);
-        if (target) {
-          // compact.ts also installs a capture-phase board probe. Temporarily
-          // remove that probe marker so this replay click reaches the native
-          // pending-action handler instead of being swallowed by compact.
-          const compactProbe = target.getAttribute('data-compact-loose-probe');
-          if (compactProbe !== null) target.removeAttribute('data-compact-loose-probe');
-          target.click();
-          if (compactProbe !== null) target.setAttribute('data-compact-loose-probe', compactProbe);
+
+        const label = looseLabels[i];
+        const beforeCount = nativeSelectedLooseCount();
+        const target = Array.from(document.querySelectorAll('.loose-row .card[data-card][aria-label]'))
+          .find((el) => el.getAttribute('aria-label') === label);
+
+        if (!target) {
+          delete document.documentElement.dataset.selectionV2Replay;
+          busy = false;
+          return;
         }
-        window.setTimeout(clickNext, 0);
+
+        // compact.ts also installs a capture-phase board probe. Temporarily
+        // remove that probe marker so this replay click reaches the native
+        // pending-action handler instead of being swallowed by compact.
+        const compactProbe = target.getAttribute('data-compact-loose-probe');
+        if (compactProbe !== null) target.removeAttribute('data-compact-loose-probe');
+        target.click();
+        if (compactProbe !== null) target.setAttribute('data-compact-loose-probe', compactProbe);
+
+        // Wait for the app's native selectedLoose state to survive its render
+        // before replaying the next card. This prevents ranked captures such as
+        // 4 + 6 with a 10 from being submitted with a partial selection.
+        const waitForSelection = (tries = 0) => {
+          if (nativeSelectedLooseCount() > beforeCount) {
+            i++;
+            window.setTimeout(clickNext, 0);
+            return;
+          }
+          if (tries >= 24) {
+            delete document.documentElement.dataset.selectionV2Replay;
+            busy = false;
+            queueEnhance();
+            return;
+          }
+          window.setTimeout(() => waitForSelection(tries + 1), 20);
+        };
+        waitForSelection();
       };
+
       clickNext();
     }, 0);
   }
