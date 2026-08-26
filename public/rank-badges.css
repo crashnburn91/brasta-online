@@ -1,6 +1,8 @@
 /* Scalable competitive rank emblems. Suit symbols inherit tier color; no red/black suit coloring. */
 .rank-badge.rank-visual{
+  --rank-light:#d7dfe2;
   --rank-color:#9aa6ab;
+  --rank-dark:#657075;
   --rank-deep:#283136;
   display:inline-flex;
   align-items:center;
@@ -17,14 +19,14 @@
   letter-spacing:.035em;
   white-space:nowrap;
 }
-.rank-badge.rank-visual.rank-unranked{--rank-color:#8e999e;--rank-deep:#242b2e}
-.rank-badge.rank-visual[class*="rank-bronze-"]{--rank-color:#c78655;--rank-deep:#422b1c}
-.rank-badge.rank-visual[class*="rank-silver-"]{--rank-color:#cbd4d9;--rank-deep:#353d42}
-.rank-badge.rank-visual[class*="rank-gold-"]{--rank-color:#e4bc4e;--rank-deep:#493b15}
-.rank-badge.rank-visual[class*="rank-platinum-"]{--rank-color:#70c9bf;--rank-deep:#163f3b}
-.rank-badge.rank-visual[class*="rank-diamond-"]{--rank-color:#5aaaff;--rank-deep:#173d64}
-.rank-badge.rank-visual.rank-master{--rank-color:#a779e4;--rank-deep:#35224f}
-.rank-badge.rank-visual.rank-grandmaster{--rank-color:#ef6256;--rank-deep:#551d19}
+.rank-badge.rank-visual.rank-unranked{--rank-light:#d5dcdf;--rank-color:#8e999e;--rank-dark:#5c666a;--rank-deep:#242b2e}
+.rank-badge.rank-visual[class*="rank-bronze-"]{--rank-light:#efb27f;--rank-color:#c78655;--rank-dark:#8d512e;--rank-deep:#422b1c}
+.rank-badge.rank-visual[class*="rank-silver-"]{--rank-light:#f7fafb;--rank-color:#cbd4d9;--rank-dark:#8f9ba1;--rank-deep:#353d42}
+.rank-badge.rank-visual[class*="rank-gold-"]{--rank-light:#fff0a1;--rank-color:#e7bd45;--rank-dark:#a87413;--rank-deep:#493b15}
+.rank-badge.rank-visual[class*="rank-platinum-"]{--rank-light:#b4f4ea;--rank-color:#70c9bf;--rank-dark:#35897f;--rank-deep:#163f3b}
+.rank-badge.rank-visual[class*="rank-diamond-"]{--rank-light:#b9e4ff;--rank-color:#5aaaff;--rank-dark:#2868b4;--rank-deep:#173d64}
+.rank-badge.rank-visual.rank-master{--rank-light:#d9baff;--rank-color:#a779e4;--rank-dark:#7149ae;--rank-deep:#35224f}
+.rank-badge.rank-visual.rank-grandmaster{--rank-light:#ffaaa2;--rank-color:#ef6256;--rank-dark:#a92f29;--rank-deep:#551d19}
 
 .rank-emblem{
   flex:0 0 auto;
@@ -34,9 +36,9 @@
   filter:drop-shadow(0 4px 7px #0007);
 }
 .rank-shield{
-  fill:color-mix(in srgb,var(--rank-deep) 86%,#08100d 14%);
-  stroke:var(--rank-color);
-  stroke-width:2.5;
+  fill:color-mix(in srgb,var(--rank-deep) 88%,#08100d 12%);
+  stroke:var(--rank-metal,var(--rank-color));
+  stroke-width:2.35;
   stroke-linejoin:round;
 }
 .rank-shield-inner{
@@ -46,14 +48,14 @@
   stroke-linejoin:round;
 }
 .rank-emblem-symbol{
-  fill:var(--rank-color);
+  fill:var(--rank-metal,var(--rank-color));
   font-family:Georgia,"Times New Roman",serif;
-  font-size:27px;
+  font-size:25.5px;
   font-weight:700;
 }
 .rank-emblem-gem,.rank-emblem-crown{
   fill:none;
-  stroke:var(--rank-color);
+  stroke:var(--rank-metal,var(--rank-color));
   stroke-width:2.5;
   stroke-linejoin:round;
   stroke-linecap:round;
@@ -69,11 +71,8 @@
   stroke-width:1.5;
 }
 .rank-division-mark{
-  fill:none;
-  stroke:var(--rank-color);
-  stroke-width:2.2;
-  stroke-linecap:round;
-  stroke-linejoin:round;
+  fill:var(--rank-color);
+  opacity:.92;
 }
 .rank-badge-copy{color:var(--rank-color);line-height:1}
 
@@ -104,4 +103,27 @@
 }
 @media(max-width:520px){
   .rank-size-small .rank-emblem{width:24px;height:27px}
+}
+/* Badge polish: keep emblem and label optically centered as a single unit. */
+.competitive-title-row .rank-badge.rank-visual{
+  align-self:center;
+  margin-top:0;
+}
+.rank-badge.rank-visual .rank-emblem{
+  display:block;
+}
+.rank-badge.rank-visual .rank-badge-copy{
+  display:inline-flex;
+  align-items:center;
+  min-height:1.2em;
+}
+.rank-badge.rank-visual[class*="rank-gold-"] .rank-badge-copy{
+  color:#e7bd45;
+  background:linear-gradient(180deg,#fff1a6 0%,#edc958 42%,#c68e1b 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.rank-badge.rank-visual[class*="rank-gold-"] .rank-emblem{
+  filter:drop-shadow(0 3px 5px #0008) drop-shadow(0 0 5px #e7bd4526);
 }
