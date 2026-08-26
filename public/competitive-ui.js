@@ -76,13 +76,20 @@
     return `rank-${String(rank || 'unranked').toLowerCase().replace(/\s+/g, '-')}`;
   }
 
+  function rankBadge(rank, options = {}) {
+    if (window.BrastaRankBadge?.render) return window.BrastaRankBadge.render(rank, options);
+    const extra = options.className ? ` ${esc(options.className)}` : '';
+    const label = options.label == null ? String(rank || 'Unranked') : String(options.label);
+    return `<span class="rank-badge ${rankClass(rank)}${extra}">${esc(label)}</span>`;
+  }
+
   function renderCard() {
     const card = document.querySelector('[data-competitive-card]');
     if (!card) return;
     const signedIn = Boolean(token());
     if (!signedIn) {
       card.innerHTML = `
-        <div class="competitive-title-row"><div><div class="eyebrow">RANKED 1v1</div><h2>Competitive Brasta</h2></div><span class="rank-badge rank-unranked">Unranked</span></div>
+        <div class="competitive-title-row"><div><div class="eyebrow">RANKED 1v1</div><h2>Competitive Brasta</h2></div>${rankBadge('Unranked')}</div>
         <p>Match automatically with another player and climb from Bronze through Grandmaster.</p>
         <div class="competitive-actions"><button class="primary" data-ranked-signin>Sign In to Play Ranked</button><button data-ranked-leaderboard>Leaderboard</button></div>
         <div class="server-note">Private rooms remain unranked and can still be played as a guest.</div>`;
@@ -92,14 +99,14 @@
 
     if (!profile) {
       card.innerHTML = `
-        <div class="competitive-title-row"><div><div class="eyebrow">RANKED 1v1</div><h2>Competitive Brasta</h2></div><span class="rank-badge rank-unranked">…</span></div>
+        <div class="competitive-title-row"><div><div class="eyebrow">RANKED 1v1</div><h2>Competitive Brasta</h2></div>${rankBadge('Unranked', { label: '…' })}</div>
         <p>Loading your competitive profile…</p>`;
       return;
     }
 
     const rank = profile.rankName || 'Unranked';
     card.innerHTML = `
-      <div class="competitive-title-row"><div><div class="eyebrow">RANKED 1v1</div><h2>Competitive Brasta</h2></div><span class="rank-badge ${rankClass(rank)}">${esc(rank)}</span></div>
+      <div class="competitive-title-row"><div><div class="eyebrow">RANKED 1v1</div><h2>Competitive Brasta</h2></div>${rankBadge(rank)}</div>
       <p>${rank === 'Unranked' ? 'Complete five placement matches to receive your first rank.' : 'Match against similarly skilled players and climb the ranked ladder.'}</p>
       <div class="competitive-statline">
         <span><small>Record</small><b>${profile.wins}–${profile.losses}</b></span>
@@ -277,7 +284,7 @@
       <div class="queue-pulse"><i></i><i></i><i></i></div>
       <div class="eyebrow">RANKED 1v1</div>
       <h2>Finding an opponent…</h2>
-      <span class="rank-badge ${rankClass(rank)}">${esc(rank)}</span>
+      ${rankBadge(rank)}
       <p data-queue-detail>${seconds < 12 ? 'Searching close to your skill level.' : seconds < 32 ? 'Expanding the matchmaking search.' : 'Searching a wider range for the best available opponent.'}</p>
       <div class="queue-time">${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}</div>
       <button data-ranked-cancel>Cancel Search</button>
@@ -338,7 +345,7 @@
       const data = await api('leaderboard', { limit: 50 }, false);
       const rows = data.leaderboard || [];
       modal.querySelector('.competitive-list-modal').innerHTML = `<button class="competitive-close" aria-label="Close">×</button><div class="eyebrow">RANKED 1v1</div><h2>Leaderboard</h2>
-        ${rows.length ? `<div class="competitive-table-wrap"><table class="competitive-table"><thead><tr><th>#</th><th>Player</th><th>Rank</th><th>W–L</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${row.leaderboardPosition}</td><td><b>${esc(row.username)}</b></td><td><span class="mini-rank ${rankClass(row.rankName)}">${esc(row.rankName)}</span></td><td>${row.wins}–${row.losses}</td></tr>`).join('')}</tbody></table></div>` : '<div class="competitive-empty">No players have completed placements yet.</div>'}`;
+        ${rows.length ? `<div class="competitive-table-wrap"><table class="competitive-table"><thead><tr><th>#</th><th>Player</th><th>Rank</th><th>W–L</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${row.leaderboardPosition}</td><td><b>${esc(row.username)}</b></td><td>${rankBadge(row.rankName, { size: 'small', className: 'mini-rank' })}</td><td>${row.wins}–${row.losses}</td></tr>`).join('')}</tbody></table></div>` : '<div class="competitive-empty">No players have completed placements yet.</div>'}`;
       modal.querySelector('.competitive-close').onclick = () => { modal.remove(); leaderboardOpen = false; };
     } catch (error) {
       modal.querySelector('p').textContent = error.message || 'Could not load leaderboard.';
@@ -472,7 +479,7 @@
     modal.innerHTML = `<section class="competitive-modal result-modal" role="dialog" aria-modal="true">
       <div class="result-word ${result.won ? 'win' : 'loss'}">${result.won ? 'VICTORY' : 'DEFEAT'}</div>
       ${placementsDoneNow ? '<div class="eyebrow">PLACEMENTS COMPLETE</div>' : '<div class="eyebrow">RANKED 1v1</div>'}
-      <span class="rank-badge result-rank ${rankClass(rank)}">${esc(rank)}</span>
+      ${rankBadge(rank, { size: 'large', className: 'result-rank' })}
       <p>${rank === 'Unranked' ? `Placement ${Math.min(result.placementGamesAfter, 5)} / 5 complete.` : `${result.winsAfter} wins · ${result.lossesAfter} losses`}</p>
       ${result.rankBefore !== result.rankAfter && result.rankBefore !== 'Unranked' ? `<div class="rank-change">${esc(result.rankBefore)} → <b>${esc(result.rankAfter)}</b></div>` : ''}
       <div class="competitive-actions result-actions"><button class="primary" data-ranked-home>Return Home</button><button data-result-leaderboard>Leaderboard</button></div>
