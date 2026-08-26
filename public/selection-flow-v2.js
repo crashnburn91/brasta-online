@@ -7,6 +7,7 @@
   let stagedBuildId = '';
   let queued = false;
   let busy = false;
+  let lastMoveText = null;
 
   function parseCard(label) {
     const text = String(label || '').trim();
@@ -77,9 +78,6 @@
   function looseCaptureValid(card) {
     const loose = stagedLooseCards();
     if (!loose.length || card.rank === 'J') return false;
-    // A single loose card of the same rank is always a direct capture. Keep this
-    // explicit instead of relying on partition math so board-first/hand-first
-    // selection cannot incorrectly report "No valid action" for e.g. 2♦ + 2♥.
     if (loose.length === 1 && loose[0].rank === card.rank) return true;
     if (card.value != null) return loose.every((c) => c.value != null) && canPartition(loose.map((c) => c.value), card.value);
     if (card.rank === 'Q' || card.rank === 'K') return loose.every((c) => c.rank === card.rank);
@@ -140,6 +138,38 @@
   function actionPanel() {
     return Array.from(document.querySelectorAll('.action-panel')).find((panel) => !panel.classList.contains('opening-panel')) || null;
   }
+
+  function clearSelection() {
+    stagedLoose.clear();
+    stagedBuildId = '';
+  }
+
+  function pruneSelection() {
+    const liveLoose = new Set(Array.from(document.querySelectorAll('.loose-row .card[aria-label]')).map((el) => el.getAttribute('aria-label') || ''));
+    for (const label of Array.from(stagedLoose)) {
+      if (!liveLoose.has(label)) stagedLoose.delete(label);
+    }
+    if (stagedBuildId && !Array.from(document.querySelectorAll('.build[data-build]')).some((el) => el.dataset.build === stagedBuildId)) {
+      stagedBuildId = '';
+    }
+  }
+
+  function syncSelectionLifecycle() {
+    const banner = document.querySelector('.last-move-banner');
+    const currentMove = (banner?.textContent || '').trim();
+    if (currentMove && lastMoveText !== null && currentMove !== lastMoveText) {
+      clearSelection();
+      busy = false;
+    }
+    if (currentMove) lastMoveText = currentMove;
+    pruneSelection();
+  }
+
+  window.__BRASTA_CLEAR_SELECTION_V2__ = () => {
+    clearSelection();
+    busy = false;
+    queueEnhance();
+  };
 
   function enableBoard() {
     if (!document.querySelector('.table') || document.querySelector('.topbar .spectator-pill')) return;
@@ -266,17 +296,13 @@
     window.setTimeout(() => waitForAction(), 0);
   }
 
-  function clearSelection() {
-    stagedLoose.clear();
-    stagedBuildId = '';
-  }
-
   function enhance() {
     queued = false;
     if (!document.querySelector('.table')) {
       clearSelection();
       return;
     }
+    syncSelectionLifecycle();
     enableBoard();
     renderOptions();
   }
@@ -322,7 +348,7 @@
   function start() {
     document.addEventListener('click', onBoardClick, true);
     document.addEventListener('click', onHandClick, false);
-    new MutationObserver(queueEnhance).observe(document.documentElement, { childList: true, subtree: true });
+    new MutationObserver(queueEnhance).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     queueEnhance();
   }
 
