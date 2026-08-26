@@ -69,7 +69,10 @@
       panel.querySelector('.bot-difficulty-options')?.insertAdjacentHTML('beforeend', '<button type="button" data-bot-difficulty-choice="expert">Expert</button>');
     }
 
-    if (panel.parentElement !== actions || panel.nextElementSibling !== botButton) actions.insertBefore(panel, botButton);
+    // Keep the primary practice action first, then its settings immediately below it.
+    if (panel.parentElement !== actions || botButton.nextElementSibling !== panel) {
+      actions.insertBefore(panel, botButton.nextElementSibling);
+    }
     syncButtons(panel);
   }
 
