@@ -100,7 +100,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/dealer-marker.js?v=0.5.19" strategy="afterInteractive" />
         <Script src="/build-owner-ui.js?v=0.5.24" strategy="afterInteractive" />
-        <Script src="/burn-callout.js?v=0.13.0" strategy="afterInteractive" />
+        <Script src="/burn-callout.js?v=0.13.1" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
