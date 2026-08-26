@@ -14,6 +14,7 @@ import {
   ranked2v2QueueAction,
 } from '../../../lib/ranked-matchmaking-2v2';
 import { prepareRankedQueueSwitch } from '../../../lib/ranked-queue-coordination';
+import { forfeitRankedMatch } from '../../../lib/ranked-forfeit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,11 @@ export async function POST(request: Request) {
       const result = mode === '2v2'
         ? await monitorRanked2v2Room(request, String(body.roomCode || ''))
         : await monitorRankedRoom(request, String(body.roomCode || ''));
+      return json(result);
+    }
+
+    if (action === 'forfeit') {
+      const result = await forfeitRankedMatch(request, String(body.roomCode || ''), mode);
       return json(result);
     }
 
