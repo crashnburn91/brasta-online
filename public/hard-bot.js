@@ -35,6 +35,21 @@
     return false;
   }
 
+  function isBigCardLoose(state, command) {
+    if (!state || command?.type !== 'PLAY_LOOSE') return false;
+    return command.cardId === '10-diamonds' || command.cardId === '2-clubs';
+  }
+
+  function playerHandSize(state, seat) {
+    return state?.players?.find((player) => player.seat === seat)?.hand?.length || 0;
+  }
+
+  function burnedJackOnMove(before, after, seat, command) {
+    if (!before || !after || command?.type !== 'JACK_ACTION' || !window.Brasta?.teamForSeat) return false;
+    const team = window.Brasta.teamForSeat(before.mode, seat);
+    return (after.roundStats?.burnedJacks?.[team] || 0) > (before.roundStats?.burnedJacks?.[team] || 0);
+  }
+
   function tableCanBeClearedByOneCard(state) {
     if (!state || state.phase !== 'play') return false;
     if (!state.loose?.length && !state.builds?.length) return false;
@@ -85,30 +100,47 @@
     const engine = window.Brasta;
     if (!state || !seat || !bot?.commandCandidates || !bot?.scoreCommand || !engine?.applyCommand) return fallbackCommand;
 
+    const handSize = playerHandSize(state, seat);
     const evaluated = bot.commandCandidates(state, seat).map((command) => {
       const result = engine.applyCommand(state, command);
-      if (!result?.ok) return { command, score: Number.NEGATIVE_INFINITY, brastaRisk: true, specialExposure: true };
+      if (!result?.ok) return { command, score: Number.NEGATIVE_INFINITY, brastaRisk: true, specialExposure: true, bigCardLoose: true, jackBurn: true };
       return {
         command,
         score: bot.scoreCommand(state, seat, command) + capturedSpecialBonus(state, result.state, seat),
         brastaRisk: tableCanBeClearedByOneCard(result.state),
         specialExposure: specialRankExposure(state, command),
+        bigCardLoose: isBigCardLoose(state, command),
+        jackBurn: burnedJackOnMove(state, result.state, seat, command),
         key: JSON.stringify(command),
       };
     }).filter((entry) => Number.isFinite(entry.score));
 
     if (!evaluated.length) return fallbackCommand;
 
-    const hasBrastaSafeMove = evaluated.some((entry) => !entry.brastaRisk);
-    const hasSpecialSafeMove = evaluated.some((entry) => !entry.specialExposure);
+    // Hard mode treats burning a Jack or dumping Big 10 / Big 2 while other
+    // playable cards remain as strategic mistakes, not merely low-scoring moves.
+    // Only permit one of these moves when every legal candidate has the same problem.
+    let pool = evaluated;
+    if (handSize > 1) {
+      const preservesBigCards = pool.filter((entry) => !entry.bigCardLoose);
+      if (preservesBigCards.length) pool = preservesBigCards;
 
-    for (const entry of evaluated) {
-      if (entry.brastaRisk) entry.score -= hasBrastaSafeMove ? 10000 : 325;
-      if (entry.specialExposure) entry.score -= hasSpecialSafeMove ? 7000 : 220;
+      const avoidsBurningJack = pool.filter((entry) => !entry.jackBurn);
+      if (avoidsBurningJack.length) pool = avoidsBurningJack;
     }
 
-    evaluated.sort((a, b) => b.score - a.score || String(a.key).localeCompare(String(b.key)));
-    return evaluated[0]?.command || fallbackCommand;
+    const hasBrastaSafeMove = pool.some((entry) => !entry.brastaRisk);
+    const hasSpecialSafeMove = pool.some((entry) => !entry.specialExposure);
+
+    for (const entry of pool) {
+      if (entry.brastaRisk) entry.score -= hasBrastaSafeMove ? 10000 : 325;
+      if (entry.specialExposure) entry.score -= hasSpecialSafeMove ? 7000 : 220;
+      if (entry.bigCardLoose && handSize > 1) entry.score -= 20000;
+      if (entry.jackBurn && handSize > 1) entry.score -= 20000;
+    }
+
+    pool.sort((a, b) => b.score - a.score || String(a.key).localeCompare(String(b.key)));
+    return pool[0]?.command || fallbackCommand;
   }
 
   function TrackingWebSocket(url, protocols) {
@@ -228,7 +260,7 @@
     ensurePracticeControls();
   }
 
-  window.BrastaHardBot = { hardChoice, tableCanBeClearedByOneCard, specialRankExposure };
+  window.BrastaHardBot = { hardChoice, tableCanBeClearedByOneCard, specialRankExposure, isBigCardLoose, burnedJackOnMove };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
 })();
