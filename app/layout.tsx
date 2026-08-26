@@ -90,7 +90,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/private-postmatch.js?v=0.16.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=5" strategy="afterInteractive" />
-        <Script src="/hard-bot.js?v=0.17.2" strategy="afterInteractive" />
+        <Script src="/hard-bot.js?v=0.17.3" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.17.5" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/selection-flow-v2.js?v=0.14.8" strategy="afterInteractive" />
