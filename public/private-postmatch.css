@@ -1,0 +1,15 @@
+.private-postmatch-actions{
+  margin-top:18px;
+}
+
+@media(max-width:800px){
+  .private-postmatch-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .private-postmatch-actions button{
+    min-height:48px;
+    border-radius:14px;
+  }
+}
