@@ -6,6 +6,9 @@
 
   const DIFFICULTY_KEY = 'brasta-bot-difficulty';
   const BOT_NAME = 'Brasta Bot';
+  const BOT_PENDING_KEY = 'brasta-bot-pending';
+  const AUTH_TOKEN_KEY = 'brasta-auth-access-token';
+  const LAST_NAME_KEY = 'brasta-online-last-name';
   const NativeWebSocket = window.WebSocket;
   if (!NativeWebSocket) return;
 
@@ -96,8 +99,6 @@
 
     if (!evaluated.length) return fallbackCommand;
 
-    // Hard mode is intentionally preventative: if any legal move avoids handing the
-    // opponent an immediate Brasta opportunity, unsafe moves are effectively removed.
     const hasBrastaSafeMove = evaluated.some((entry) => !entry.brastaRisk);
     const hasSpecialSafeMove = evaluated.some((entry) => !entry.specialExposure);
 
@@ -143,31 +144,88 @@
   try { Object.setPrototypeOf(TrackingWebSocket, NativeWebSocket); } catch {}
   window.WebSocket = TrackingWebSocket;
 
-  function ensureDifficultyControl() {
-    const button = document.querySelector('[data-play-bot]');
-    if (!button || document.querySelector('[data-bot-difficulty]')) return;
-
-    const select = document.createElement('select');
-    select.dataset.botDifficulty = '1';
-    select.setAttribute('aria-label', 'Bot difficulty');
-    select.title = 'Bot difficulty';
-    select.innerHTML = '<option value="normal">Normal Bot</option><option value="hard">Hard Bot</option>';
-    select.value = difficulty();
-    select.addEventListener('change', () => setDifficulty(select.value));
-    button.parentElement?.insertBefore(select, button);
+  function findLearnCard() {
+    const headings = Array.from(document.querySelectorAll('h1,h2,h3,strong'));
+    const heading = headings.find((el) => /^learn brasta$/i.test(String(el.textContent || '').trim()));
+    if (!heading) return null;
+    return heading.closest('.landing-card, .home-card, .product-card, section, article, div');
   }
 
-  document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target.closest('[data-play-bot]') : null;
-    if (!target) return;
+  function preferredBotPlayerName() {
+    try {
+      const signedIn = !!localStorage.getItem(AUTH_TOKEN_KEY);
+      if (!signedIn) return 'Player';
+      const saved = String(localStorage.getItem(LAST_NAME_KEY) || '').trim();
+      return saved.slice(0, 24) || 'Player';
+    } catch {
+      return 'Player';
+    }
+  }
+
+  function startBotMatch() {
+    const createButton = document.querySelector('[data-create-room="1v1"]');
+    const nameInput = document.querySelector('#create-name');
+    if (!(createButton instanceof HTMLElement) || !(nameInput instanceof HTMLInputElement)) return;
+
     const select = document.querySelector('[data-bot-difficulty]');
-    if (select) setDifficulty(select.value);
-  }, true);
+    if (select instanceof HTMLSelectElement) setDifficulty(select.value);
+
+    nameInput.value = preferredBotPlayerName();
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    try { localStorage.setItem(BOT_PENDING_KEY, '1'); } catch {}
+    createButton.click();
+  }
+
+  function ensurePracticeControls() {
+    const learnCard = findLearnCard();
+    if (!learnCard) return;
+
+    document.querySelectorAll('[data-play-bot]').forEach((el) => {
+      if (!learnCard.contains(el)) el.remove();
+    });
+    document.querySelectorAll('[data-bot-difficulty]').forEach((el) => {
+      if (!learnCard.contains(el)) el.remove();
+    });
+
+    let wrap = learnCard.querySelector('[data-bot-practice-controls]');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.dataset.botPracticeControls = '1';
+      wrap.className = 'button-row bot-practice-controls';
+      learnCard.appendChild(wrap);
+    }
+
+    let select = wrap.querySelector('[data-bot-difficulty]');
+    if (!select) {
+      select = document.createElement('select');
+      select.dataset.botDifficulty = '1';
+      select.setAttribute('aria-label', 'Bot difficulty');
+      select.title = 'Bot difficulty';
+      select.innerHTML = '<option value="normal">Normal Bot</option><option value="hard">Hard Bot</option>';
+      select.value = difficulty();
+      select.addEventListener('change', () => setDifficulty(select.value));
+      wrap.appendChild(select);
+    }
+
+    let button = wrap.querySelector('[data-play-bot]');
+    if (!button) {
+      button = document.createElement('button');
+      button.className = 'primary';
+      button.dataset.playBot = 'true';
+      button.textContent = '🤖 Play vs Bot';
+      button.title = 'Start a 1v1 practice match against Brasta Bot';
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        startBotMatch();
+      });
+      wrap.appendChild(button);
+    }
+  }
 
   function boot() {
     const root = document.getElementById('app') || document.body;
-    new MutationObserver(ensureDifficultyControl).observe(root, { childList: true, subtree: true });
-    ensureDifficultyControl();
+    new MutationObserver(ensurePracticeControls).observe(root, { childList: true, subtree: true });
+    ensurePracticeControls();
   }
 
   window.BrastaHardBot = { hardChoice, tableCanBeClearedByOneCard, specialRankExposure };
