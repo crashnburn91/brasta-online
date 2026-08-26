@@ -61,8 +61,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
         <link rel="stylesheet" href="/experience-ui.css?v=0.9.0" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.0" />
-        <link rel="stylesheet" href="/competitive-account.css?v=0.8.0" />
+        <link rel="stylesheet" href="/competitive-account.css?v=0.8.1" />
         <link rel="stylesheet" href="/product-surface.css?v=0.8.2" />
+        <link rel="stylesheet" href="/rank-badges.css?v=0.1.0" />
         <link rel="stylesheet" href="/ranked-wallpaper.css?v=0.9.5" />
         <link rel="stylesheet" href="/private-match-brand.css?v=0.8.3" />
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
@@ -82,11 +83,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/match-menu.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
+        <Script src="/rank-badges.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
-        <Script src="/competitive-ui.js?v=0.7.5" strategy="afterInteractive" />
-        <Script src="/competitive-2v2-ui.js?v=0.8.1" strategy="afterInteractive" />
-        <Script src="/competitive-account.js?v=0.8.0" strategy="afterInteractive" />
+        <Script src="/competitive-ui.js?v=0.7.6" strategy="afterInteractive" />
+        <Script src="/competitive-2v2-ui.js?v=0.8.2" strategy="afterInteractive" />
+        <Script src="/competitive-account.js?v=0.8.1" strategy="afterInteractive" />
         <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/private-postmatch.js?v=0.16.0" strategy="afterInteractive" />
