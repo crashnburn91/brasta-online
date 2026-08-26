@@ -50,6 +50,7 @@ type RankedParticipant = {
   connectionId: string;
   lastSeen: number;
   authUserId: string;
+  rankName: string;
 };
 
 type RankedRoom = {
@@ -203,8 +204,8 @@ async function createMatch(entry1: QueueEntry, entry2: QueueEntry): Promise<Reco
     revision: 0,
     hostToken: `ranked-system-${makeToken()}`,
     seats: {
-      '1': { seat: 1, name: seat1Entry.username, token: seat1Token, connectionId: '', lastSeen: 0, authUserId: seat1Entry.userId },
-      '2': { seat: 2, name: seat2Entry.username, token: seat2Token, connectionId: '', lastSeen: 0, authUserId: seat2Entry.userId },
+      '1': { seat: 1, name: seat1Entry.username, token: seat1Token, connectionId: '', lastSeen: 0, authUserId: seat1Entry.userId, rankName: seat1Entry.rankName },
+      '2': { seat: 2, name: seat2Entry.username, token: seat2Token, connectionId: '', lastSeen: 0, authUserId: seat2Entry.userId, rankName: seat2Entry.rankName },
     },
     spectators: {},
     gameState: null,
