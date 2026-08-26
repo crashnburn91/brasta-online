@@ -3,6 +3,7 @@
   window.__BRASTA_SELECTION_BUILD_FIX__ = true;
 
   const SUITS = new Set(['♣', '♦', '♥', '♠']);
+  const originalReplaceChildren = Element.prototype.replaceChildren;
 
   function parseCard(label) {
     const text = String(label || '').trim();
@@ -120,16 +121,15 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'primary selection-v2-action';
+    button.dataset.buildOptionFix = '1';
     button.textContent = label;
     button.onclick = () => execute(type, buildId, looseLabels);
     return button;
   }
 
-  function enhance() {
-    const panel = Array.from(document.querySelectorAll('.action-panel')).find((el) => !el.classList.contains('opening-panel'));
-    const host = panel?.querySelector('[data-selection-v2-options]');
+  function replacementButtons() {
     const hand = selectedHand();
-    if (!panel || !host || !hand?.card) return;
+    if (!hand?.card) return [];
 
     const loose = selectedLoose();
     const build = selectedBuild();
@@ -147,16 +147,28 @@
       }
     }
 
-    if (!replacements.length) return;
-    host.replaceChildren(...replacements);
+    return replacements;
   }
 
-  function schedule() {
-    setTimeout(enhance, 60);
-    setTimeout(enhance, 160);
+  // selection-flow-v2 owns this host and re-renders it frequently. Intercept that
+  // exact render point so existing-build actions are part of the same render,
+  // rather than racing the selection observer with a second asynchronous rewrite.
+  Element.prototype.replaceChildren = function(...nodes) {
+    if (this instanceof HTMLElement && this.matches('[data-selection-v2-options]')) {
+      const replacements = replacementButtons();
+      if (replacements.length) return originalReplaceChildren.apply(this, replacements);
+    }
+    return originalReplaceChildren.apply(this, nodes);
+  };
+
+  function refreshCurrentHost() {
+    const host = document.querySelector('[data-selection-v2-options]');
+    if (!host) return;
+    const replacements = replacementButtons();
+    if (replacements.length) originalReplaceChildren.apply(host, replacements);
   }
 
-  document.addEventListener('click', schedule, false);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule, { once: true });
-  else schedule();
+  document.addEventListener('click', () => setTimeout(refreshCurrentHost, 0), false);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshCurrentHost, { once: true });
+  else refreshCurrentHost();
 })();
