@@ -68,7 +68,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.0" />
-        <link rel="stylesheet" href="/team-branding.css?v=0.15.3" />
+        <link rel="stylesheet" href="/team-branding.css?v=0.15.4" />
+        <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
       </head>
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/competitive-account.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
+        <Script src="/private-postmatch.js?v=0.16.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=5" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/selection-flow-v2.js?v=0.14.6" strategy="afterInteractive" />
