@@ -29,11 +29,6 @@
     return document.querySelector('.hand .card.selected[data-card][aria-label]');
   }
 
-  function selectedHandCard() {
-    const button = selectedHandButton();
-    return button ? parseCard(button.getAttribute('aria-label')) : null;
-  }
-
   function stagedLooseCards() {
     return Array.from(stagedLoose).map(parseCard).filter(Boolean);
   }
@@ -82,6 +77,10 @@
   function looseCaptureValid(card) {
     const loose = stagedLooseCards();
     if (!loose.length || card.rank === 'J') return false;
+    // A single loose card of the same rank is always a direct capture. Keep this
+    // explicit instead of relying on partition math so board-first/hand-first
+    // selection cannot incorrectly report "No valid action" for e.g. 2♦ + 2♥.
+    if (loose.length === 1 && loose[0].rank === card.rank) return true;
     if (card.value != null) return loose.every((c) => c.value != null) && canPartition(loose.map((c) => c.value), card.value);
     if (card.rank === 'Q' || card.rank === 'K') return loose.every((c) => c.rank === card.rank);
     return false;
