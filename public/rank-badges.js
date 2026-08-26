@@ -1,6 +1,8 @@
 (() => {
   if (window.BrastaRankBadge) return;
 
+  let emblemSequence = 0;
+
   const esc = (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (char) => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
   })[char]);
@@ -24,7 +26,7 @@
   }
 
   function suitText(symbol) {
-    return `<text class="rank-emblem-symbol" x="32" y="42" text-anchor="middle" dominant-baseline="middle">${symbol}</text>`;
+    return `<text class="rank-emblem-symbol" x="32" y="35.5" text-anchor="middle" dominant-baseline="central">${symbol}</text>`;
   }
 
   function symbolFor(tier) {
@@ -56,20 +58,30 @@
 
   function divisionMarks(division) {
     if (!division) return '';
-    const marks = [];
-    for (let i = 0; i < division; i += 1) {
-      const x = 25 + (i * 7);
-      marks.push(`<path class="rank-division-mark" d="M${x - 3} 61 ${x} 64 ${x + 3} 61"/>`);
-    }
-    return marks.join('');
+    const width = 4.5;
+    const gap = 2.8;
+    const total = (division * width) + ((division - 1) * gap);
+    const start = 32 - (total / 2);
+    return Array.from({ length: division }, (_, index) => {
+      const x = start + (index * (width + gap));
+      return `<rect class="rank-division-mark" x="${x.toFixed(2)}" y="57.5" width="${width}" height="2.4" rx="1.2"/>`;
+    }).join('');
   }
 
   function emblem(rank, size = 'medium') {
     const info = parse(rank);
+    const gradientId = `rank-metal-${info.tier}-${++emblemSequence}`;
     return `<svg class="rank-emblem rank-emblem-${esc(size)} rank-tier-${info.tier}" viewBox="0 0 64 70" role="img" aria-label="${esc(info.raw)} rank badge">
-      <path class="rank-shield" d="M32 4 53 13v27c0 11-8 20-21 26C19 60 11 51 11 40V13Z"/>
-      <path class="rank-shield-inner" d="M32 9 48 16v23c0 8-6 15-16 21-10-6-16-13-16-21V16Z"/>
-      ${symbolFor(info.tier)}
+      <defs>
+        <linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--rank-light)"/>
+          <stop offset="46%" stop-color="var(--rank-color)"/>
+          <stop offset="100%" stop-color="var(--rank-dark)"/>
+        </linearGradient>
+      </defs>
+      <path class="rank-shield" style="--rank-metal:url(#${gradientId})" d="M32 5 52 13.5v25.8c0 10.7-7.4 19.4-20 25.6-12.6-6.2-20-14.9-20-25.6V13.5Z"/>
+      <path class="rank-shield-inner" d="M32 10 47.2 16.5v21.9c0 7.9-5.5 14.7-15.2 20-9.7-5.3-15.2-12.1-15.2-20V16.5Z"/>
+      <g class="rank-symbol-wrap" style="--rank-metal:url(#${gradientId})">${symbolFor(info.tier)}</g>
       ${divisionMarks(info.division)}
     </svg>`;
   }
