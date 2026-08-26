@@ -1,8 +1,12 @@
 namespace BrastaCompact {
   const SUIT_NAMES: Record<string, string> = { '♣': 'clubs', '♦': 'diamonds', '♥': 'hearts', '♠': 'spades' };
   let busy = false;
+  let stagedHandId = '';
+  const stagedLoose = new Set<string>();
+  let stagedBuildId = '';
 
   type ParsedCard = { rank: string; suit: string; value: number | null; label: string };
+  type ContextAction = { type: string; label: string };
 
   function parseCardLabel(label: string): ParsedCard | null {
     const text = label.trim();
@@ -23,8 +27,14 @@ namespace BrastaCompact {
     return button ? parseCardLabel(button.getAttribute('aria-label') || '') : null;
   }
 
-  function handCards(): ParsedCard[] {
+  function selectedHandId(): string {
+    return selectedHandButton()?.dataset.card || '';
+  }
+
+  function handCards(excludeSelected = false): ParsedCard[] {
+    const selected = selectedHandButton();
     return Array.from(document.querySelectorAll<HTMLButtonElement>('.hand .card[aria-label]'))
+      .filter((button) => !excludeSelected || button !== selected)
       .map((button) => parseCardLabel(button.getAttribute('aria-label') || ''))
       .filter((card): card is ParsedCard => !!card);
   }
@@ -32,6 +42,12 @@ namespace BrastaCompact {
   function selectedLooseCards(): ParsedCard[] {
     return Array.from(document.querySelectorAll<HTMLButtonElement>('.loose-row .card.selected[aria-label]'))
       .map((button) => parseCardLabel(button.getAttribute('aria-label') || ''))
+      .filter((card): card is ParsedCard => !!card);
+  }
+
+  function stagedLooseCards(): ParsedCard[] {
+    return Array.from(stagedLoose)
+      .map((label) => parseCardLabel(label))
       .filter((card): card is ParsedCard => !!card);
   }
 
@@ -49,6 +65,13 @@ namespace BrastaCompact {
     if (selectedChoice?.textContent) return selectedChoice.textContent.trim();
     const selectedBoard = document.querySelector<HTMLElement>('.build.selected .build-label');
     return selectedBoard?.textContent?.trim() || '';
+  }
+
+  function stagedBuildLabel(): string {
+    if (!stagedBuildId) return '';
+    const build = Array.from(document.querySelectorAll<HTMLElement>('.build[data-build]'))
+      .find((candidate) => candidate.dataset.build === stagedBuildId);
+    return build?.querySelector<HTMLElement>('.build-label')?.textContent?.trim() || '';
   }
 
   function buildValue(label: string): number | string | null {
@@ -119,48 +142,129 @@ namespace BrastaCompact {
     if (cancel) cancel.click();
   }
 
-  function beginLooseTarget(label: string): void {
-    if (busy) return;
-    const capture = actionButton('CAPTURE_LOOSE');
-    const build = actionButton('MAKE_BUILD');
-    const chosen = capture || build;
-    if (!chosen) return;
-
-    busy = true;
-    chosen.click();
-    window.setTimeout(() => {
-      const target = findLooseByLabel(label);
-      if (target) target.click();
-      busy = false;
-    }, 0);
+  function clearStaged(): void {
+    stagedLoose.clear();
+    stagedBuildId = '';
   }
 
-  function tryBuildAction(id: string, actions: string[], index = 0): void {
-    if (index >= actions.length || busy) return;
-    const button = actionButton(actions[index]);
-    if (!button) {
-      tryBuildAction(id, actions, index + 1);
-      return;
+  function syncStagedHand(): void {
+    const handId = selectedHandId();
+    if (handId === stagedHandId) return;
+    stagedHandId = handId;
+    clearStaged();
+  }
+
+  function retainedCardMatches(token: number | string): boolean {
+    return handCards(true).some((card) => typeof token === 'number' ? card.value === token : card.rank === token);
+  }
+
+  function stagedCaptureLooseValid(): boolean {
+    const played = selectedHandCard();
+    const loose = stagedLooseCards();
+    if (!played || !loose.length || !actionButton('CAPTURE_LOOSE')) return false;
+    if (played.value != null) {
+      return loose.every((card) => card.value != null) && canPartition(loose.map((card) => card.value!), played.value);
+    }
+    if (played.rank === 'Q' || played.rank === 'K') return loose.every((card) => card.rank === played.rank);
+    return false;
+  }
+
+  function stagedBuildTargets(): Array<number | string> {
+    const played = selectedHandCard();
+    const loose = stagedLooseCards();
+    if (!played || !loose.length || !actionButton('MAKE_BUILD')) return [];
+    const candidates = new Set<number | string>();
+    for (const card of handCards(true)) {
+      if (card.value != null) candidates.add(card.value);
+      else if (card.rank === 'Q' || card.rank === 'K') candidates.add(card.rank);
+    }
+    return Array.from(candidates).filter((token) => {
+      if (typeof token === 'number') {
+        if (played.value == null || loose.some((card) => card.value == null)) return false;
+        return canPartition([played.value, ...loose.map((card) => card.value!)], token);
+      }
+      return (token === 'Q' || token === 'K') && played.rank === token && loose.every((card) => card.rank === token);
+    });
+  }
+
+  function stagedCaptureBuildValid(token: number | string | null): boolean {
+    const played = selectedHandCard();
+    const loose = stagedLooseCards();
+    if (!played || token == null || !stagedBuildId || !actionButton('CAPTURE_BUILD')) return false;
+    const matches = typeof token === 'number' ? played.value === token : played.rank === token;
+    if (!matches) return false;
+    if (!loose.length) return true;
+    if (typeof token === 'number') return loose.every((card) => card.value != null) && canPartition(loose.map((card) => card.value!), token);
+    return loose.every((card) => card.rank === token);
+  }
+
+  function stagedAddBuildValid(token: number | string | null): boolean {
+    const played = selectedHandCard();
+    const loose = stagedLooseCards();
+    if (!played || token == null || !stagedBuildId || !actionButton('ADD_TO_BUILD') || !retainedCardMatches(token)) return false;
+    if (typeof token === 'number') {
+      if (played.value == null || loose.some((card) => card.value == null)) return false;
+      return canPartition([played.value, ...loose.map((card) => card.value!)], token);
+    }
+    return played.rank === token && loose.every((card) => card.rank === token);
+  }
+
+  function stagedRaiseBuildValid(token: number | string | null): boolean {
+    const played = selectedHandCard();
+    if (!played || typeof token !== 'number' || played.value == null || !stagedBuildId || stagedLoose.size || !actionButton('RAISE_BUILD')) return false;
+    const next = token + played.value;
+    return next <= 10 && retainedCardMatches(next);
+  }
+
+  function contextualActions(): ContextAction[] {
+    const played = selectedHandCard();
+    if (!played || played.rank === 'J' || (!stagedLoose.size && !stagedBuildId)) return [];
+    const actions: ContextAction[] = [];
+    if (!stagedBuildId) {
+      if (stagedCaptureLooseValid()) actions.push({ type: 'CAPTURE_LOOSE', label: 'Capture' });
+      const targets = stagedBuildTargets();
+      if (targets.length) actions.push({ type: 'MAKE_BUILD', label: targets.length === 1 ? `Build ${targets[0]}` : 'Build' });
+      return actions;
     }
 
-    busy = true;
-    button.click();
-    window.setTimeout(() => {
-      const target = buildChoiceById(id);
-      if (target) {
-        target.click();
-        busy = false;
-        return;
-      }
-      cancelPending();
+    const token = buildValue(stagedBuildLabel());
+    if (stagedCaptureBuildValid(token)) actions.push({ type: 'CAPTURE_BUILD', label: 'Capture' });
+    if (stagedAddBuildValid(token)) actions.push({ type: 'ADD_TO_BUILD', label: 'Add to Build' });
+    if (stagedRaiseBuildValid(token)) {
+      const next = typeof token === 'number' && played.value != null ? token + played.value : null;
+      actions.push({ type: 'RAISE_BUILD', label: next ? `Raise to ${next}` : 'Raise Build' });
+    }
+    return actions;
+  }
+
+  function replayLoose(labels: string[], index = 0): void {
+    if (index >= labels.length) {
       busy = false;
-      window.setTimeout(() => tryBuildAction(id, actions, index + 1), 0);
+      return;
+    }
+    window.setTimeout(() => {
+      const target = findLooseByLabel(labels[index]);
+      if (target) target.click();
+      replayLoose(labels, index + 1);
     }, 0);
   }
 
-  function beginBuildTarget(id: string): void {
-    // Tapping a matching build means capture first; otherwise prefer raise, then add.
-    tryBuildAction(id, ['CAPTURE_BUILD', 'RAISE_BUILD', 'ADD_TO_BUILD']);
+  function beginContextAction(type: string): void {
+    if (busy) return;
+    const button = actionButton(type);
+    if (!button) return;
+    const looseLabels = Array.from(stagedLoose);
+    const buildId = stagedBuildId;
+    busy = true;
+    button.click();
+
+    window.setTimeout(() => {
+      if (buildId) {
+        const choice = buildChoiceById(buildId);
+        if (choice) choice.click();
+      }
+      replayLoose(looseLabels);
+    }, 0);
   }
 
   function declarationToken(button: HTMLButtonElement): number | string | null {
@@ -199,51 +303,99 @@ namespace BrastaCompact {
     return false;
   }
 
+  function enableSelectionProbes(): void {
+    document.querySelectorAll<HTMLButtonElement>('.loose-row .card[aria-label]').forEach((card) => {
+      const label = card.getAttribute('aria-label') || '';
+      card.disabled = false;
+      card.classList.add('compact-probe');
+      card.classList.toggle('compact-staged', stagedLoose.has(label));
+      card.dataset.compactLooseProbe = label;
+    });
+
+    document.querySelectorAll<HTMLElement>('.build[data-build]').forEach((build) => {
+      const id = build.dataset.build || '';
+      build.classList.add('compact-probe');
+      build.classList.toggle('compact-staged', !!id && stagedBuildId === id);
+      build.dataset.compactBuildProbe = id;
+      build.setAttribute('aria-disabled', 'false');
+      build.tabIndex = 0;
+    });
+  }
+
+  function renderContextActions(panel: HTMLElement): void {
+    let host = panel.querySelector<HTMLElement>('[data-compact-context-actions]');
+    const actions = contextualActions();
+    const signature = `${stagedBuildId}|${Array.from(stagedLoose).sort().join(',')}|${actions.map((action) => `${action.type}:${action.label}`).join(',')}`;
+
+    if (!stagedLoose.size && !stagedBuildId) {
+      host?.remove();
+      panel.classList.remove('compact-has-targets');
+      return;
+    }
+
+    panel.classList.add('compact-has-targets');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'compact-context-actions';
+      host.dataset.compactContextActions = '1';
+      panel.appendChild(host);
+    }
+    if (host.dataset.signature === signature) return;
+    host.dataset.signature = signature;
+    host.replaceChildren();
+
+    if (!actions.length) {
+      const note = document.createElement('span');
+      note.className = 'compact-context-note';
+      note.textContent = 'That selection has no capture or build.';
+      host.appendChild(note);
+      return;
+    }
+
+    for (const action of actions) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'primary compact-context-action';
+      button.dataset.compactAction = action.type;
+      button.textContent = action.label;
+      button.onclick = () => beginContextAction(action.type);
+      host.appendChild(button);
+    }
+  }
+
   function renameInitialActions(panel: HTMLElement): void {
-    panel.classList.add('compact-action-dock', 'compact-initial-action');
+    syncStagedHand();
+    panel.classList.add('compact-action-dock', 'compact-initial-action', 'compact-selection-first');
     const played = selectedHandCard();
+    if (!played) return;
+
+    const nativeActions = Array.from(panel.querySelectorAll<HTMLButtonElement>('[data-legal]'));
+    const isJack = played.rank === 'J';
+    for (const button of nativeActions) {
+      const type = button.dataset.legal || '';
+      const keepVisible = type === 'PLAY_LOOSE' || type === 'JACK_SWEEP' || type === 'BURN_JACK';
+      button.classList.toggle('compact-hidden-native', !keepVisible);
+    }
+
     const play = panel.querySelector<HTMLButtonElement>('[data-legal="PLAY_LOOSE"]');
-    if (play && played) setText(play, `Play ${played.label}`);
-
-    const makeBuild = panel.querySelector<HTMLButtonElement>('[data-legal="MAKE_BUILD"]');
-    if (makeBuild) setText(makeBuild, 'Build');
-
-    // Build actions that represent distinct player choices stay visible. This keeps
-    // Capture Build and Add to Build symmetric with the rest of the hand-first flow.
-    for (const type of ['CAPTURE_LOOSE', 'RAISE_BUILD']) {
-      panel.querySelector<HTMLElement>(`[data-legal="${type}"]`)?.classList.add('compact-auto-action');
-    }
-    const captureBuild = panel.querySelector<HTMLButtonElement>('[data-legal="CAPTURE_BUILD"]');
-    if (captureBuild) {
-      captureBuild.classList.remove('compact-auto-action');
-      setText(captureBuild, 'Capture Build');
-    }
-    const addToBuild = panel.querySelector<HTMLButtonElement>('[data-legal="ADD_TO_BUILD"]');
-    if (addToBuild) {
-      addToBuild.classList.remove('compact-auto-action');
-      setText(addToBuild, 'Add to Build');
-    }
+    if (play) setText(play, `Play ${played.label} Loose`);
 
     const jackSweep = panel.querySelector<HTMLButtonElement>('[data-legal="JACK_SWEEP"]');
     if (jackSweep) setText(jackSweep, 'Sweep');
     const burnJack = panel.querySelector<HTMLButtonElement>('[data-legal="BURN_JACK"]');
     if (burnJack) setText(burnJack, 'Burn Jack −10');
 
-    // Loose cards become direct targets while no action has been chosen.
-    document.querySelectorAll<HTMLButtonElement>('.loose-row .card[aria-label]').forEach((card) => {
-      if (card.dataset.card) return;
-      card.disabled = false;
-      card.classList.add('compact-probe');
-      card.dataset.compactLooseProbe = card.getAttribute('aria-label') || '';
-    });
+    if (isJack) {
+      clearStaged();
+      panel.classList.add('compact-jack-action');
+      panel.classList.remove('compact-has-targets');
+      panel.querySelector('[data-compact-context-actions]')?.remove();
+      return;
+    }
 
-    // Builds also become direct targets. Existing data-build IDs are preserved.
-    document.querySelectorAll<HTMLElement>('.build[data-build]').forEach((build) => {
-      build.classList.add('compact-probe');
-      build.dataset.compactBuildProbe = build.dataset.build || '';
-      build.setAttribute('aria-disabled', 'false');
-      build.tabIndex = 0;
-    });
+    panel.classList.remove('compact-jack-action');
+    enableSelectionProbes();
+    renderContextActions(panel);
   }
 
   function autoSelectSingleBuild(panel: HTMLElement): boolean {
@@ -324,11 +476,15 @@ namespace BrastaCompact {
     const action = pendingAction(panel);
     if (action) renamePendingAction(panel, action);
     else if (selectedHandButton() && panel.querySelector('[data-legal]')) renameInitialActions(panel);
+    else {
+      stagedHandId = '';
+      clearStaged();
+    }
   }
 
   function onProbeClick(event: Event): void {
     const target = event.target as HTMLElement | null;
-    if (!target) return;
+    if (!target || busy) return;
 
     const loose = target.closest<HTMLElement>('[data-compact-loose-probe]');
     if (loose) {
@@ -336,7 +492,10 @@ namespace BrastaCompact {
       event.stopPropagation();
       if ('stopImmediatePropagation' in event) event.stopImmediatePropagation();
       const label = loose.dataset.compactLooseProbe || '';
-      if (label) beginLooseTarget(label);
+      if (!label) return;
+      if (stagedLoose.has(label)) stagedLoose.delete(label);
+      else stagedLoose.add(label);
+      enhance();
       return;
     }
 
@@ -346,7 +505,9 @@ namespace BrastaCompact {
       event.stopPropagation();
       if ('stopImmediatePropagation' in event) event.stopImmediatePropagation();
       const id = build.dataset.compactBuildProbe || build.dataset.build || '';
-      if (id) beginBuildTarget(id);
+      if (!id) return;
+      stagedBuildId = stagedBuildId === id ? '' : id;
+      enhance();
     }
   }
 
