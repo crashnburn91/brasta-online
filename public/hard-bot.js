@@ -70,6 +70,12 @@
     const loose = state.loose || [];
     if (!loose.length) return false;
 
+    // A single loose card is technically capturable by a matching card, but treating
+    // every lone card as a catastrophic Brasta risk makes the bot refuse obvious
+    // value captures (for example, refusing to capture a King just because a Queen
+    // would remain). Reserve the hard Brasta filter for genuinely exposed multi-card tables.
+    if (loose.length === 1) return false;
+
     const ranks = loose.map((id) => state.cards?.[id]?.rank).filter(Boolean);
     if (ranks.length === loose.length && (ranks.every((rank) => rank === 'Q') || ranks.every((rank) => rank === 'K'))) {
       return true;
@@ -117,9 +123,6 @@
 
     if (!evaluated.length) return fallbackCommand;
 
-    // Hard mode treats burning a Jack or dumping Big 10 / Big 2 while other
-    // playable cards remain as strategic mistakes, not merely low-scoring moves.
-    // Only permit one of these moves when every legal candidate has the same problem.
     let pool = evaluated;
     if (handSize > 1) {
       const preservesBigCards = pool.filter((entry) => !entry.bigCardLoose);
