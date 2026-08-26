@@ -93,9 +93,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/hard-bot.js?v=0.17.2" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.17.5" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
-        <Script src="/selection-flow-v2.js?v=0.14.6" strategy="afterInteractive" />
+        <Script src="/selection-flow-v2.js?v=0.14.8" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.13.0" strategy="afterInteractive" />
-        <Script src="/direct-capture.js?v=0.14.2" strategy="afterInteractive" />
+        <Script src="/direct-capture.js?v=0.14.3" strategy="afterInteractive" />
         <Script src="/selection-flow-build-options.js?v=0.14.4" strategy="afterInteractive" />
         <Script src="/selection-explanation.js?v=0.14.5" strategy="afterInteractive" />
         <Script src="/selection-cleanup.js?v=0.14.7" strategy="afterInteractive" />
