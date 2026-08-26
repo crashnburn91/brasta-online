@@ -68,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.0" />
-        <link rel="stylesheet" href="/team-branding.css?v=0.15.0" />
+        <link rel="stylesheet" href="/team-branding.css?v=0.15.3" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
       </head>
