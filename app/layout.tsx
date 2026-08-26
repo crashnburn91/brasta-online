@@ -50,7 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
-        <link rel="stylesheet" href="/compact-gameplay.css?v=0.13.0" />
+        <link rel="stylesheet" href="/compact-gameplay.css?v=0.14.0" />
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.17" />
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
         <link rel="stylesheet" href="/seat-picker.css?v=0.5.18" />
@@ -88,6 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/lobby-polish.js?v=5" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
+        <Script src="/selection-flow-v2.js?v=0.14.0" strategy="afterInteractive" />
         <Script src="/dist/compact.js?v=0.13.0" strategy="afterInteractive" />
         <Script src="/compact-ambiguity.js?v=0.5.22" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
