@@ -79,18 +79,18 @@
     const target = Number(latestState.targetScore || 110);
 
     strip.innerHTML = `
-      <div class="live-score-group match-score-live" title="Match total from completed rounds">
+      <div class="live-score-group match-score-live" title="Blue Team vs Red Team match total from completed rounds">
         <small>MATCH</small>
-        <span class="live-team team-a-live">A <b>${matchA}</b></span>
+        <span class="live-team team-a-live" aria-label="Blue Team ${matchA}"><b>${matchA}</b></span>
         <span class="live-score-dash">–</span>
-        <span class="live-team team-b-live">B <b>${matchB}</b></span>
+        <span class="live-team team-b-live" aria-label="Red Team ${matchB}"><b>${matchB}</b></span>
       </div>
       <span class="live-score-divider" aria-hidden="true"></span>
-      <div class="live-score-group round-score-live" title="Secured points this round. Majority and last-pickup points are added only when the round ends.">
+      <div class="live-score-group round-score-live" title="Blue Team vs Red Team secured points this round. Majority and last-pickup points are added only when the round ends.">
         <small>ROUND</small>
-        <span class="live-team team-a-live">A <b>${roundA}</b></span>
+        <span class="live-team team-a-live" aria-label="Blue Team ${roundA}"><b>${roundA}</b></span>
         <span class="live-score-dash">–</span>
-        <span class="live-team team-b-live">B <b>${roundB}</b></span>
+        <span class="live-team team-b-live" aria-label="Red Team ${roundB}"><b>${roundB}</b></span>
       </div>
       <span class="live-score-target">First to ${target}</span>`;
   }
