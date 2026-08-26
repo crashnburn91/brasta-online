@@ -1,5 +1,10 @@
-.burn-call-button{border-color:#b55d43!important;background:linear-gradient(180deg,#5d2b20,#3d1d17)!important;color:#ffe9df!important;font-weight:800}
+.game-action-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:7px}
+.game-action-row>.action-panel{min-width:0;margin-top:0}
+.burn-call-button{align-self:center;display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-height:38px;width:auto!important;padding:8px 11px!important;border:1px solid #b55d43!important;border-radius:10px!important;background:linear-gradient(180deg,#5d2b20,#3d1d17)!important;color:#ffe9df!important;font-size:12px!important;font-weight:850!important;line-height:1!important;white-space:nowrap;box-shadow:0 7px 20px #0006;touch-action:manipulation}
 .burn-call-button:hover{background:linear-gradient(180deg,#713326,#4a2119)!important}
+.burn-call-button:active{transform:translateY(1px)}
+.burn-call-icon{display:inline-flex;width:16px;height:16px;flex:0 0 16px}
+.burn-call-icon svg{width:16px;height:16px;fill:currentColor}
 .burn-call-toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1200;background:#101914;color:#f5f7f5;border:1px solid #ffffff2b;border-radius:999px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:0 8px 28px #0008;max-width:min(90vw,460px);text-align:center;pointer-events:none}
 .burn-call-modal{position:fixed;inset:0;z-index:1250;display:grid;place-items:center;padding:20px;background:#0009;backdrop-filter:blur(4px)}
 .burn-call-card{width:min(92vw,480px);background:#0e1d16;border:1px solid #ffffff24;border-radius:18px;padding:22px;box-shadow:0 22px 70px #000b}
@@ -8,4 +13,16 @@
 .burn-call-eyebrow{font-size:11px;font-weight:900;letter-spacing:.14em;color:#ff9d7d}
 .burn-call-options{display:grid;gap:10px}
 .burn-call-options button{width:100%;min-height:44px;text-align:left;justify-content:flex-start}
-@media(max-width:600px){.burn-call-button{padding-left:10px!important;padding-right:10px!important}.burn-call-card{padding:18px}.burn-call-card h2{font-size:21px}}
+@media (max-height:1080px), (max-width:900px){
+  .game-action-row:has(>.action-panel.compact-action-dock){position:sticky;bottom:max(7px,env(safe-area-inset-bottom));z-index:40;align-items:center}
+  .game-action-row>.action-panel.compact-action-dock{position:static!important;bottom:auto!important;margin-top:0!important}
+}
+@media(max-width:600px){
+  .game-action-row{gap:6px}
+  .burn-call-button{min-height:36px;padding:7px 9px!important}
+  .burn-call-card{padding:18px}.burn-call-card h2{font-size:21px}
+}
+@media(max-width:430px){
+  .burn-call-button{width:38px!important;min-width:38px;padding:7px!important}
+  .burn-call-label{display:none}
+}
