@@ -486,6 +486,11 @@ namespace BrastaCompact {
     const target = event.target as HTMLElement | null;
     if (!target || busy) return;
 
+    // selection-flow-v2 replays staged board targets through the native pending
+    // action UI. Those synthetic clicks must reach the native game handler;
+    // compact's capture-phase probe would otherwise swallow them.
+    if (document.documentElement.dataset.selectionV2Replay === '1') return;
+
     const loose = target.closest<HTMLElement>('[data-compact-loose-probe]');
     if (loose) {
       event.preventDefault();
