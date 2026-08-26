@@ -53,6 +53,7 @@ type RankedParticipant = {
   connectionId: string;
   lastSeen: number;
   authUserId: string;
+  rankName: string;
 };
 
 type RankedRoom = {
@@ -242,6 +243,7 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
       connectionId: '',
       lastSeen: 0,
       authUserId: entry.userId,
+      rankName: entry.rankName,
     }])) as Record<string, RankedParticipant>,
     spectators: {},
     gameState: null,
