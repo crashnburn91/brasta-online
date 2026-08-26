@@ -21,5 +21,11 @@
   display:none!important;
 }
 
+/* The local player's card is already visually obvious; the YOU badge adds noise. */
+.player-chip .you-badge,
+.lobby-seat .you-badge{
+  display:none!important;
+}
+
 .team-blue-text{color:#5eb8ff!important}
 .team-red-text{color:#ff6f67!important}
