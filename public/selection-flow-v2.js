@@ -160,6 +160,7 @@
     if (currentMove && lastMoveText !== null && currentMove !== lastMoveText) {
       clearSelection();
       busy = false;
+      delete document.documentElement.dataset.selectionV2Replay;
     }
     if (currentMove) lastMoveText = currentMove;
     pruneSelection();
@@ -168,6 +169,7 @@
   window.__BRASTA_CLEAR_SELECTION_V2__ = () => {
     clearSelection();
     busy = false;
+    delete document.documentElement.dataset.selectionV2Replay;
     queueEnhance();
   };
 
@@ -259,7 +261,18 @@
     return document.querySelector(`[data-legal="${type}"]`);
   }
 
-  function replayTargets() {
+  function finishReplay(type) {
+    const submit = document.querySelector('.action-panel [data-submit]');
+    if (submit) {
+      // We have reconstructed the exact board-first selection in the native pending-action UI.
+      // Submit only now, after every staged target has been replayed.
+      submit.click();
+    }
+    delete document.documentElement.dataset.selectionV2Replay;
+    busy = false;
+  }
+
+  function replayTargets(type) {
     const looseLabels = Array.from(stagedLoose);
     const buildId = stagedBuildId;
     window.setTimeout(() => {
@@ -269,7 +282,10 @@
       }
       let i = 0;
       const clickNext = () => {
-        if (i >= looseLabels.length) { busy = false; return; }
+        if (i >= looseLabels.length) {
+          window.setTimeout(() => finishReplay(type), 0);
+          return;
+        }
         const label = looseLabels[i++];
         const target = Array.from(document.querySelectorAll('.loose-row .card[data-card][aria-label]')).find((el) => el.getAttribute('aria-label') === label);
         target?.click();
@@ -282,15 +298,20 @@
   function executeOption(handButton, type) {
     if (busy) return;
     busy = true;
+    document.documentElement.dataset.selectionV2Replay = '1';
     if (!handButton.classList.contains('selected')) handButton.click();
     const waitForAction = (tries = 0) => {
       const native = findNativeAction(type);
       if (native) {
         native.click();
-        replayTargets();
+        replayTargets(type);
         return;
       }
-      if (tries > 20) { busy = false; return; }
+      if (tries > 20) {
+        delete document.documentElement.dataset.selectionV2Replay;
+        busy = false;
+        return;
+      }
       window.setTimeout(() => waitForAction(tries + 1), 20);
     };
     window.setTimeout(() => waitForAction(), 0);
@@ -300,6 +321,7 @@
     queued = false;
     if (!document.querySelector('.table')) {
       clearSelection();
+      delete document.documentElement.dataset.selectionV2Replay;
       return;
     }
     syncSelectionLifecycle();
