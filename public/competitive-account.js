@@ -19,8 +19,14 @@
       : `${status.wins}W · ${status.losses}L${status.currentStreak ? ` · ${status.currentStreak} streak` : ''}`;
   }
 
+  function rankBadge(rank) {
+    if (window.BrastaRankBadge?.render) return window.BrastaRankBadge.render(rank, { size: 'small' });
+    return `<b>${rank || 'Unranked'}</b>`;
+  }
+
   function rankRow(label, status) {
-    return `<div class="account-competitive-row"><span>${label}</span><b>${status?.rankName || 'Unranked'}</b><small>${summary(status)}</small></div>`;
+    const rank = status?.rankName || 'Unranked';
+    return `<div class="account-competitive-row"><span>${label}</span><div class="account-competitive-rank">${rankBadge(rank)}</div><small>${summary(status)}</small></div>`;
   }
 
   function render() {
