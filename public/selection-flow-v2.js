@@ -351,6 +351,28 @@
 
   function executeOption(handButton, type) {
     if (busy) return;
+
+    // Captures no longer need DOM replay. The core client exposes a narrow
+    // server-authoritative bridge that resolves the staged labels against the
+    // current game state and submits the real command directly.
+    if ((type === 'CAPTURE_LOOSE' || type === 'CAPTURE_BUILD') && typeof window.__BRASTA_DIRECT_SELECTION_ACTION__ === 'function') {
+      const cardId = handButton.dataset.card || '';
+      const submitted = window.__BRASTA_DIRECT_SELECTION_ACTION__({
+        type,
+        cardId,
+        looseLabels: Array.from(stagedLoose),
+        buildId: stagedBuildId || undefined,
+      });
+      if (submitted) {
+        clearSelection();
+        busy = false;
+        delete document.documentElement.dataset.selectionV2Replay;
+        return;
+      }
+    }
+
+    // Keep the native replay path as a fallback for non-capture contextual
+    // actions until they are migrated to the direct bridge as well.
     busy = true;
     document.documentElement.dataset.selectionV2Replay = '1';
     if (!handButton.classList.contains('selected')) handButton.click();
