@@ -21,12 +21,16 @@
     const clean = String(name || '').trim();
     if (!clean || clean === `Seat ${seat}`) return `S${seat}`;
 
-    const parts = clean.split(/[\s._-]+/).filter(Boolean);
+    const parts = clean
+      .split(/[\s._-]+/)
+      .map((part) => part.replace(/[^a-z0-9]/gi, ''))
+      .filter(Boolean);
+
     if (parts.length > 1) {
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
     }
 
-    const compact = (parts[0] || clean).replace(/[^a-z0-9]/gi, '');
+    const compact = parts[0] || clean.replace(/[^a-z0-9]/gi, '');
     return (compact.slice(0, 2) || `S${seat}`).toUpperCase();
   }
 
