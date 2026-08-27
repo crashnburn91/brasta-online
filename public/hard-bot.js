@@ -199,10 +199,14 @@
     const handSize = playerHand(state, seat).length;
     let pool = evaluated;
     if (handSize > 1) {
-      const preservesBigCards = pool.filter((entry) => !entry.bigCardLoose);
-      if (preservesBigCards.length) pool = preservesBigCards;
+      // A burned Jack is a guaranteed scoring loss. Big 2 / Big 10 exposure is
+      // only a risk, so never remove those alternatives before checking whether
+      // they let us avoid an unnecessary Jack burn.
       const avoidsBurningJack = pool.filter((entry) => !entry.jackBurn);
       if (avoidsBurningJack.length) pool = avoidsBurningJack;
+
+      const preservesBigCards = pool.filter((entry) => !entry.bigCardLoose);
+      if (preservesBigCards.length) pool = preservesBigCards;
     }
 
     const hasBrastaSafeMove = pool.some((entry) => !entry.brastaRisk);
