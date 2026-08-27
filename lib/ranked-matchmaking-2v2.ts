@@ -619,33 +619,39 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
 async function tryMatch(entry: QueueEntry): Promise<Ranked2v2Assignment | null> {
   const lock = await acquireKeyLock(QUEUE_LOCK_KEY);
   try {
-    const current = await readQueueEntry(entry.userId);
+    let current = await readQueueEntry(entry.userId);
     if (!current) return readAssignment(entry.userId);
-    const now = Date.now();
-    current.lastSeen = now;
-    await writeQueueEntry(current);
 
-    const candidates = await cleanAndLoadCandidates(entry.userId);
-    const currentWindow = searchWindow(now - current.joinedAt);
-    const eligible = candidates
-      .map((candidate) => ({
-        candidate,
-        gap: Math.abs(candidate.ordinal - current.ordinal),
-        allowed: Math.max(currentWindow, searchWindow(now - candidate.joinedAt)),
-      }))
-      .filter(({ gap, allowed }) => gap <= allowed)
-      .sort((a, b) => a.gap - b.gap || a.candidate.joinedAt - b.candidate.joinedAt)
-      .map(({ candidate }) => candidate);
+    if (current.partyId) {
+      const party = await readPartyForUser(current.userId);
+      if (!party || party.id !== current.partyId || party.members.length !== 2) {
+        await removeQueuedUnitForUser(current.userId);
+        return null;
+      }
+      const refreshed = await ensureDuoQueue(party, current.joinedAt);
+      current = refreshed.find((candidate) => candidate.userId === current!.userId) || current;
+    } else {
+      current.lastSeen = Date.now();
+      await writeQueueEntry(current);
+    }
 
-    if (eligible.length < 3) return null;
-    const group: [QueueEntry, QueueEntry, QueueEntry, QueueEntry] = [current, eligible[0], eligible[1], eligible[2]];
+    const candidates = await cleanAndLoadCandidates();
+    const group = chooseMatchGroup(current, candidates);
+    if (!group) return null;
+
     for (const candidate of group) {
-      if (!(await readQueueEntry(candidate.userId))) return null;
+      const live = await readQueueEntry(candidate.userId);
+      if (!live || live.partyId !== candidate.partyId || live.partnerUserId !== candidate.partnerUserId) return null;
     }
 
     await Promise.all(group.map((candidate) => removeQueueEntry(candidate.userId)));
     try {
       const assignments = await createMatch(group);
+      const partyIds = [...new Set(group.map((candidate) => candidate.partyId).filter((id): id is string => Boolean(id)))];
+      for (const partyId of partyIds) {
+        const party = await readParty(partyId);
+        if (party) await clearParty(party);
+      }
       return assignments[current.userId] || null;
     } catch (error) {
       const retryAt = Date.now();
@@ -657,39 +663,85 @@ async function tryMatch(entry: QueueEntry): Promise<Ranked2v2Assignment | null> 
   }
 }
 
-function queuePayload(status: CompetitiveStatus, entry: QueueEntry | null, assignment: Ranked2v2Assignment | null) {
-  if (assignment) return { state: 'matched' as const, assignment, competitive: status };
-  if (entry) return {
-    state: 'queued' as const,
-    competitive: status,
-    queuedAt: entry.joinedAt,
-    waitSeconds: Math.max(0, Math.floor((Date.now() - entry.joinedAt) / 1000)),
-    searchRange: searchWindow(Date.now() - entry.joinedAt),
-    playersNeeded: 4,
-  };
-  return { state: 'idle' as const, competitive: status };
+function queuePayload(
+  status: CompetitiveStatus,
+  entry: QueueEntry | null,
+  assignment: Ranked2v2Assignment | null,
+  party: Ranked2v2Party | null,
+  viewerUserId: string,
+) {
+  const visibleParty = publicParty(party, viewerUserId);
+  if (assignment) return { state: 'matched' as const, assignment, competitive: status, party: visibleParty };
+  if (entry) {
+    const partner = party?.members.find((member) => member.userId !== viewerUserId);
+    return {
+      state: 'queued' as const,
+      competitive: status,
+      queuedAt: entry.joinedAt,
+      waitSeconds: Math.max(0, Math.floor((Date.now() - entry.joinedAt) / 1000)),
+      searchRange: searchWindow(Date.now() - entry.joinedAt),
+      queueType: entry.partyId ? 'duo' as const : 'solo' as const,
+      partnerName: entry.partyId ? partner?.username || null : null,
+      playersNeeded: entry.partyId ? 2 : 3,
+      party: visibleParty,
+    };
+  }
+  return { state: 'idle' as const, competitive: status, party: visibleParty };
 }
 
-export async function ranked2v2QueueAction(request: Request, action: 'status' | 'join' | 'leave') {
+export async function ranked2v2QueueAction(
+  request: Request,
+  action: 'status' | 'join' | 'leave',
+  queueAs: 'solo' | 'duo' = 'solo',
+) {
   if (!competitiveBackendReady()) {
     return { state: 'unavailable' as const, message: 'Ranked play needs its backend secret configured.' };
   }
   const { identity, accessToken } = await authFromRequest(request);
   const status = await getCompetitiveStatus(accessToken, '2v2');
+  let party = await readPartyForUser(identity.userId);
   const assignment = await readAssignment(identity.userId);
-  if (assignment) return queuePayload(status, null, assignment);
+  if (assignment) return queuePayload(status, null, assignment, party, identity.userId);
 
   if (action === 'join') {
     const r = await requireRedis();
     if (await r.exists(legacy1v1AssignmentKey(identity.userId))) {
       throw new Error('Finish your current ranked 1v1 match before joining ranked 2v2.');
     }
+
+    if (queueAs === 'duo') {
+      if (!party || party.members.length !== 2) throw new Error('Your ranked duo needs two players before matchmaking can start.');
+      const currentIndex = party.members.findIndex((member) => member.userId === identity.userId);
+      if (currentIndex >= 0) party.members[currentIndex] = partyMember(identity, status);
+      await writeParty(party);
+
+      for (const member of party.members) {
+        if (await r.exists(legacy1v1AssignmentKey(member.userId))) {
+          throw new Error(`${member.username} must finish their current ranked 1v1 match before the duo can queue.`);
+        }
+        if (await readAssignment(member.userId)) {
+          throw new Error(`${member.username} is already assigned to a ranked 2v2 match.`);
+        }
+      }
+      await Promise.all(party.members.map((member) => leave1v1Queue(member.userId)));
+      const entries = await ensureDuoQueue(party);
+      const current = entries.find((entry) => entry.userId === identity.userId)!;
+      const matched = await tryMatch(current);
+      if (matched) return queuePayload(status, null, matched, party, identity.userId);
+      return queuePayload(status, await readQueueEntry(identity.userId), null, party, identity.userId);
+    }
+
+    if (party) {
+      await removeQueuedUnitForUser(identity.userId);
+      await clearParty(party);
+      party = null;
+    }
     await leave1v1Queue(identity.userId);
   }
 
   if (action === 'leave') {
-    await removeQueueEntry(identity.userId);
-    return queuePayload(status, null, null);
+    await removeQueuedUnitForUser(identity.userId);
+    return queuePayload(status, null, null, party, identity.userId);
   }
 
   let entry = await readQueueEntry(identity.userId);
@@ -704,8 +756,19 @@ export async function ranked2v2QueueAction(request: Request, action: 'status' | 
       placementGames: status.placementGames,
       joinedAt: now,
       lastSeen: now,
+      partyId: null,
+      partnerUserId: null,
     };
     await writeQueueEntry(entry);
+  } else if (entry?.partyId) {
+    party = await readPartyForUser(identity.userId);
+    if (party && party.id === entry.partyId && party.members.length === 2) {
+      const refreshed = await ensureDuoQueue(party, entry.joinedAt);
+      entry = refreshed.find((candidate) => candidate.userId === identity.userId) || entry;
+    } else {
+      await removeQueuedUnitForUser(identity.userId);
+      entry = null;
+    }
   } else if (entry) {
     entry.lastSeen = Date.now();
     await writeQueueEntry(entry);
@@ -713,10 +776,10 @@ export async function ranked2v2QueueAction(request: Request, action: 'status' | 
 
   if (entry) {
     const matched = await tryMatch(entry);
-    if (matched) return queuePayload(status, null, matched);
+    if (matched) return queuePayload(status, null, matched, party, identity.userId);
     entry = await readQueueEntry(identity.userId);
   }
-  return queuePayload(status, entry, null);
+  return queuePayload(status, entry, null, party, identity.userId);
 }
 
 async function loadRankedRoom(code: string): Promise<RankedRoom | null> {
