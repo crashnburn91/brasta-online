@@ -205,6 +205,14 @@ namespace BrastaApp {
     return `<header class="topbar"><div><strong>Brasta</strong>${round ? `<span class="pill">Round ${round}</span>` : ''}${roomPill}</div><div class="scoreline"><span>Team A <b>${scores.A}</b></span><span>Team B <b>${scores.B}</b></span>${state ? `<span class="target-score">First to ${state.targetScore}</span>` : ''}</div><nav>${nav}</nav></header>`;
   }
 
+  function renderPlayerCardBacks(count: number): string {
+    const shown = Math.min(Math.max(count, 0), 4);
+    if (!shown) return '<div class="player-card-hand-empty" aria-label="No cards in hand"></div>';
+    return `<div class="player-card-back-fan" aria-label="${count} card${count === 1 ? '' : 's'} in hand">${Array.from({ length: shown }, (_, index) =>
+      `<span class="player-card-back" style="--card-index:${index}" aria-hidden="true"><span>B</span></span>`
+    ).join('')}</div>`;
+  }
+
   function renderPlayers(): string {
     if (!state) return '';
     const s = state;
@@ -214,10 +222,28 @@ namespace BrastaApp {
       const starter = p.seat === s.starterSeat;
       const team = Brasta.teamForSeat(s.mode, p.seat);
       const lobby = lobbyBySeat.get(p.seat);
-      const disconnected = context === 'online' && lobby && !lobby.connected;
-      const you = context === 'online' && onlineSession?.seat === p.seat;
+      const disconnected = Boolean(context === 'online' && lobby && !lobby.connected);
       const rank = lobby?.rankName || null;
-      return `<div class="player-chip ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}"><div class="player-chip-primary"><span class="player-chip-name"><b>${escapeHtml(p.name || `Seat ${p.seat}`)}</b> <span class="seat-label">Seat ${p.seat}</span> <span class="team-${team}">${teamName(team)}</span>${starter ? '<span class="starter">starts</span>' : ''}${you ? '<span class="you-badge">you</span>' : ''}</span>${playerRankBadge(rank)}</div><div>${p.hand.length} cards${disconnected ? ' · disconnected' : ''}</div></div>`;
+      const connection = context === 'online'
+        ? `<span class="player-status ${disconnected ? 'offline' : 'online'}"><i></i>${disconnected ? 'OFFLINE' : 'ONLINE'}</span>`
+        : '';
+      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}">
+        <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
+        <div class="player-card-top">
+          <div class="player-card-identity">
+            <b class="player-name">${escapeHtml(p.name || `Seat ${p.seat}`)}</b>
+            <div class="player-status-row">
+              ${active ? '<span class="player-status turn">TURN</span>' : ''}
+              ${starter ? '<span class="player-status starter">STARTS</span>' : ''}
+              ${connection}
+              <span class="team-${team}" aria-hidden="true">${teamName(team)}</span>
+            </div>
+          </div>
+          ${playerRankBadge(rank)}
+        </div>
+        <div class="player-card-divider"></div>
+        <div class="player-card-hand">${renderPlayerCardBacks(p.hand.length)}</div>
+      </div>`;
     }).join('')}</div>`;
   }
 
