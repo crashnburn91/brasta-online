@@ -29,3 +29,25 @@
 
 .team-blue-text{color:#5eb8ff!important}
 .team-red-text{color:#ff6f67!important}
+
+/* Special move banners inherit the team that made the play. */
+.event.team-event-blue,
+.event-banner.team-event-blue,
+.round-event.team-event-blue,
+.turn-event.team-event-blue,
+.game-event.team-event-blue{
+  border:1px solid #5eb8ff!important;
+  background:linear-gradient(90deg,#153b5ed9,#23699be8,#153b5ed9)!important;
+  color:#eef8ff!important;
+  box-shadow:0 8px 24px #071d3080,0 0 18px #5eb8ff26!important;
+}
+.event.team-event-red,
+.event-banner.team-event-red,
+.round-event.team-event-red,
+.turn-event.team-event-red,
+.game-event.team-event-red{
+  border:1px solid #ff6f67!important;
+  background:linear-gradient(90deg,#5d2024d9,#91343ae8,#5d2024d9)!important;
+  color:#fff2f1!important;
+  box-shadow:0 8px 24px #30090d80,0 0 18px #ff6f6726!important;
+}
