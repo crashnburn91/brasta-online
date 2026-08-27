@@ -3,6 +3,8 @@
   window.__BRASTA_PRIVATE_POSTMATCH__ = true;
 
   const REMATCH_KEY = 'brasta-private-new-match';
+  const BOT_PENDING_KEY = 'brasta-bot-pending';
+  const BOT_NAME = 'Brasta Bot';
   const RANKED_PREFIXES = ['brasta-ranked-room:', 'brasta-ranked-2v2-room:'];
   let queued = false;
 
@@ -30,6 +32,15 @@
   function currentMode() {
     const count = document.querySelectorAll('.players .player-chip').length;
     return count > 2 ? '2v2' : '1v1';
+  }
+
+  function isBotMatch() {
+    return Array.from(document.querySelectorAll('.players .player-chip .player-name, .players .player-chip b'))
+      .some((el) => String(el.textContent || '').trim().startsWith(BOT_NAME));
+  }
+
+  function markNextRoomForBot() {
+    try { localStorage.setItem(BOT_PENDING_KEY, '1'); } catch {}
   }
 
   function currentTarget() {
@@ -84,13 +95,17 @@
     const oldCopy = Array.from(end.querySelectorAll('p')).find((p) => /return home or reconnect/i.test(p.textContent || ''));
     if (oldCopy) oldCopy.remove();
 
+    const botMatch = isBotMatch();
     const row = document.createElement('div');
     row.className = 'button-row ranked-postmatch-actions private-postmatch-actions';
     row.dataset.privatePostmatchActions = '1';
-    row.innerHTML = '<button class="primary" data-private-new-match>New Match</button><button data-private-return-home>Return Home</button>';
+    row.innerHTML = `<button class="primary" data-private-new-match>${botMatch ? 'Play Again' : 'New Match'}</button><button data-private-return-home>Return Home</button>`;
     end.appendChild(row);
 
-    row.querySelector('[data-private-new-match]').addEventListener('click', startNewMatch);
+    row.querySelector('[data-private-new-match]').addEventListener('click', () => {
+      if (botMatch) markNextRoomForBot();
+      startNewMatch();
+    });
     row.querySelector('[data-private-return-home]').addEventListener('click', goHome);
   }
 
