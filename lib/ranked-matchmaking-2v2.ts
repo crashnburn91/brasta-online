@@ -478,13 +478,17 @@ function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEnt
   const currentUnit = units.find((unit) => unit.entries.some((entry) => entry.userId === current.userId));
   if (!currentUnit) return null;
 
+  // Capture the narrowed value in an explicitly non-null variable before
+  // entering nested search callbacks. Strict TypeScript does not preserve the
+  // Array.find() narrowing for currentUnit inside those closures.
+  const anchorUnit: QueueUnit = currentUnit;
   const now = Date.now();
-  const currentWindow = searchWindow(now - currentUnit.joinedAt);
+  const currentWindow = searchWindow(now - anchorUnit.joinedAt);
   const eligible = units
-    .filter((unit) => unit.key !== currentUnit.key)
+    .filter((unit) => unit.key !== anchorUnit.key)
     .map((unit) => ({
       unit,
-      gap: Math.abs(unit.ordinal - currentUnit.ordinal),
+      gap: Math.abs(unit.ordinal - anchorUnit.ordinal),
       allowed: Math.max(currentWindow, searchWindow(now - unit.joinedAt)),
     }))
     .filter(({ gap, allowed }) => gap <= allowed)
@@ -496,11 +500,11 @@ function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEnt
   let bestScore = Number.POSITIVE_INFINITY;
 
   function consider(chosen: QueueUnit[]) {
-    const flattened = [currentUnit, ...chosen].flatMap((unit) => unit.entries);
+    const flattened = [anchorUnit, ...chosen].flatMap((unit) => unit.entries);
     if (flattened.length !== 4) return;
     const ordinals = flattened.map((entry) => entry.ordinal);
     const score = Math.max(...ordinals) - Math.min(...ordinals)
-      + chosen.reduce((sum, unit) => sum + Math.abs(unit.ordinal - currentUnit.ordinal), 0) * 0.1;
+      + chosen.reduce((sum, unit) => sum + Math.abs(unit.ordinal - anchorUnit.ordinal), 0) * 0.1;
     if (score < bestScore) {
       bestScore = score;
       best = chosen;
@@ -508,7 +512,7 @@ function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEnt
   }
 
   function search(start: number, chosen: QueueUnit[], size: number) {
-    const total = currentUnit.entries.length + size;
+    const total = anchorUnit.entries.length + size;
     if (total === 4) {
       consider(chosen);
       return;
@@ -521,7 +525,7 @@ function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEnt
 
   search(0, [], 0);
   if (!best) return null;
-  const group = [currentUnit, ...best].flatMap((unit) => unit.entries);
+  const group = [anchorUnit, ...best].flatMap((unit) => unit.entries);
   return group.length === 4 ? group as [QueueEntry, QueueEntry, QueueEntry, QueueEntry] : null;
 }
 
