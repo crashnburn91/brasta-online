@@ -70,7 +70,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
         <link rel="stylesheet" href="/learn-brasta-polish.css?v=0.19.1" />
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.0" />
-        <link rel="stylesheet" href="/team-branding.css?v=0.15.4" />
+        <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
         <link rel="stylesheet" href="/player-cards.css?v=0.1.5" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
@@ -97,7 +97,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/hard-bot.js?v=0.18.0" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
-        <Script src="/team-branding.js?v=0.15.3" strategy="afterInteractive" />
+        <Script src="/team-branding.js?v=0.15.5" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
