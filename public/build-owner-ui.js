@@ -6,9 +6,13 @@
 
   function playerNameForSeat(seat) {
     for (const chip of document.querySelectorAll('.player-chip')) {
-      const seatLabel = chip.querySelector('.seat-label')?.textContent?.trim();
-      if (seatLabel !== `Seat ${seat}`) continue;
-      return chip.querySelector('b')?.textContent?.trim() || '';
+      const structuredSeat = Number(chip.dataset.seat || 0);
+      const legacySeatLabel = chip.querySelector('.seat-label')?.textContent?.trim();
+      const matchesSeat = structuredSeat === Number(seat) || legacySeatLabel === `Seat ${seat}`;
+      if (!matchesSeat) continue;
+      return chip.querySelector('.player-name')?.textContent?.trim()
+        || chip.querySelector('b')?.textContent?.trim()
+        || '';
     }
     return '';
   }
