@@ -17,7 +17,7 @@
       chip.querySelector('.dealer-button')?.remove();
     });
 
-    const starterIndex = chips.findIndex((chip) => chip.querySelector('.starter'));
+    const starterIndex = chips.findIndex((chip) => chip.dataset.starter === '1');
     if (starterIndex < 0) return;
 
     const dealerIndex = (starterIndex - 1 + chips.length) % chips.length;
