@@ -92,9 +92,43 @@
     return (teams[team] || [])[0] || (team === 'A' ? 'Blue Team' : 'Red Team');
   }
 
+  function actorTeamFromText(text, teams) {
+    const normalized = String(text || '').toLowerCase();
+    for (const team of ['A', 'B']) {
+      const names = [...(teams[team] || [])].sort((a, b) => b.length - a.length);
+      for (const name of names) {
+        if (name && normalized.includes(name.toLowerCase())) return team;
+      }
+    }
+    return '';
+  }
+
+  function brandSpecialEventBanner(banner, teams) {
+    const text = (banner.textContent || '').replace(/\s+/g, ' ').trim();
+    const isTeamEvent = /BRASTA!|Jack sweep|BIG 2|BIG 10|LAST PICKUP!/i.test(text);
+
+    if (!isTeamEvent) {
+      delete banner.dataset.brastaEventTeam;
+      banner.classList.remove('team-event-blue', 'team-event-red');
+      return;
+    }
+
+    const team = teamFromText(text)
+      || actorTeamFromText(text, teams)
+      || banner.dataset.brastaEventTeam
+      || '';
+
+    if (!team) return;
+
+    banner.dataset.brastaEventTeam = team;
+    banner.classList.toggle('team-event-blue', team === 'A');
+    banner.classList.toggle('team-event-red', team === 'B');
+  }
+
   function rewriteEventBanners(teams) {
     const selectors = '.event,.event-banner,.round-event,.turn-event,.game-event,.last-hand-banner';
     document.querySelectorAll(selectors).forEach((banner) => {
+      brandSpecialEventBanner(banner, teams);
       for (const node of textNodes(banner)) {
         let text = node.nodeValue || '';
         text = text.replace(/Team A/gi, mostLikelyActor('A', teams));
