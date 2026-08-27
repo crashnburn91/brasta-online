@@ -17,6 +17,9 @@
   let queueInfo = null;
   let queueTimer = null;
   let queueInFlight = false;
+  let partyInfo = null;
+  let partyTimer = null;
+  let partyInFlight = false;
   let monitorTimer = null;
   let monitorInFlight = false;
   let monitorState = 'idle';
@@ -99,9 +102,11 @@
     }
 
     const rank = profile.rankName || 'Unranked';
+    const partner = partyInfo?.members?.find((member) => !member.you) || null;
+    const queued = queueInfo?.state === 'queued';
     card.innerHTML = `
       <div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div>${rankBadge(rank)}</div>
-      <p>${rank === 'Unranked' ? 'Complete five team placement matches to receive your first 2v2 rank.' : 'Queue solo and climb the separate 2v2 ranked ladder.'}</p>
+      <p>${rank === 'Unranked' ? 'Complete five team placement matches to receive your first 2v2 rank.' : 'Queue solo or bring a partner and climb the separate 2v2 ranked ladder.'}</p>
       <div class="competitive-statline">
         <span><small>Record</small><b>${profile.wins}–${profile.losses}</b></span>
         <span><small>${rank === 'Unranked' ? 'Placements' : 'Current streak'}</small><b>${rank === 'Unranked' ? `${Math.min(profile.placementGames, 5)}/5` : profile.currentStreak}</b></span>
@@ -109,17 +114,19 @@
       </div>
       ${backendUnavailable ? `<div class="competitive-warning">${esc(backendUnavailable)}</div>` : ''}
       <div class="competitive-actions">
-        <button class="primary" data-ranked-2v2-find ${backendUnavailable ? 'disabled' : ''}>${queueInfo?.state === 'queued' ? 'Searching…' : 'Find Ranked 2v2 Match'}</button>
+        <button class="primary" data-ranked-2v2-solo ${backendUnavailable || queued ? 'disabled' : ''}>${queued && queueInfo?.queueType === 'solo' ? 'Searching…' : 'Solo Queue'}</button>
+        <button data-ranked-2v2-party ${backendUnavailable || queued ? 'disabled' : ''}>${partner ? `Duo · ${esc(partner.username)}` : 'Queue with Partner'}</button>
         <button data-ranked-2v2-leaderboard>2v2 Leaderboard</button>
         <button data-ranked-2v2-history>2v2 Match History</button>
       </div>
-      <div class="server-note">Teams are balanced automatically using hidden skill ratings.</div>`;
+      <div class="server-note">${partner ? `Duo ready with ${esc(partner.username)}. Matchmaking uses both players’ 2v2 ratings.` : 'Solo players can be matched with another solo teammate. Duos are always kept on the same team.'}</div>`;
     bindCard();
   }
 
   function bindCard() {
     document.querySelector('[data-ranked-2v2-signin]')?.addEventListener('click', () => document.querySelector('.account-dock')?.click(), { once: true });
-    document.querySelector('[data-ranked-2v2-find]')?.addEventListener('click', () => void joinQueue(), { once: true });
+    document.querySelector('[data-ranked-2v2-solo]')?.addEventListener('click', () => void joinQueue('solo'), { once: true });
+    document.querySelector('[data-ranked-2v2-party]')?.addEventListener('click', () => void openPartnerModal(), { once: true });
     document.querySelector('[data-ranked-2v2-leaderboard]')?.addEventListener('click', () => void showLeaderboard(), { once: true });
     document.querySelector('[data-ranked-2v2-history]')?.addEventListener('click', () => void showHistory(), { once: true });
   }
@@ -161,6 +168,7 @@
     try {
       const data = await api('status');
       if (data.competitive) profile = data.competitive;
+      partyInfo = data.party || null;
       if (data.state === 'matched') return handleMatched(data.assignment);
       if (data.state === 'queued') {
         queueInfo = data;
@@ -171,12 +179,13 @@
     } catch {}
   }
 
-  async function joinQueue() {
+  async function joinQueue(queueAs = 'solo') {
     if (!token()) return document.querySelector('.account-dock')?.click();
     backendUnavailable = '';
     try {
-      const data = await api('join');
+      const data = await api('join', { queueAs });
       if (data.competitive) profile = data.competitive;
+      partyInfo = data.party || partyInfo;
       if (data.state === 'matched') return handleMatched(data.assignment);
       queueInfo = data;
       renderCard();
@@ -210,6 +219,7 @@
       if (data.state === 'matched') return handleMatched(data.assignment);
       if (data.state === 'queued') {
         queueInfo = data;
+        partyInfo = data.party || partyInfo;
         if (data.competitive) profile = data.competitive;
         showQueueModal(data);
         renderCard();
@@ -232,7 +242,10 @@
   async function cancelQueue(callServer = true) {
     stopQueuePolling();
     if (callServer && token()) {
-      try { await api('leave'); } catch {}
+      try {
+        const data = await api('leave');
+        partyInfo = data.party || partyInfo;
+      } catch {}
     }
     queueInfo = null;
     closeModal('competitive-2v2-queue-modal');
@@ -254,7 +267,9 @@
       <div class="eyebrow">RANKED 2v2</div>
       <h2>Finding a team match…</h2>
       ${rankBadge(rank)}
-      <p data-queue-2v2-detail>${seconds < 12 ? 'Looking for three players near your skill level.' : seconds < 32 ? 'Expanding the four-player search.' : 'Searching a wider range for a balanced match.'}</p>
+      <p data-queue-2v2-detail>${data?.queueType === 'duo'
+        ? `Queued with ${esc(data.partnerName || 'your partner')}. ${seconds < 20 ? 'Looking for another duo or two solo opponents.' : 'Expanding the search for a balanced opposing team.'}`
+        : seconds < 12 ? 'Looking for a teammate and two opponents near your skill level.' : seconds < 32 ? 'Expanding the four-player search.' : 'Searching a wider range for a balanced match.'}</p>
       <div class="queue-time">${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}</div>
       <button data-ranked-2v2-cancel>Cancel Search</button>
     </section>`;
@@ -264,7 +279,9 @@
   function handleMatched(assignment) {
     if (!assignment?.roomCode || !assignment?.token || !assignment?.seat) return;
     stopQueuePolling();
+    stopPartyPolling();
     queueInfo = null;
+    partyInfo = null;
     const code = String(assignment.roomCode).toUpperCase();
     const session = {
       code,
