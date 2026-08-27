@@ -5,7 +5,8 @@
   let audioContext = null;
   let audioUnlocked = false;
   let wasYourTurn = false;
-  let lastHandSeen = false;
+  let eventAudioPrimed = false;
+  let lastEventSoundSeq = null;
   let turnToastTimer = null;
   let polishScheduled = false;
   let rankedTabMode = '1v1';
@@ -21,10 +22,10 @@
     } catch {}
   }
 
-  function playNotes(notes) {
+  function playNotes(notes, delay = 0) {
     if (!audioUnlocked || !audioContext) return;
     try {
-      const now = audioContext.currentTime;
+      const now = audioContext.currentTime + delay;
       notes.forEach(({ frequency, offset, duration, gain = 0.08 }) => {
         const oscillator = audioContext.createOscillator();
         const volume = audioContext.createGain();
@@ -48,12 +49,98 @@
     ]);
   }
 
-  function playLastHandSound() {
+  function playJackSweepSound(delay = 0) {
+    playNotes([
+      { frequency: 987.77, offset: 0, duration: 0.11, gain: 0.09 },
+      { frequency: 783.99, offset: 0.09, duration: 0.12, gain: 0.085 },
+      { frequency: 587.33, offset: 0.18, duration: 0.2, gain: 0.08 },
+    ], delay);
+    return 0.4;
+  }
+
+  function playBrastaSound(delay = 0) {
+    playNotes([
+      { frequency: 392, offset: 0, duration: 0.16, gain: 0.09 },
+      { frequency: 523.25, offset: 0.12, duration: 0.17, gain: 0.095 },
+      { frequency: 659.25, offset: 0.24, duration: 0.18, gain: 0.1 },
+      { frequency: 783.99, offset: 0.36, duration: 0.2, gain: 0.105 },
+      { frequency: 1046.5, offset: 0.5, duration: 0.34, gain: 0.12 },
+    ], delay);
+    return 0.86;
+  }
+
+  function playBig2Sound(delay = 0) {
+    playNotes([
+      { frequency: 220, offset: 0, duration: 0.16, gain: 0.1 },
+      { frequency: 440, offset: 0.14, duration: 0.25, gain: 0.095 },
+    ], delay);
+    return 0.41;
+  }
+
+  function playBig10Sound(delay = 0) {
+    playNotes([
+      { frequency: 523.25, offset: 0, duration: 0.14, gain: 0.09 },
+      { frequency: 783.99, offset: 0.13, duration: 0.25, gain: 0.1 },
+    ], delay);
+    return 0.4;
+  }
+
+  function playLastPickupSound(delay = 0) {
+    playNotes([
+      { frequency: 392, offset: 0, duration: 0.15, gain: 0.085 },
+      { frequency: 493.88, offset: 0.15, duration: 0.15, gain: 0.09 },
+      { frequency: 587.33, offset: 0.3, duration: 0.3, gain: 0.105 },
+    ], delay);
+    return 0.62;
+  }
+
+  function playLastHandSound(delay = 0) {
     playNotes([
       { frequency: 523.25, offset: 0, duration: 0.16 },
       { frequency: 659.25, offset: 0.17, duration: 0.16 },
       { frequency: 783.99, offset: 0.34, duration: 0.3, gain: 0.1 },
-    ]);
+    ], delay);
+    return 0.66;
+  }
+
+  function playSpecialEventSounds(text) {
+    let delay = 0;
+    const enqueue = (player) => {
+      delay += player(delay) + 0.12;
+    };
+
+    if (/Jack sweep/i.test(text)) enqueue(playJackSweepSound);
+    if (/BRASTA!/i.test(text)) enqueue(playBrastaSound);
+    if (/BIG 2(?:\s*\+\s*BIG 10)?!/i.test(text)) enqueue(playBig2Sound);
+    if (/BIG 10!/i.test(text) || /BIG 2\s*\+\s*BIG 10!/i.test(text)) enqueue(playBig10Sound);
+    if (/LAST PICKUP!/i.test(text)) enqueue(playLastPickupSound);
+    if (/LAST HAND!/i.test(text)) enqueue(playLastHandSound);
+  }
+
+  function updateEventAudio(eventBanner, hasMatch) {
+    if (!hasMatch) {
+      eventAudioPrimed = false;
+      lastEventSoundSeq = null;
+      return;
+    }
+
+    if (!eventBanner) {
+      if (!eventAudioPrimed) eventAudioPrimed = true;
+      return;
+    }
+
+    const seq = eventBanner.dataset.eventSeq || '';
+    if (!seq) return;
+
+    if (!eventAudioPrimed) {
+      eventAudioPrimed = true;
+      lastEventSoundSeq = seq;
+      return;
+    }
+
+    if (seq === lastEventSoundSeq) return;
+    lastEventSoundSeq = seq;
+    playSpecialEventSounds(eventBanner.textContent || '');
   }
 
   function turnBanner() {
@@ -210,8 +297,9 @@
 
   function updateGameAlerts() {
     const hasGame = !!document.querySelector('.table');
+    const hasMatch = !!document.querySelector('.players');
     const activePlayer = document.querySelector('.player-chip.active');
-    const yourTurn = hasGame && !!activePlayer?.querySelector('.you-badge');
+    const yourTurn = hasGame && activePlayer?.dataset.you === '1';
 
     document.documentElement.classList.toggle('brasta-your-turn', yourTurn);
     document.querySelectorAll('.player-chip').forEach((chip) => chip.classList.toggle('your-turn-chip', chip === activePlayer && yourTurn));
@@ -230,15 +318,10 @@
 
     const events = Array.from(document.querySelectorAll('.event'));
     const lastHandEvent = events.find((el) => /LAST HAND!/i.test(el.textContent || ''));
-    if (lastHandEvent) {
-      lastHandEvent.classList.add('last-hand-banner');
-      if (!lastHandSeen) {
-        playLastHandSound();
-        lastHandSeen = true;
-      }
-    } else if (!document.querySelector('.round-end')) {
-      lastHandSeen = false;
-    }
+    if (lastHandEvent) lastHandEvent.classList.add('last-hand-banner');
+
+    const sequencedEvent = events.find((el) => el.dataset.eventSeq);
+    updateEventAudio(sequencedEvent, hasMatch);
 
     if (!hasGame) {
       wasYourTurn = false;
