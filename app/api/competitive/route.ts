@@ -11,6 +11,7 @@ import {
 } from '../../../lib/ranked-matchmaking';
 import {
   monitorRanked2v2Room,
+  ranked2v2PartyAction,
   ranked2v2QueueAction,
 } from '../../../lib/ranked-matchmaking-2v2';
 import { prepareRankedQueueSwitch } from '../../../lib/ranked-queue-coordination';
@@ -51,6 +52,8 @@ export async function POST(request: Request) {
       roomCode?: string;
       limit?: number;
       mode?: CompetitiveMode;
+      partyCode?: string;
+      queueAs?: 'solo' | 'duo';
     };
     const action = String(body.action || '');
     const mode = competitiveMode(body.mode);
@@ -86,10 +89,15 @@ export async function POST(request: Request) {
       return json(result);
     }
 
+    if (mode === '2v2' && (action === 'party-status' || action === 'party-create' || action === 'party-join' || action === 'party-leave')) {
+      const result = await ranked2v2PartyAction(request, action, String(body.partyCode || ''));
+      return json(sanitizeQueuePayload(result));
+    }
+
     if (action === 'status' || action === 'join' || action === 'leave') {
       if (action === 'join') await prepareRankedQueueSwitch(request, mode);
       const result = mode === '2v2'
-        ? await ranked2v2QueueAction(request, action)
+        ? await ranked2v2QueueAction(request, action, body.queueAs === 'duo' ? 'duo' : 'solo')
         : await rankedQueueAction(request, action);
       return json(sanitizeQueuePayload(result));
     }
