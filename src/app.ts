@@ -229,15 +229,13 @@ namespace BrastaApp {
         : '';
       return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${starter ? 'data-starter="1"' : ''}>
         <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
+        ${connection ? `<div class="player-connection-corner">${connection}</div>` : ''}
         <div class="player-card-top">
           <div class="player-card-identity">
             <b class="player-name">${escapeHtml(p.name || `Seat ${p.seat}`)}</b>
-            <div class="player-status-row">
-              ${connection}
-              <span class="team-${team}" aria-hidden="true">${teamName(team)}</span>
-            </div>
+            ${rank ? `<div class="player-rank-row">${playerRankBadge(rank)}</div>` : ''}
+            <span class="team-${team}" aria-hidden="true">${teamName(team)}</span>
           </div>
-          ${playerRankBadge(rank)}
         </div>
         <div class="player-card-divider"></div>
         <div class="player-card-hand">${renderPlayerCardBacks(p.hand.length)}</div>
