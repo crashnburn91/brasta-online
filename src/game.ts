@@ -674,7 +674,7 @@ namespace Brasta {
         next.loose = [];
         teamCapture(next, team, swept);
         setLastPickup(next, command.seat);
-        next.event = `Jack sweep — Team ${team}`;
+        next.event = `Jack sweep — ${playerMoveName(next, command.seat)}`;
         appendEvent(next, specialCaptureAnnouncement(next, team, swept));
         next.lastMove = `${playerMoveName(next, command.seat)} swept ${looseCount} loose card${looseCount === 1 ? '' : 's'} with ${cardLabel(card)}.`;
       } else {
