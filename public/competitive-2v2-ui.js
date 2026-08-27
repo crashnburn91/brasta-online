@@ -89,7 +89,7 @@
     if (!token()) {
       card.innerHTML = `
         <div class="competitive-title-row"><div><div class="eyebrow">RANKED 2v2</div><h2>Team Competitive</h2></div>${rankBadge('Unranked')}</div>
-        <p>Queue solo. Brasta finds three players and balances the teams by hidden skill.</p>
+        <p>Queue solo or bring a partner. Brasta fills the remaining seats and balances the match by hidden skill.</p>
         <div class="competitive-actions"><button class="primary" data-ranked-2v2-signin>Sign In to Play 2v2</button><button data-ranked-2v2-leaderboard>2v2 Leaderboard</button></div>
         <div class="server-note">Your 2v2 rank is completely separate from your 1v1 rank.</div>`;
       bindCard();
@@ -185,7 +185,7 @@
     try {
       const data = await api('join', { queueAs });
       if (data.competitive) profile = data.competitive;
-      partyInfo = data.party || partyInfo;
+      partyInfo = data.party || null;
       if (data.state === 'matched') return handleMatched(data.assignment);
       queueInfo = data;
       renderCard();
@@ -216,10 +216,10 @@
     let again = false;
     try {
       const data = await api('status');
+      partyInfo = data.party || null;
       if (data.state === 'matched') return handleMatched(data.assignment);
       if (data.state === 'queued') {
         queueInfo = data;
-        partyInfo = data.party || partyInfo;
         if (data.competitive) profile = data.competitive;
         showQueueModal(data);
         renderCard();
@@ -244,7 +244,7 @@
     if (callServer && token()) {
       try {
         const data = await api('leave');
-        partyInfo = data.party || partyInfo;
+        partyInfo = data.party || null;
       } catch {}
     }
     queueInfo = null;
@@ -673,9 +673,12 @@
     } else {
       profile = null;
       queueInfo = null;
+      partyInfo = null;
       backendUnavailable = '';
       stopQueuePolling();
+      stopPartyPolling();
       closeModal('competitive-2v2-queue-modal');
+      closeModal('competitive-2v2-party-modal');
       renderCard();
     }
   });
