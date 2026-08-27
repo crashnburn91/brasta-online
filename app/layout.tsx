@@ -97,7 +97,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/hard-bot.js?v=0.18.0" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
-        <Script src="/team-branding.js?v=0.15.2" strategy="afterInteractive" />
+        <Script src="/team-branding.js?v=0.15.3" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
