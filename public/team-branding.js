@@ -29,12 +29,22 @@
     return (match?.[1] || '').replace(/\s*(YOU|Dealer|D)\s*$/i, '').trim();
   }
 
+  function structuredTeam(card) {
+    if (card.classList.contains('team-A-player') || card.querySelector('.team-A')) return 'A';
+    if (card.classList.contains('team-B-player') || card.querySelector('.team-B')) return 'B';
+    return '';
+  }
+
+  function structuredName(card) {
+    return (card.querySelector('.player-name')?.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
   function playerInfo() {
     const teams = { A: [], B: [] };
     for (const card of playerCards()) {
       const raw = (card.textContent || '').replace(/\s+/g, ' ').trim();
-      const team = card.dataset.brastaTeam || teamFromText(raw);
-      const name = card.dataset.brastaPlayerName || nameFromText(raw);
+      const team = card.dataset.brastaTeam || structuredTeam(card) || teamFromText(raw);
+      const name = card.dataset.brastaPlayerName || structuredName(card) || nameFromText(raw);
       if (team) card.dataset.brastaTeam = team;
       if (name) card.dataset.brastaPlayerName = name;
       if (team && name && !teams[team].includes(name)) teams[team].push(name);
@@ -45,13 +55,13 @@
   function brandPlayerCards() {
     for (const card of playerCards()) {
       const raw = (card.textContent || '').replace(/\s+/g, ' ').trim();
-      const team = card.dataset.brastaTeam || teamFromText(raw);
+      const team = card.dataset.brastaTeam || structuredTeam(card) || teamFromText(raw);
       if (!team) continue;
       card.dataset.brastaTeam = team;
       card.classList.toggle('team-blue-player', team === 'A');
       card.classList.toggle('team-red-player', team === 'B');
 
-      const name = card.dataset.brastaPlayerName || nameFromText(raw);
+      const name = card.dataset.brastaPlayerName || structuredName(card) || nameFromText(raw);
       if (name) card.dataset.brastaPlayerName = name;
 
       for (const node of textNodes(card)) {
