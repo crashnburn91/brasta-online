@@ -324,13 +324,20 @@ namespace BrastaApp {
     return `<section class="hand-area"><div class="hand-title">${title}</div><div class="hand">${player.hand.length ? player.hand.map((id) => cardHtml(id, { clickable, selected: selectedCard === id })).join('') : '<span class="empty-note">Waiting for cards…</span>'}</div></section>`;
   }
 
+  function renderEventBanner(event: string | null): string {
+    if (!event) return '';
+    const text = event.trim();
+    if (/^(?:BUILD\b|Added to BUILD\b)/i.test(text)) return '';
+    return `<div class="event" data-event-seq="${eventRenderSequence}">${escapeHtml(event)}</div>`;
+  }
+
   function renderRoundEnd(): string {
     if (!state || state.phase !== 'roundEnd' || !state.roundScore) return '';
     const a = state.roundScore.A, b = state.roundScore.B;
     const row = (label: string, av: number, bv: number) => `<tr><td>${label}</td><td>${av}</td><td>${bv}</td></tr>`;
     let controls = `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
     if (context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
-    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${state.event ? `<div class="event" data-event-seq="${eventRenderSequence}">${escapeHtml(state.event)}</div>` : ''}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
+    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderEventBanner(state.event)}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
   }
   function renderMatchEnd(): string {
     if (!state || state.phase !== 'matchEnd') return '';
@@ -349,7 +356,7 @@ namespace BrastaApp {
       lastEventStateRef = state;
       eventRenderSequence += 1;
     }
-    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${state.event && state.phase === 'play' ? `<div class="event" data-event-seq="${eventRenderSequence}">${escapeHtml(state.event)}</div>` : ''}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${state.lastMove ? `<div class="last-move-banner"><span>LAST MOVE</span>${escapeHtml(state.lastMove)}</div>` : ''}${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
+    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${state.phase === 'play' ? renderEventBanner(state.event) : ''}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${state.lastMove ? `<div class="last-move-banner"><span>LAST MOVE</span>${escapeHtml(state.lastMove)}</div>` : ''}${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
     bindGame();
   }
 
