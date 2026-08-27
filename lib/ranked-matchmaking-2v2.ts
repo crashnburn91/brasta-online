@@ -280,6 +280,115 @@ function publicParty(party: Ranked2v2Party | null, viewerUserId: string) {
   };
 }
 
+async function removeQueuedUnitForUser(userId: string): Promise<void> {
+  const entry = await readQueueEntry(userId);
+  if (entry?.partyId && entry.partnerUserId) {
+    await Promise.all([removeQueueEntry(userId), removeQueueEntry(entry.partnerUserId)]);
+    return;
+  }
+  await removeQueueEntry(userId);
+}
+
+async function ensureDuoQueue(party: Ranked2v2Party, joinedAtHint = Date.now()): Promise<QueueEntry[]> {
+  if (party.members.length !== 2) throw new Error('Your ranked duo needs two players before matchmaking can start.');
+  const [a, b] = party.members;
+  const existing = await Promise.all([readQueueEntry(a.userId), readQueueEntry(b.userId)]);
+  const joinedAt = Math.min(
+    joinedAtHint,
+    ...existing.filter((entry): entry is QueueEntry => Boolean(entry)).map((entry) => entry.joinedAt),
+  );
+  const now = Date.now();
+  const entries: QueueEntry[] = [
+    {
+      ...a,
+      joinedAt,
+      lastSeen: now,
+      partyId: party.id,
+      partnerUserId: b.userId,
+    },
+    {
+      ...b,
+      joinedAt,
+      lastSeen: now,
+      partyId: party.id,
+      partnerUserId: a.userId,
+    },
+  ];
+  await Promise.all(entries.map(writeQueueEntry));
+  return entries;
+}
+
+export async function ranked2v2PartyAction(
+  request: Request,
+  action: 'party-status' | 'party-create' | 'party-join' | 'party-leave',
+  requestedCode = '',
+) {
+  if (!competitiveBackendReady()) {
+    return { state: 'unavailable' as const, message: 'Ranked play needs its backend secret configured.' };
+  }
+  const { identity, accessToken } = await authFromRequest(request);
+  const status = await getCompetitiveStatus(accessToken, '2v2');
+  if (await readAssignment(identity.userId)) throw new Error('Finish your current ranked 2v2 match before changing partners.');
+
+  const lock = await acquireKeyLock(QUEUE_LOCK_KEY);
+  try {
+    let party = await readPartyForUser(identity.userId);
+
+    if (action === 'party-status') {
+      if (party) {
+        const index = party.members.findIndex((member) => member.userId === identity.userId);
+        if (index >= 0) party.members[index] = partyMember(identity, status);
+        await writeParty(party);
+      }
+      return { state: 'ok' as const, party: publicParty(party, identity.userId), competitive: status };
+    }
+
+    if (action === 'party-leave') {
+      await removeQueuedUnitForUser(identity.userId);
+      if (party) await clearParty(party);
+      return { state: 'ok' as const, party: null, competitive: status };
+    }
+
+    if (action === 'party-create') {
+      if (party) {
+        const index = party.members.findIndex((member) => member.userId === identity.userId);
+        if (index >= 0) party.members[index] = partyMember(identity, status);
+        await writeParty(party);
+        return { state: 'ok' as const, party: publicParty(party, identity.userId), competitive: status };
+      }
+      await removeQueuedUnitForUser(identity.userId);
+      const now = Date.now();
+      party = {
+        id: crypto.randomUUID(),
+        code: await makePartyCode(),
+        members: [partyMember(identity, status)],
+        createdAt: now,
+        updatedAt: now,
+      };
+      await writeParty(party);
+      return { state: 'ok' as const, party: publicParty(party, identity.userId), competitive: status };
+    }
+
+    const code = normalizePartyCode(requestedCode);
+    if (!code) throw new Error('Enter a valid duo code.');
+    const target = await readPartyByCode(code);
+    if (!target) throw new Error('That duo code is no longer available.');
+    if (target.members.some((member) => member.userId === identity.userId)) {
+      await writeParty(target);
+      return { state: 'ok' as const, party: publicParty(target, identity.userId), competitive: status };
+    }
+    if (target.members.length >= 2) throw new Error('That ranked duo already has two players.');
+
+    await removeQueuedUnitForUser(identity.userId);
+    if (party && party.id !== target.id) await clearParty(party);
+    target.members.push(partyMember(identity, status));
+    await writeParty(target);
+    return { state: 'ok' as const, party: publicParty(target, identity.userId), competitive: status };
+  } finally {
+    await releaseKeyLock(QUEUE_LOCK_KEY, lock);
+  }
+}
+
 function searchWindow(waitMs: number): number {
   return Math.min(18, 3 + Math.floor(Math.max(0, waitMs) / 10_000) * 2);
 }
