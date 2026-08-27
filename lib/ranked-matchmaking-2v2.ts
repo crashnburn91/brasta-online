@@ -284,13 +284,12 @@ function searchWindow(waitMs: number): number {
   return Math.min(18, 3 + Math.floor(Math.max(0, waitMs) / 10_000) * 2);
 }
 
-async function cleanAndLoadCandidates(excludeUserId: string): Promise<QueueEntry[]> {
+async function cleanAndLoadCandidates(): Promise<QueueEntry[]> {
   const r = await requireRedis();
   const now = Date.now();
   const ids = await r.zrange(QUEUE_KEY, 0, -1);
   const entries: QueueEntry[] = [];
   for (const id of ids) {
-    if (id === excludeUserId) continue;
     const entry = await readQueueEntry(id);
     if (!entry || now - entry.lastSeen > QUEUE_STALE_MS) {
       await removeQueueEntry(id);
@@ -301,6 +300,47 @@ async function cleanAndLoadCandidates(excludeUserId: string): Promise<QueueEntry
   return entries;
 }
 
+function makeQueueUnits(entries: QueueEntry[]): QueueUnit[] {
+  const groups = new Map<string, QueueEntry[]>();
+  for (const entry of entries) {
+    const key = entry.partyId ? `party:${entry.partyId}` : `solo:${entry.userId}`;
+    const group = groups.get(key) || [];
+    group.push(entry);
+    groups.set(key, group);
+  }
+
+  const units: QueueUnit[] = [];
+  for (const [key, group] of groups) {
+    if (key.startsWith('party:')) {
+      if (group.length !== 2) continue;
+      const [a, b] = group;
+      if (a.partnerUserId !== b.userId || b.partnerUserId !== a.userId) continue;
+    } else if (group.length !== 1) {
+      continue;
+    }
+    units.push({
+      key,
+      entries: group,
+      ordinal: group.reduce((sum, entry) => sum + entry.ordinal, 0) / group.length,
+      joinedAt: Math.min(...group.map((entry) => entry.joinedAt)),
+    });
+  }
+  return units;
+}
+
+function pairingKeepsDuosTogether(pairing: [[QueueEntry, QueueEntry], [QueueEntry, QueueEntry]]): boolean {
+  const side = new Map<string, 'A' | 'B'>();
+  pairing[0].forEach((entry) => side.set(entry.userId, 'A'));
+  pairing[1].forEach((entry) => side.set(entry.userId, 'B'));
+  for (const team of pairing) {
+    for (const entry of team) {
+      if (!entry.partyId || !entry.partnerUserId) continue;
+      if (side.get(entry.userId) !== side.get(entry.partnerUserId)) return false;
+    }
+  }
+  return true;
+}
+
 function balanceTeams(players: [QueueEntry, QueueEntry, QueueEntry, QueueEntry]): {
   teamA: [QueueEntry, QueueEntry]; teamB: [QueueEntry, QueueEntry];
 } {
@@ -308,7 +348,9 @@ function balanceTeams(players: [QueueEntry, QueueEntry, QueueEntry, QueueEntry])
     [[players[0], players[1]], [players[2], players[3]]],
     [[players[0], players[2]], [players[1], players[3]]],
     [[players[0], players[3]], [players[1], players[2]]],
-  ];
+  ].filter(pairingKeepsDuosTogether);
+  if (!pairings.length) throw new Error('Could not keep the queued duo on the same ranked team.');
+
   pairings.sort((a, b) => {
     const gapA = Math.abs((a[0][0].ordinal + a[0][1].ordinal) - (a[1][0].ordinal + a[1][1].ordinal));
     const gapB = Math.abs((b[0][0].ordinal + b[0][1].ordinal) - (b[1][0].ordinal + b[1][1].ordinal));
@@ -319,6 +361,58 @@ function balanceTeams(players: [QueueEntry, QueueEntry, QueueEntry, QueueEntry])
   if (crypto.randomInt(2) === 1) teamA = [teamA[1], teamA[0]];
   if (crypto.randomInt(2) === 1) teamB = [teamB[1], teamB[0]];
   return { teamA, teamB };
+}
+
+function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEntry, QueueEntry, QueueEntry, QueueEntry] | null {
+  const units = makeQueueUnits(entries);
+  const currentUnit = units.find((unit) => unit.entries.some((entry) => entry.userId === current.userId));
+  if (!currentUnit) return null;
+
+  const now = Date.now();
+  const currentWindow = searchWindow(now - currentUnit.joinedAt);
+  const eligible = units
+    .filter((unit) => unit.key !== currentUnit.key)
+    .map((unit) => ({
+      unit,
+      gap: Math.abs(unit.ordinal - currentUnit.ordinal),
+      allowed: Math.max(currentWindow, searchWindow(now - unit.joinedAt)),
+    }))
+    .filter(({ gap, allowed }) => gap <= allowed)
+    .sort((a, b) => a.gap - b.gap || a.unit.joinedAt - b.unit.joinedAt)
+    .slice(0, 24)
+    .map(({ unit }) => unit);
+
+  let best: QueueUnit[] | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  function consider(chosen: QueueUnit[]) {
+    const flattened = [currentUnit, ...chosen].flatMap((unit) => unit.entries);
+    if (flattened.length !== 4) return;
+    const ordinals = flattened.map((entry) => entry.ordinal);
+    const score = Math.max(...ordinals) - Math.min(...ordinals)
+      + chosen.reduce((sum, unit) => sum + Math.abs(unit.ordinal - currentUnit.ordinal), 0) * 0.1;
+    if (score < bestScore) {
+      bestScore = score;
+      best = chosen;
+    }
+  }
+
+  function search(start: number, chosen: QueueUnit[], size: number) {
+    const total = currentUnit.entries.length + size;
+    if (total === 4) {
+      consider(chosen);
+      return;
+    }
+    if (total > 4) return;
+    for (let i = start; i < eligible.length; i++) {
+      search(i + 1, [...chosen, eligible[i]], size + eligible[i].entries.length);
+    }
+  }
+
+  search(0, [], 0);
+  if (!best) return null;
+  const group = [currentUnit, ...best].flatMap((unit) => unit.entries);
+  return group.length === 4 ? group as [QueueEntry, QueueEntry, QueueEntry, QueueEntry] : null;
 }
 
 function applyNames(room: RankedRoom): void {
