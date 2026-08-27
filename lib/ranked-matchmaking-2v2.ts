@@ -13,6 +13,7 @@ import { createRanked2v2MatchRecord, finalizeRanked2v2Match } from './competitiv
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_TTL_SECONDS = 120;
+const PARTY_TTL_SECONDS = 15 * 60;
 const ASSIGNMENT_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_STALE_MS = 90_000;
 const PRESENCE_MS = 45_000;
@@ -44,6 +45,32 @@ type QueueEntry = {
   placementGames: number;
   joinedAt: number;
   lastSeen: number;
+  partyId: string | null;
+  partnerUserId: string | null;
+};
+
+type Ranked2v2PartyMember = {
+  userId: string;
+  username: string;
+  ordinal: number;
+  rankName: string;
+  gamesPlayed: number;
+  placementGames: number;
+};
+
+type Ranked2v2Party = {
+  id: string;
+  code: string;
+  members: Ranked2v2PartyMember[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+type QueueUnit = {
+  key: string;
+  entries: QueueEntry[];
+  ordinal: number;
+  joinedAt: number;
 };
 
 type RankedParticipant = {
@@ -83,6 +110,9 @@ const roomKey = (code: string) => `brasta:room:${code}`;
 const roomLockKey = (code: string) => `brasta:lock:${code}`;
 const queueDataKey = (userId: string) => `brasta:ranked:queue:2v2:data:${userId}`;
 const assignmentKey = (userId: string) => `brasta:ranked:assignment:2v2:${userId}`;
+const partyKey = (partyId: string) => `brasta:ranked:party:2v2:${partyId}`;
+const partyCodeKey = (code: string) => `brasta:ranked:party:2v2:code:${code}`;
+const partyUserKey = (userId: string) => `brasta:ranked:party:2v2:user:${userId}`;
 const legacy1v1QueueDataKey = (userId: string) => `brasta:ranked:queue:data:${userId}`;
 const legacy1v1AssignmentKey = (userId: string) => `brasta:ranked:assignment:${userId}`;
 const makeToken = () => crypto.randomBytes(24).toString('hex');
@@ -162,6 +192,92 @@ async function makeRoomCode(): Promise<string> {
     if (!(await r.exists(roomKey(code)))) return code;
   }
   throw new Error('Could not allocate a ranked room code.');
+}
+
+function normalizePartyCode(value: string): string {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+}
+
+async function makePartyCode(): Promise<string> {
+  const r = await requireRedis();
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    let code = '';
+    for (let i = 0; i < 5; i++) code += ROOM_CHARS[crypto.randomInt(ROOM_CHARS.length)];
+    if (!(await r.exists(partyCodeKey(code)))) return code;
+  }
+  throw new Error('Could not allocate a duo code.');
+}
+
+function partyMember(identity: BrastaAuthIdentity, status: CompetitiveStatus): Ranked2v2PartyMember {
+  return {
+    userId: identity.userId,
+    username: identity.username!,
+    ordinal: status.matchmakingOrdinal,
+    rankName: status.rankName,
+    gamesPlayed: status.gamesPlayed,
+    placementGames: status.placementGames,
+  };
+}
+
+async function readParty(partyId: string): Promise<Ranked2v2Party | null> {
+  const r = await requireRedis();
+  const raw = await r.get(partyKey(partyId));
+  if (!raw) return null;
+  try { return JSON.parse(raw) as Ranked2v2Party; } catch { return null; }
+}
+
+async function readPartyForUser(userId: string): Promise<Ranked2v2Party | null> {
+  const r = await requireRedis();
+  const partyId = await r.get(partyUserKey(userId));
+  if (!partyId) return null;
+  const party = await readParty(partyId);
+  if (!party) {
+    await r.del(partyUserKey(userId));
+    return null;
+  }
+  return party.members.some((member) => member.userId === userId) ? party : null;
+}
+
+async function readPartyByCode(code: string): Promise<Ranked2v2Party | null> {
+  const r = await requireRedis();
+  const normalized = normalizePartyCode(code);
+  if (!normalized) return null;
+  const partyId = await r.get(partyCodeKey(normalized));
+  if (!partyId) return null;
+  const party = await readParty(partyId);
+  if (!party) {
+    await r.del(partyCodeKey(normalized));
+    return null;
+  }
+  return party;
+}
+
+async function writeParty(party: Ranked2v2Party): Promise<void> {
+  const r = await requireRedis();
+  party.updatedAt = Date.now();
+  await r.set(partyKey(party.id), JSON.stringify(party), 'EX', PARTY_TTL_SECONDS);
+  await r.set(partyCodeKey(party.code), party.id, 'EX', PARTY_TTL_SECONDS);
+  await Promise.all(party.members.map((member) =>
+    r.set(partyUserKey(member.userId), party.id, 'EX', PARTY_TTL_SECONDS)
+  ));
+}
+
+async function clearParty(party: Ranked2v2Party): Promise<void> {
+  const r = await requireRedis();
+  await r.del(partyKey(party.id), partyCodeKey(party.code), ...party.members.map((member) => partyUserKey(member.userId)));
+}
+
+function publicParty(party: Ranked2v2Party | null, viewerUserId: string) {
+  if (!party) return null;
+  return {
+    code: party.code,
+    full: party.members.length === 2,
+    members: party.members.map((member) => ({
+      username: member.username,
+      rankName: member.rankName,
+      you: member.userId === viewerUserId,
+    })),
+  };
 }
 
 function searchWindow(waitMs: number): number {
