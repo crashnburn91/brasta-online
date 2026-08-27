@@ -204,6 +204,7 @@ namespace BrastaNet {
       return new Promise((resolve, reject) => {
         const ws = new WebSocket(`${protocol}//${location.host}/api/ws`);
         this.socket = ws;
+        (window as any).__BRASTA_PRIMARY_GAME_SOCKET__ = ws;
         let settled = false;
         const connectStartedAt = Date.now();
         const connectTimeout = window.setTimeout(() => {
@@ -262,6 +263,9 @@ namespace BrastaNet {
           this.lastPongAt = 0;
           this.resumeGraceUntil = 0;
           if (this.socket === ws) this.socket = null;
+          if ((window as any).__BRASTA_PRIMARY_GAME_SOCKET__ === ws) {
+            (window as any).__BRASTA_PRIMARY_GAME_SOCKET__ = null;
+          }
           this.handler({ type: 'status', status: 'disconnected' });
           if (!settled) {
             settled = true;
@@ -404,8 +408,12 @@ namespace BrastaNet {
       this.stopHeartbeat();
       this.unbindLifecycle();
       if (this.reconnectTimer != null) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
-      try { this.socket?.close(1000, 'Client closed'); } catch {}
+      const closingSocket = this.socket;
+      try { closingSocket?.close(1000, 'Client closed'); } catch {}
       this.socket = null;
+      if ((window as any).__BRASTA_PRIMARY_GAME_SOCKET__ === closingSocket) {
+        (window as any).__BRASTA_PRIMARY_GAME_SOCKET__ = null;
+      }
       diagnostic('client_closed');
     }
   }
