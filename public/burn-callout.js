@@ -58,12 +58,22 @@
     };
   }
 
+  function primaryGameSocket() {
+    const primary = window.__BRASTA_PRIMARY_GAME_SOCKET__;
+    if (primary && primary.readyState === WebSocket.OPEN) {
+      attachSocket(primary);
+      return primary;
+    }
+    return activeSocket && activeSocket.readyState === WebSocket.OPEN ? activeSocket : null;
+  }
+
   function send(payload) {
-    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+    const socket = primaryGameSocket();
+    if (!socket) {
       showToast('Connection interrupted. Reconnecting…');
       return;
     }
-    activeSocket.send(JSON.stringify(payload));
+    socket.send(JSON.stringify(payload));
   }
 
   function callBurn() {
