@@ -224,10 +224,11 @@ namespace BrastaApp {
       const lobby = lobbyBySeat.get(p.seat);
       const disconnected = Boolean(context === 'online' && lobby && !lobby.connected);
       const rank = lobby?.rankName || null;
+      const you = Boolean(context === 'online' && onlineSession?.role === 'player' && onlineSession.seat === p.seat);
       const connection = context === 'online'
         ? `<span class="player-status ${disconnected ? 'offline' : 'online'}"><i></i>${disconnected ? 'OFFLINE' : 'ONLINE'}</span>`
         : '';
-      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${starter ? 'data-starter="1"' : ''}>
+      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${starter ? 'data-starter="1"' : ''} ${you ? 'data-you="1"' : ''}>
         <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
         ${connection ? `<div class="player-connection-corner" style="position:absolute;right:8px;bottom:8px;top:auto;left:auto;z-index:4;display:flex;align-items:center;justify-content:flex-end;">${connection}</div>` : ''}
         <div class="player-card-top">
