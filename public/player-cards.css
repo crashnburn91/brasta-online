@@ -1,0 +1,308 @@
+/* Structured in-match player cards */
+.players{
+  gap:10px;
+  margin-bottom:12px;
+}
+.player-chip.player-card{
+  position:relative;
+  min-width:0;
+  min-height:132px;
+  padding:14px 14px 12px 16px;
+  overflow:hidden;
+  border:1px solid #d4af3752;
+  border-radius:14px;
+  background:
+    linear-gradient(180deg,#0a241bfa 0%,#061a14f5 100%);
+  color:#d9e1dd;
+  box-shadow:
+    inset 0 1px 0 #ffffff10,
+    0 7px 18px #0003;
+}
+.player-chip.player-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(115deg,transparent 0 63%,#d4af3707 100%);
+}
+.player-chip.player-card.active{
+  border-color:#e5c75f;
+  box-shadow:
+    0 0 0 1px #e5c75f66,
+    0 0 18px #d4af373c,
+    inset 0 1px 0 #ffffff16;
+}
+.player-chip.player-card.offline{
+  opacity:.62;
+  border-style:solid;
+}
+
+.player-seat-corner{
+  position:absolute;
+  top:0;
+  left:0;
+  z-index:2;
+  width:40px;
+  height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding-right:5px;
+  padding-bottom:4px;
+  color:#e2bd56;
+  font-size:16px;
+  font-weight:900;
+  line-height:1;
+  background:linear-gradient(135deg,#142a20 0 67%,transparent 68%);
+  border-top-left-radius:13px;
+}
+.player-seat-corner::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:0;
+  width:42px;
+  height:1px;
+  background:#d4af3788;
+  transform:rotate(-19deg);
+  transform-origin:left center;
+}
+
+.player-card-top{
+  position:relative;
+  z-index:1;
+  min-height:58px;
+  padding-left:30px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.player-card-identity{
+  min-width:0;
+  padding-top:5px;
+}
+.player-name{
+  display:block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:18px;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:-.015em;
+}
+.player-chip.team-A-player .player-name{color:#5eb8ff!important}
+.player-chip.team-B-player .player-name{color:#ff6f67!important}
+
+.player-status-row{
+  min-height:22px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-top:7px;
+}
+.player-status{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  min-height:20px;
+  margin:0!important;
+  padding:3px 7px;
+  border:1px solid #ffffff22;
+  border-radius:999px;
+  background:#ffffff08;
+  color:#bac7c0;
+  font-size:8px!important;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.player-status.turn{
+  border-color:#d4af3788;
+  background:#d4af3714;
+  color:#f0d267;
+}
+.player-status.starter{
+  border-color:#e3a64e55;
+  background:#9b5e1d1b;
+  color:#efb86b;
+}
+.player-status.online{color:#7ee7a0;border-color:#55c87944;background:#2c9c4b12}
+.player-status.offline{color:#ff9999;border-color:#e75e654d;background:#a62c3415}
+.player-status i{
+  width:6px;
+  height:6px;
+  flex:0 0 auto;
+  border-radius:50%;
+  background:currentColor;
+  box-shadow:0 0 6px currentColor;
+}
+
+.player-card-top .player-rank-badge{
+  align-self:flex-start;
+  margin:0 0 0 auto;
+  padding:0;
+}
+.player-card-top .player-card-rank{
+  display:grid;
+  grid-template-columns:auto;
+  justify-items:center;
+  gap:1px;
+  min-width:52px;
+  font-size:8px;
+  line-height:1;
+  text-align:center;
+}
+.player-card-top .player-card-rank .rank-emblem{
+  width:32px;
+  height:35px;
+}
+.player-card-top .player-card-rank .rank-badge-copy{
+  display:block;
+  max-width:64px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:8px;
+  line-height:1.1;
+  text-align:center;
+}
+
+.player-card-divider{
+  position:relative;
+  z-index:1;
+  height:1px;
+  margin:5px 0 8px;
+  background:linear-gradient(90deg,#d4af3770,#d4af372d 72%,transparent);
+}
+
+.player-card-hand{
+  position:relative;
+  z-index:1;
+  height:42px;
+  display:flex!important;
+  align-items:flex-end;
+  padding-left:4px;
+}
+.player-card-back-fan{
+  height:40px;
+  display:flex;
+  align-items:flex-end;
+  padding-left:4px;
+}
+.player-card-back{
+  position:relative;
+  width:28px;
+  height:39px;
+  flex:0 0 auto;
+  margin-left:-8px;
+  border:1px solid #d9b855;
+  border-radius:4px;
+  background:
+    linear-gradient(135deg,#d4af3713 25%,transparent 25%) 0 0/7px 7px,
+    linear-gradient(315deg,#d4af370b 25%,transparent 25%) 0 0/7px 7px,
+    linear-gradient(180deg,#0c2a20,#071b15);
+  box-shadow:0 2px 5px #0007,inset 0 0 0 1px #0006;
+  transform:rotate(calc((var(--card-index) - 1.5) * 2deg));
+  transform-origin:bottom center;
+}
+.player-card-back:first-child{margin-left:0}
+.player-card-back::before{
+  content:"";
+  position:absolute;
+  inset:3px;
+  border:1px solid #d4af3750;
+  border-radius:2px;
+}
+.player-card-back span{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:#d4af37;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:13px;
+  font-weight:900;
+  text-shadow:0 1px 2px #000;
+}
+.player-card-hand-empty{height:40px}
+
+.player-chip.player-card.dealer-position{padding-right:14px!important}
+.player-chip.player-card .dealer-button{
+  top:auto;
+  right:12px;
+  bottom:13px;
+  width:26px;
+  height:26px;
+  transform:none;
+  border:1px solid #d4af37;
+  box-shadow:0 3px 8px #0007,inset 0 0 0 1px #fff8;
+}
+
+@media(max-height:1080px), (max-width:900px){
+  .players{gap:7px;margin-bottom:8px}
+  .player-chip.player-card{
+    min-height:118px;
+    padding:11px 10px 9px 12px;
+    border-radius:11px;
+    font-size:inherit;
+    line-height:normal;
+  }
+  .player-seat-corner{
+    width:34px;
+    height:29px;
+    font-size:14px;
+    border-top-left-radius:10px;
+  }
+  .player-seat-corner::after{width:36px}
+  .player-card-top{
+    min-height:51px;
+    padding-left:25px;
+    gap:6px;
+  }
+  .player-name{font-size:15px}
+  .player-status-row{margin-top:5px;gap:3px}
+  .player-status{min-height:18px;padding:3px 5px;font-size:7px!important}
+  .player-card-top .player-card-rank{min-width:43px}
+  .player-card-top .player-card-rank .rank-emblem{width:27px;height:30px}
+  .player-card-top .player-card-rank .rank-badge-copy{max-width:50px;font-size:7px}
+  .player-card-divider{margin:4px 0 6px}
+  .player-card-hand{height:35px;padding-left:2px}
+  .player-card-back-fan{height:34px}
+  .player-card-back{width:24px;height:33px;margin-left:-7px}
+  .player-card-back span{font-size:11px}
+  .player-chip.player-card .dealer-button{right:8px;bottom:9px;width:23px;height:23px;font-size:11px}
+}
+
+@media(max-width:800px){
+  .players{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .player-chip.player-card{
+    min-height:111px;
+    padding:10px 8px 8px 10px;
+  }
+  .player-seat-corner{width:31px;height:27px;font-size:13px}
+  .player-card-top{padding-left:22px;min-height:49px}
+  .player-name{font-size:14px}
+  .player-status-row{min-height:17px;margin-top:4px}
+  .player-status{padding:2px 4px;font-size:6.5px!important}
+  .player-card-top .player-card-rank{min-width:37px}
+  .player-card-top .player-card-rank .rank-emblem{width:25px;height:28px}
+  .player-card-top .player-card-rank .rank-badge-copy{display:none}
+  .player-card-hand{display:flex!important;height:33px}
+  .player-card-back-fan{height:32px}
+  .player-card-back{width:23px;height:31px;margin-left:-7px}
+}
+
+@media(max-width:480px){
+  .players{gap:5px}
+  .player-chip.player-card{min-height:105px;padding:9px 7px 7px 9px}
+  .player-name{font-size:13px}
+  .player-card-top{padding-left:20px}
+  .player-status.online,.player-status.offline{font-size:0!important;width:18px;padding:0;justify-content:center}
+  .player-status.online i,.player-status.offline i{width:7px;height:7px}
+  .player-card-top .player-card-rank .rank-emblem{width:23px;height:26px}
+  .player-card-back{width:21px;height:29px;margin-left:-6px}
+}
