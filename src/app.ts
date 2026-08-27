@@ -227,14 +227,12 @@ namespace BrastaApp {
       const connection = context === 'online'
         ? `<span class="player-status ${disconnected ? 'offline' : 'online'}"><i></i>${disconnected ? 'OFFLINE' : 'ONLINE'}</span>`
         : '';
-      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}">
+      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${starter ? 'data-starter="1"' : ''}>
         <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
         <div class="player-card-top">
           <div class="player-card-identity">
             <b class="player-name">${escapeHtml(p.name || `Seat ${p.seat}`)}</b>
             <div class="player-status-row">
-              ${active ? '<span class="player-status turn">TURN</span>' : ''}
-              ${starter ? '<span class="player-status starter">STARTS</span>' : ''}
               ${connection}
               <span class="team-${team}" aria-hidden="true">${teamName(team)}</span>
             </div>
