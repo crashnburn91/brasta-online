@@ -324,11 +324,36 @@ namespace BrastaApp {
     return `<section class="hand-area"><div class="hand-title">${title}</div><div class="hand">${player.hand.length ? player.hand.map((id) => cardHtml(id, { clickable, selected: selectedCard === id })).join('') : '<span class="empty-note">Waiting for cards…</span>'}</div></section>`;
   }
 
+  function teamForEvent(event: string): Brasta.Team | null {
+    if (!state) return null;
+
+    const explicit = event.match(/\bTeam\s+([AB])\b/i);
+    if (explicit) return explicit[1].toUpperCase() as Brasta.Team;
+
+    const normalized = event.toLowerCase();
+    const actors = [...state.players]
+      .filter((player) => player.name && !/^Seat\s+\d+$/i.test(player.name))
+      .sort((a, b) => b.name.length - a.name.length);
+
+    for (const player of actors) {
+      if (normalized.includes(player.name.toLowerCase())) {
+        return Brasta.teamForSeat(state.mode, player.seat);
+      }
+    }
+
+    return null;
+  }
+
   function renderEventBanner(event: string | null): string {
     if (!event) return '';
     const text = event.trim();
     if (/^(?:BUILD\b|Added to BUILD\b)/i.test(text)) return '';
-    return `<div class="event" data-event-seq="${eventRenderSequence}">${escapeHtml(event)}</div>`;
+
+    const isTeamEvent = /BRASTA!|Jack sweep|BIG 2|BIG 10|LAST PICKUP!/i.test(text);
+    const team = isTeamEvent ? teamForEvent(text) : null;
+    const teamClass = team === 'A' ? ' team-event-blue' : team === 'B' ? ' team-event-red' : '';
+
+    return `<div class="event${teamClass}" data-event-seq="${eventRenderSequence}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
   }
 
   function renderRoundEnd(): string {
