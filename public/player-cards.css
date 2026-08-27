@@ -55,18 +55,28 @@
   background:transparent;
   border-top-left-radius:13px;
 }
+.player-connection-corner{
+  position:absolute;
+  top:10px;
+  right:10px;
+  z-index:3;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+.player-connection-corner .player-status{
+  margin:0!important;
+}
+
 .player-card-top{
   position:relative;
   z-index:1;
   min-height:58px;
   padding-left:30px;
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
+  padding-right:76px;
+  display:block;
 }
 .player-card-identity{
-  flex:1 1 auto;
   min-width:0;
   padding-top:5px;
 }
@@ -84,18 +94,10 @@
 .player-chip.team-A-player .player-name{color:#5eb8ff!important}
 .player-chip.team-B-player .player-name{color:#ff6f67!important}
 
-.player-status-row{
-  min-height:22px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:5px;
-  flex-wrap:wrap;
-  margin-top:7px;
-}
 .player-status{
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap:4px;
   min-height:20px;
   margin:0!important;
@@ -121,33 +123,43 @@
   box-shadow:none;
 }
 
-.player-card-top .player-rank-badge{
-  align-self:flex-start;
-  margin:0 0 0 auto;
+.player-rank-row{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  min-height:28px;
+  margin-top:5px;
+}
+.player-rank-row .player-rank-badge{
+  display:inline-flex;
+  align-items:center;
+  margin:0;
   padding:0;
 }
-.player-card-top .player-card-rank{
-  display:grid;
-  grid-template-columns:auto;
-  justify-items:center;
-  gap:1px;
-  min-width:52px;
+.player-rank-row .player-card-rank{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:5px;
+  min-width:0;
   font-size:8px;
   line-height:1;
-  text-align:center;
+  text-align:left;
 }
-.player-card-top .player-card-rank .rank-emblem{
-  width:32px;
-  height:35px;
+.player-rank-row .player-card-rank .rank-emblem{
+  width:25px;
+  height:28px;
 }
-.player-card-top .player-card-rank .rank-badge-copy{
-  display:block;
-  max-width:64px;
+.player-rank-row .player-card-rank .rank-badge-copy{
+  display:inline-flex;
+  align-items:center;
+  max-width:92px;
   overflow:hidden;
   text-overflow:ellipsis;
+  white-space:nowrap;
   font-size:8px;
   line-height:1.1;
-  text-align:center;
+  text-align:left;
 }
 
 .player-card-divider{
@@ -236,17 +248,18 @@
     font-size:14px;
     border-top-left-radius:10px;
   }
+  .player-connection-corner{top:8px;right:8px}
   .player-card-top{
     min-height:51px;
     padding-left:25px;
-    gap:6px;
+    padding-right:67px;
   }
   .player-name{font-size:15px}
-  .player-status-row{margin-top:5px;gap:3px}
   .player-status{min-height:18px;padding:3px 5px;font-size:7px!important}
-  .player-card-top .player-card-rank{min-width:43px}
-  .player-card-top .player-card-rank .rank-emblem{width:27px;height:30px}
-  .player-card-top .player-card-rank .rank-badge-copy{max-width:50px;font-size:7px}
+  .player-rank-row{min-height:24px;margin-top:4px}
+  .player-rank-row .player-card-rank{gap:4px;font-size:7px}
+  .player-rank-row .player-card-rank .rank-emblem{width:22px;height:25px}
+  .player-rank-row .player-card-rank .rank-badge-copy{max-width:72px;font-size:7px}
   .player-card-divider{margin:4px 0 6px}
   .player-card-hand{height:35px;padding-left:2px}
   .player-card-back-fan{height:34px}
@@ -262,13 +275,14 @@
     padding:10px 8px 8px 10px;
   }
   .player-seat-corner{width:31px;height:27px;font-size:13px}
-  .player-card-top{padding-left:22px;min-height:49px}
+  .player-connection-corner{top:7px;right:7px}
+  .player-card-top{padding-left:22px;padding-right:58px;min-height:49px}
   .player-name{font-size:14px}
-  .player-status-row{min-height:17px;margin-top:4px}
   .player-status{padding:2px 4px;font-size:6.5px!important}
-  .player-card-top .player-card-rank{min-width:37px}
-  .player-card-top .player-card-rank .rank-emblem{width:25px;height:28px}
-  .player-card-top .player-card-rank .rank-badge-copy{display:none}
+  .player-rank-row{min-height:22px;margin-top:4px}
+  .player-rank-row .player-card-rank{gap:3px}
+  .player-rank-row .player-card-rank .rank-emblem{width:20px;height:23px}
+  .player-rank-row .player-card-rank .rank-badge-copy{max-width:60px;font-size:6.5px}
   .player-card-hand{display:flex!important;height:33px}
   .player-card-back-fan{height:32px}
   .player-card-back{width:23px;height:31px;margin-left:-7px}
@@ -278,16 +292,18 @@
   .players{gap:5px}
   .player-chip.player-card{min-height:105px;padding:9px 7px 7px 9px}
   .player-name{font-size:13px}
-  .player-card-top{padding-left:20px}
+  .player-connection-corner{top:6px;right:6px}
+  .player-card-top{padding-left:20px;padding-right:50px}
   .player-status.online,.player-status.offline{
     width:auto;
-    min-width:54px;
-    padding:3px 6px;
+    min-width:48px;
+    padding:3px 5px;
     justify-content:center;
-    font-size:6.5px!important;
-    letter-spacing:.07em;
+    font-size:6px!important;
+    letter-spacing:.06em;
   }
   .player-status.online i,.player-status.offline i{width:6px;height:6px}
-  .player-card-top .player-card-rank .rank-emblem{width:23px;height:26px}
+  .player-rank-row .player-card-rank .rank-emblem{width:19px;height:22px}
+  .player-rank-row .player-card-rank .rank-badge-copy{max-width:52px;font-size:6px}
   .player-card-back{width:21px;height:29px;margin-left:-6px}
 }
