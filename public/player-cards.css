@@ -110,15 +110,15 @@
   letter-spacing:.08em;
   text-transform:uppercase;
 }
-.player-status.online{color:#7ee7a0;border-color:#55c87944;background:#2c9c4b12}
-.player-status.offline{color:#ff9999;border-color:#e75e654d;background:#a62c3415}
+.player-status.online{color:#7ee7a0;border-color:#55c87955;background:#12382499}
+.player-status.offline{color:#ff9999;border-color:#e75e6555;background:#3c171a99}
 .player-status i{
   width:6px;
   height:6px;
   flex:0 0 auto;
   border-radius:50%;
   background:currentColor;
-  box-shadow:0 0 6px currentColor;
+  box-shadow:none;
 }
 
 .player-card-top .player-rank-badge{
@@ -279,8 +279,15 @@
   .player-chip.player-card{min-height:105px;padding:9px 7px 7px 9px}
   .player-name{font-size:13px}
   .player-card-top{padding-left:20px}
-  .player-status.online,.player-status.offline{font-size:0!important;width:18px;padding:0;justify-content:center}
-  .player-status.online i,.player-status.offline i{width:7px;height:7px}
+  .player-status.online,.player-status.offline{
+    width:auto;
+    min-width:54px;
+    padding:3px 6px;
+    justify-content:center;
+    font-size:6.5px!important;
+    letter-spacing:.07em;
+  }
+  .player-status.online i,.player-status.offline i{width:6px;height:6px}
   .player-card-top .player-card-rank .rank-emblem{width:23px;height:26px}
   .player-card-back{width:21px;height:29px;margin-left:-6px}
 }
