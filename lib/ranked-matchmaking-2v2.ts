@@ -628,6 +628,7 @@ async function tryMatch(entry: QueueEntry): Promise<Ranked2v2Assignment | null> 
         await removeQueuedUnitForUser(current.userId);
         return null;
       }
+      await writeParty(party);
       const refreshed = await ensureDuoQueue(party, current.joinedAt);
       current = refreshed.find((candidate) => candidate.userId === current!.userId) || current;
     } else {
@@ -763,6 +764,7 @@ export async function ranked2v2QueueAction(
   } else if (entry?.partyId) {
     party = await readPartyForUser(identity.userId);
     if (party && party.id === entry.partyId && party.members.length === 2) {
+      await writeParty(party);
       const refreshed = await ensureDuoQueue(party, entry.joinedAt);
       entry = refreshed.find((candidate) => candidate.userId === identity.userId) || entry;
     } else {
