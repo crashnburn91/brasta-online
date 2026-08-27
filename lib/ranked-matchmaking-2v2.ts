@@ -453,11 +453,12 @@ function pairingKeepsDuosTogether(pairing: [[QueueEntry, QueueEntry], [QueueEntr
 function balanceTeams(players: [QueueEntry, QueueEntry, QueueEntry, QueueEntry]): {
   teamA: [QueueEntry, QueueEntry]; teamB: [QueueEntry, QueueEntry];
 } {
-  const pairings: Array<[[QueueEntry, QueueEntry], [QueueEntry, QueueEntry]]> = [
+  const allPairings: Array<[[QueueEntry, QueueEntry], [QueueEntry, QueueEntry]]> = [
     [[players[0], players[1]], [players[2], players[3]]],
     [[players[0], players[2]], [players[1], players[3]]],
     [[players[0], players[3]], [players[1], players[2]]],
-  ].filter(pairingKeepsDuosTogether);
+  ];
+  const pairings = allPairings.filter(pairingKeepsDuosTogether);
   if (!pairings.length) throw new Error('Could not keep the queued duo on the same ranked team.');
 
   pairings.sort((a, b) => {
