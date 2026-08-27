@@ -252,6 +252,172 @@
     renderCard();
   }
 
+  function partnerFromParty(party = partyInfo) {
+    return party?.members?.find((member) => !member.you) || null;
+  }
+
+  function stopPartyPolling() {
+    if (partyTimer) window.clearTimeout(partyTimer);
+    partyTimer = null;
+  }
+
+  function startPartyPolling(delay = 1400) {
+    if (partyTimer || partyInFlight || !document.getElementById('competitive-2v2-party-modal')) return;
+    partyTimer = window.setTimeout(() => {
+      partyTimer = null;
+      void pollParty();
+    }, delay);
+  }
+
+  async function pollParty() {
+    if (partyInFlight || !token() || !document.getElementById('competitive-2v2-party-modal')) return;
+    partyInFlight = true;
+    try {
+      const data = await api('party-status');
+      partyInfo = data.party || null;
+      if (data.competitive) profile = data.competitive;
+      renderPartnerModal();
+      renderCard();
+    } catch (error) {
+      const status = document.querySelector('[data-duo-status]');
+      if (status) status.textContent = error.message || 'Could not refresh your duo.';
+    } finally {
+      partyInFlight = false;
+      startPartyPolling();
+    }
+  }
+
+  async function openPartnerModal() {
+    if (!token()) return document.querySelector('.account-dock')?.click();
+    stopPartyPolling();
+    let modal = document.getElementById('competitive-2v2-party-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'competitive-2v2-party-modal';
+      modal.className = 'competitive-modal-backdrop';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = '<section class="competitive-modal duo-modal" role="dialog" aria-modal="true"><button class="competitive-close" aria-label="Close">×</button><div class="eyebrow">RANKED 2v2</div><h2>Queue with Partner</h2><p data-duo-status>Loading your duo…</p></section>';
+    modal.querySelector('.competitive-close').onclick = () => {
+      stopPartyPolling();
+      modal.remove();
+    };
+    try {
+      const data = await api('party-status');
+      partyInfo = data.party || null;
+      if (data.competitive) profile = data.competitive;
+      renderPartnerModal();
+      renderCard();
+      startPartyPolling();
+    } catch (error) {
+      const status = modal.querySelector('[data-duo-status]');
+      if (status) status.textContent = error.message || 'Could not load your duo.';
+    }
+  }
+
+  function renderPartnerModal() {
+    const modal = document.getElementById('competitive-2v2-party-modal');
+    if (!modal) return;
+    const party = partyInfo;
+    const partner = partnerFromParty(party);
+
+    if (!party) {
+      modal.innerHTML = `<section class="competitive-modal duo-modal" role="dialog" aria-modal="true">
+        <button class="competitive-close" aria-label="Close">×</button>
+        <div class="eyebrow">RANKED 2v2</div>
+        <h2>Queue with Partner</h2>
+        <p>Create a duo and send the code to your partner, or enter the code they sent you.</p>
+        <div class="duo-actions"><button class="primary" data-duo-create>Create Duo</button></div>
+        <div class="duo-divider"><span>or join a duo</span></div>
+        <div class="duo-code-entry"><input data-duo-code-input maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="DUO CODE" aria-label="Duo code"><button data-duo-join>Join</button></div>
+        <div class="duo-footnote">Both players keep their own 2v2 rating. Your ratings are combined for matchmaking.</div>
+      </section>`;
+      modal.querySelector('.competitive-close').onclick = () => { stopPartyPolling(); modal.remove(); };
+      modal.querySelector('[data-duo-create]').onclick = () => void createDuo();
+      modal.querySelector('[data-duo-join]').onclick = () => {
+        const input = modal.querySelector('[data-duo-code-input]');
+        void joinDuo(input?.value || '');
+      };
+      modal.querySelector('[data-duo-code-input]')?.addEventListener('input', (event) => {
+        event.target.value = String(event.target.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+      });
+      return;
+    }
+
+    const memberRows = (party.members || []).map((member) =>
+      `<div class="duo-member ${member.you ? 'you' : ''}"><span><b>${esc(member.username)}</b><small>${member.you ? 'You' : 'Partner'}</small></span>${rankBadge(member.rankName || 'Unranked', { size: 'small', className: 'mini-rank' })}</div>`
+    ).join('');
+
+    modal.innerHTML = `<section class="competitive-modal duo-modal" role="dialog" aria-modal="true">
+      <button class="competitive-close" aria-label="Close">×</button>
+      <div class="eyebrow">RANKED 2v2 DUO</div>
+      <h2>${party.full ? 'Duo Ready' : 'Invite Your Partner'}</h2>
+      <div class="duo-code-box"><small>DUO CODE</small><strong>${esc(party.code)}</strong><button data-duo-copy>Copy</button></div>
+      <div class="duo-members">${memberRows}${party.full ? '' : '<div class="duo-member waiting"><span><b>Waiting for partner…</b><small>Share the code above</small></span></div>'}</div>
+      <p data-duo-status>${party.full ? `You and ${esc(partner?.username || 'your partner')} will always be placed on the same team.` : 'Your partner can enter this code from Ranked 2v2 on their account.'}</p>
+      <div class="competitive-actions duo-actions">
+        ${party.full ? '<button class="primary" data-duo-queue>Queue Together</button>' : ''}
+        <button data-duo-leave>${party.full ? 'Leave Duo' : 'Cancel Duo'}</button>
+      </div>
+    </section>`;
+    modal.querySelector('.competitive-close').onclick = () => { stopPartyPolling(); modal.remove(); };
+    modal.querySelector('[data-duo-copy]').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(party.code);
+        modal.querySelector('[data-duo-copy]').textContent = 'Copied';
+      } catch {
+        const status = modal.querySelector('[data-duo-status]');
+        if (status) status.textContent = `Duo code: ${party.code}`;
+      }
+    };
+    modal.querySelector('[data-duo-leave]').onclick = () => void leaveDuo();
+    modal.querySelector('[data-duo-queue]')?.addEventListener('click', () => {
+      stopPartyPolling();
+      modal.remove();
+      void joinQueue('duo');
+    });
+  }
+
+  async function createDuo() {
+    try {
+      const data = await api('party-create');
+      partyInfo = data.party || null;
+      renderPartnerModal();
+      renderCard();
+      startPartyPolling(500);
+    } catch (error) {
+      showMessageModal('Ranked 2v2 Duo', error.message || 'Could not create a duo.');
+    }
+  }
+
+  async function joinDuo(code) {
+    const normalized = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+    if (!normalized) return;
+    try {
+      const data = await api('party-join', { partyCode: normalized });
+      partyInfo = data.party || null;
+      renderPartnerModal();
+      renderCard();
+      startPartyPolling(500);
+    } catch (error) {
+      const status = document.querySelector('[data-duo-status]');
+      if (status) status.textContent = error.message || 'Could not join that duo.';
+      else showMessageModal('Ranked 2v2 Duo', error.message || 'Could not join that duo.');
+    }
+  }
+
+  async function leaveDuo() {
+    try {
+      const data = await api('party-leave');
+      partyInfo = data.party || null;
+      queueInfo = null;
+      renderPartnerModal();
+      renderCard();
+    } catch (error) {
+      showMessageModal('Ranked 2v2 Duo', error.message || 'Could not leave the duo.');
+    }
+  }
+
   function showQueueModal(data) {
     let modal = document.getElementById('competitive-2v2-queue-modal');
     if (!modal) {
