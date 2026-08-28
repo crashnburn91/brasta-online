@@ -1,0 +1,485 @@
+/* Brasta viewport-locked match/lobby shell
+   Normal play never scrolls the document. Long panels may scroll internally
+   without visible scrollbars. The virtual-keyboard state temporarily restores
+   document scrolling so focused fields can stay reachable. */
+:root{
+  --brasta-visual-height:100dvh;
+  --brasta-topbar-base:64px;
+}
+
+html.brasta-shell-locked,
+body.brasta-shell-locked{
+  width:100%;
+  height:var(--brasta-visual-height);
+  max-height:var(--brasta-visual-height);
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+
+body.brasta-shell-locked{
+  min-height:0;
+}
+
+body.brasta-shell-locked .brasta-bootstrap-root,
+body.brasta-shell-locked #app{
+  width:100%;
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+}
+
+body.brasta-shell-locked #app{
+  display:flex;
+  flex-direction:column;
+}
+
+body.brasta-shell-locked .topbar{
+  position:relative;
+  top:auto;
+  flex:0 0 auto;
+  min-height:calc(var(--brasta-topbar-base) + env(safe-area-inset-top));
+  height:calc(var(--brasta-topbar-base) + env(safe-area-inset-top));
+  padding-top:env(safe-area-inset-top);
+  padding-left:max(12px,env(safe-area-inset-left));
+  padding-right:max(12px,env(safe-area-inset-right));
+}
+
+body.brasta-shell-locked #app > main{
+  flex:1 1 auto;
+  min-width:0;
+  min-height:0;
+  width:100%;
+  max-height:100%;
+  overflow:hidden;
+  padding-bottom:max(6px,env(safe-area-inset-bottom));
+}
+
+body.brasta-shell-locked #app > main:not(.lobby){
+  display:flex;
+  flex-direction:column;
+}
+
+body.brasta-shell-locked .players,
+body.brasta-shell-locked .last-move-banner,
+body.brasta-shell-locked .event,
+body.brasta-shell-locked .error,
+body.brasta-shell-locked .notice,
+body.brasta-shell-locked .hand-area,
+body.brasta-shell-locked .game-action-row,
+body.brasta-shell-locked .action-panel{
+  flex:0 0 auto;
+  min-width:0;
+}
+
+body.brasta-shell-locked .table{
+  flex:1 1 auto;
+  min-width:0;
+  min-height:0!important;
+  overflow:hidden;
+}
+
+body.brasta-shell-locked .build-row,
+body.brasta-shell-locked .loose-row{
+  min-height:0!important;
+  height:50%;
+  align-content:center;
+  overflow:hidden;
+}
+
+body.brasta-shell-locked .hand,
+body.brasta-shell-locked .target-list,
+body.brasta-shell-locked .button-row,
+body.brasta-shell-locked .compact-context-actions,
+body.brasta-shell-locked .selection-v2-options{
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+
+body.brasta-shell-locked .hand::-webkit-scrollbar,
+body.brasta-shell-locked .target-list::-webkit-scrollbar,
+body.brasta-shell-locked .button-row::-webkit-scrollbar,
+body.brasta-shell-locked .compact-context-actions::-webkit-scrollbar,
+body.brasta-shell-locked .selection-v2-options::-webkit-scrollbar,
+body.brasta-shell-locked .round-end::-webkit-scrollbar,
+body.brasta-shell-locked .action-panel::-webkit-scrollbar,
+body.brasta-shell-locked .burn-call-card::-webkit-scrollbar{
+  display:none;
+}
+
+body.brasta-shell-locked .action-panel{
+  max-height:min(24vh,190px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+
+body.brasta-shell-locked .round-end{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+  margin-top:8px;
+  margin-bottom:8px;
+}
+
+body.brasta-shell-locked .privacy-cover{
+  top:calc(var(--brasta-topbar-base) + env(safe-area-inset-top));
+  bottom:0;
+}
+
+/* Lobby uses the remaining viewport as a fixed layout budget. */
+body.brasta-shell-locked .lobby{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+body.brasta-shell-locked .lobby-hero,
+body.brasta-shell-locked .lobby-controls{
+  flex:0 0 auto;
+  margin:0;
+}
+
+body.brasta-shell-locked .lobby-seats{
+  flex:1 1 auto;
+  min-height:0;
+  grid-auto-rows:minmax(0,1fr);
+}
+
+body.brasta-shell-locked .lobby-seat{
+  min-height:0;
+  overflow:hidden;
+}
+
+body.brasta-shell-locked .lobby-controls{
+  min-height:0;
+  gap:8px;
+}
+
+body.brasta-shell-locked .room-links{
+  margin-bottom:6px;
+}
+
+body.brasta-shell-locked .burn-call-modal,
+body.brasta-shell-locked [role="dialog"]{
+  overscroll-behavior:contain;
+}
+
+body.brasta-shell-locked .burn-call-card{
+  max-height:calc(var(--brasta-visual-height) - 28px);
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+
+/* Compact is the normal phone/tablet density. */
+body.brasta-density-compact{
+  --brasta-topbar-base:54px;
+}
+
+body.brasta-shell-locked.brasta-density-compact #app > main{
+  padding-top:6px;
+}
+
+body.brasta-shell-locked.brasta-density-compact .lobby-hero{
+  padding:12px 14px;
+  gap:10px;
+}
+
+body.brasta-shell-locked.brasta-density-compact .lobby-hero h1{
+  font-size:32px;
+  margin:0;
+}
+
+body.brasta-shell-locked.brasta-density-compact .lobby-hero p{
+  margin:3px 0;
+  font-size:12px;
+}
+
+body.brasta-shell-locked.brasta-density-compact .lobby-seat{
+  padding:10px;
+}
+
+body.brasta-shell-locked.brasta-density-compact .seat-name{
+  margin:4px 0;
+  font-size:17px;
+  line-height:1.1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+body.brasta-shell-locked.brasta-density-compact .lobby-controls{
+  padding:9px 11px;
+}
+
+body.brasta-shell-locked.brasta-density-compact .lobby-controls .big-button,
+body.brasta-shell-locked.brasta-density-compact .lobby-controls .waiting-copy{
+  min-height:40px;
+  padding:8px 14px!important;
+}
+
+body.brasta-shell-locked.brasta-density-compact .room-links{
+  width:100%;
+  font-size:10px;
+  line-height:1.2;
+}
+
+body.brasta-shell-locked.brasta-density-compact .room-links p{
+  margin:3px 0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Tight mode is reserved for short phones, landscape phones, split-screen,
+   and other constrained viewports. Preserve readable controls before detail. */
+body.brasta-density-tight{
+  --brasta-topbar-base:50px;
+}
+
+body.brasta-shell-locked.brasta-density-tight #app > main{
+  padding-top:4px;
+  padding-left:5px;
+  padding-right:5px;
+  padding-bottom:max(4px,env(safe-area-inset-bottom));
+}
+
+body.brasta-shell-locked.brasta-density-tight .topbar strong{
+  font-size:17px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .players{
+  gap:3px;
+  margin-bottom:3px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .player-chip{
+  padding:3px 5px;
+  font-size:10px;
+  line-height:1.08;
+}
+
+body.brasta-shell-locked.brasta-density-tight .player-chip > div:last-child,
+body.brasta-shell-locked.brasta-density-tight .starter,
+body.brasta-shell-locked.brasta-density-tight .seat-label{
+  display:none;
+}
+
+body.brasta-shell-locked.brasta-density-tight .last-move-banner{
+  margin:2px auto 3px;
+  padding:3px 6px;
+  font-size:10px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .event,
+body.brasta-shell-locked.brasta-density-tight .error,
+body.brasta-shell-locked.brasta-density-tight .notice{
+  margin:2px auto;
+  padding:4px 7px;
+  font-size:10px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .table{
+  padding:5px 6px;
+  border-width:4px;
+  border-radius:12px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .build-row,
+body.brasta-shell-locked.brasta-density-tight .loose-row{
+  gap:4px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .card{
+  width:56px;
+  height:82px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .card .corner{
+  top:4px;
+  left:5px;
+  font-size:12px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .card .suit{
+  font-size:25px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .build{
+  width:92px;
+  min-height:76px;
+  padding:24px 3px 3px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .build-label{
+  top:3px;
+  left:3px;
+  right:3px;
+  padding:2px;
+  font-size:10px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .build-cards{
+  min-height:42px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .card.tiny{
+  width:35px;
+  height:50px;
+  margin-left:-19px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .hand-area{
+  margin-top:3px;
+  padding:3px 5px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .hand-title{
+  display:none;
+}
+
+body.brasta-shell-locked.brasta-density-tight .hand{
+  gap:3px;
+  padding-top:1px;
+  padding-bottom:2px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .action-panel,
+body.brasta-shell-locked.brasta-density-tight .action-panel.compact-action-dock{
+  margin-top:3px;
+  padding:4px 6px;
+  max-height:min(21vh,118px);
+}
+
+body.brasta-shell-locked.brasta-density-tight .action-panel h3,
+body.brasta-shell-locked.brasta-density-tight .action-panel > p{
+  display:none;
+}
+
+body.brasta-shell-locked.brasta-density-tight .action-panel button,
+body.brasta-shell-locked.brasta-density-tight .compact-context-actions button{
+  min-height:34px;
+  padding:6px 9px!important;
+  font-size:11px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby{
+  gap:5px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-hero{
+  padding:7px 9px;
+  gap:6px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-hero h1{
+  font-size:26px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-hero p,
+body.brasta-shell-locked.brasta-density-tight .spectator-count{
+  margin:2px 0;
+  font-size:10px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-hero .button-row{
+  gap:4px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-hero button{
+  padding:5px 7px;
+  font-size:10px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-seats{
+  gap:5px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-seat{
+  padding:6px 7px;
+  border-radius:9px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .seat-number,
+body.brasta-shell-locked.brasta-density-tight .offline-note{
+  font-size:8px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .seat-name{
+  margin:2px 0;
+  font-size:14px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-controls{
+  gap:5px;
+  padding:6px 8px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .room-links{
+  display:none;
+}
+
+body.brasta-shell-locked.brasta-density-tight .lobby-controls .big-button,
+body.brasta-shell-locked.brasta-density-tight .lobby-controls .waiting-copy{
+  min-width:min(100%,260px);
+  min-height:34px;
+  padding:6px 10px!important;
+  font-size:12px!important;
+}
+
+body.brasta-shell-locked.brasta-density-tight .waiting-copy{
+  font-size:10px;
+}
+
+/* Let the layout breathe horizontally on short landscape devices instead of
+   stacking the hero into an unnecessarily tall column. */
+@media (min-width:600px){
+  body.brasta-shell-locked.brasta-density-tight .lobby-hero{
+    flex-direction:row;
+    text-align:left;
+  }
+}
+
+/* Virtual keyboard exception: the page may scroll only while a text-editing
+   control is focused and the visual viewport has actually contracted. */
+html.brasta-keyboard-open,
+body.brasta-keyboard-open{
+  height:auto;
+  max-height:none;
+  min-height:var(--brasta-visual-height);
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+}
+
+body.brasta-keyboard-open .brasta-bootstrap-root,
+body.brasta-keyboard-open #app{
+  height:auto;
+  min-height:var(--brasta-visual-height);
+  overflow:visible;
+}
+
+body.brasta-keyboard-open #app > main{
+  flex:none;
+  height:auto;
+  max-height:none;
+  min-height:calc(var(--brasta-visual-height) - var(--brasta-topbar-base));
+  overflow:visible;
+}
+
+body.brasta-keyboard-open .lobby-seats{
+  flex:none;
+  min-height:auto;
+}
+
+body.brasta-keyboard-open .action-panel,
+body.brasta-keyboard-open .round-end{
+  max-height:none;
+  overflow:visible;
+}
+
+@media (prefers-reduced-motion:reduce){
+  html.brasta-shell-locked{scroll-behavior:auto}
+}
