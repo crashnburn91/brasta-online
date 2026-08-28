@@ -213,71 +213,62 @@
 .game-invite-row{
   background:linear-gradient(90deg,rgba(184,149,63,.08),transparent 58%);
 }
-/* Invite menus need to escape the rounded friend-list frame. Only the
-   section that contains invite controls opens its overflow; other lists keep
-   their normal clipping behavior. */
-.friends-section > .friends-list:has(.friend-invite-menu){
-  overflow:visible;
-  position:relative;
-}
-.friends-section:has(.friend-invite-menu[open]){
-  position:relative;
-  z-index:40;
-}
-.friend-row:has(.friend-invite-menu[open]){
-  position:relative;
-  z-index:41;
-}
-.friend-invite-menu{position:relative;z-index:42}
-.friend-invite-menu>summary{
-  list-style:none;
-  min-height:34px;
-  display:flex;
+/* Friend invite choices expand inside the selected row instead of floating
+   over neighboring players. This keeps list geometry predictable on desktop
+   and mobile and avoids stacking/clipping conflicts. */
+.friend-row-social{
   align-items:center;
-  padding:0 10px;
-  border:1px solid rgba(108,181,143,.4);
-  border-radius:9px;
-  background:rgba(47,118,85,.22);
-  color:#c9f1d9;
-  font-size:11px;
-  font-weight:900;
-  cursor:pointer;
-  user-select:none;
 }
-.friend-invite-menu>summary::-webkit-details-marker{display:none}
-.friend-invite-menu[open]>summary{background:#2f7655;border-color:#6cb58f;color:#f3fff8}
-.friend-invite-popover{
-  position:absolute;
-  z-index:100;
-  top:calc(100% + 6px);
-  right:0;
-  width:160px;
+.friend-row-social.invite-expanded{
+  background:rgba(47,118,85,.08);
+}
+.friend-invite-trigger{
+  border-color:rgba(108,181,143,.4)!important;
+  background:rgba(47,118,85,.22)!important;
+  color:#c9f1d9!important;
+}
+.friend-invite-trigger.active{
+  background:#2f7655!important;
+  border-color:#6cb58f!important;
+  color:#f3fff8!important;
+}
+.friend-invite-inline{
+  grid-column:1 / -1;
   display:grid;
-  gap:5px;
-  padding:7px;
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:12px;
-  background:#0a241a;
-  box-shadow:0 14px 34px rgba(0,0,0,.48);
-}
-.friend-invite-popover button{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
   width:100%;
-  min-height:36px;
-  text-align:left;
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:9px;
-  padding:0 10px;
+  margin-top:2px;
+  padding:9px 0 1px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.friend-invite-inline button{
+  min-height:38px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
+  padding:6px 10px;
   background:rgba(255,255,255,.06);
   color:#f7f2e8;
   font:inherit;
   font-size:11px;
-  font-weight:800;
+  font-weight:900;
+  line-height:1.15;
   cursor:pointer;
 }
-.friend-invite-popover button:hover{background:rgba(255,255,255,.11)}
-.friend-invite-popover button:last-child{
-  border-color:rgba(216,183,94,.32);
+.friend-invite-inline button:hover{
+  background:rgba(255,255,255,.11);
+}
+.friend-invite-inline button:disabled{
+  opacity:.45;
+  cursor:default;
+}
+.friend-invite-inline .ranked-duo-invite{
+  border-color:rgba(216,183,94,.34);
+  background:rgba(184,149,63,.09);
   color:#f1d98e;
+}
+.friend-invite-inline:has(> button:only-child){
+  grid-template-columns:1fr;
 }
 
 .friends-empty{
@@ -310,8 +301,16 @@
   line-height:1.4;
 }
 @media(max-width:700px){
-  .friend-invite-menu{order:-1}
-  .friend-invite-popover{right:auto;left:0;width:170px}
+  .friend-invite-inline{
+    grid-template-columns:1fr;
+    gap:5px;
+    padding-top:8px;
+  }
+  .friend-invite-inline button{
+    width:100%;
+    min-height:36px;
+    text-align:center;
+  }
 
   .friends-dock{width:40px;padding:5px}
   .friends-dock-label{display:none}
