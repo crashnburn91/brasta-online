@@ -522,16 +522,23 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   }
 }
 
-/* Mobile action-dock reflow. Keep every legal action visible without a swipe,
-   while making one-button and odd-button states visually centered and stable. */
+/* Mobile action dock: stable geometry across idle, play, capture and build
+   states. The outer frame and action buttons share the same corner language,
+   and a single action always fills the available dock consistently. */
 @media (max-width:700px){
   body.brasta-shell-locked .game-action-row{
-    align-items:end;
-    min-height:60px;
+    align-items:stretch;
+    min-height:72px;
   }
 
   body.brasta-shell-locked .game-action-row > .action-panel{
-    min-height:60px;
+    min-height:72px;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:center;
+    padding:8px 10px;
+    border-radius:18px;
   }
 
   body.brasta-shell-locked .game-action-row > .action-panel.compact-action-dock{
@@ -539,66 +546,91 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
     overflow:visible;
   }
 
-  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions,
+  body.brasta-shell-locked .action-panel .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options{
     display:flex!important;
     flex-wrap:wrap!important;
-    gap:5px;
-    width:100%;
-    overflow:visible!important;
+    align-items:center!important;
     justify-content:center!important;
-    align-items:stretch;
+    gap:6px;
+    width:100%!important;
+    min-height:48px;
+    margin:0!important;
+    overflow:visible!important;
   }
 
-  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions > button,
+  body.brasta-shell-locked .action-panel .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options > button{
-    flex:1 1 140px!important;
+    flex:1 1 138px!important;
     min-width:0!important;
     width:auto!important;
-    max-width:280px!important;
+    max-width:none!important;
+    min-height:48px!important;
+    border-radius:18px!important;
     white-space:normal!important;
-    line-height:1.1;
-    padding:7px 7px!important;
+    line-height:1.15;
+    padding:8px 10px!important;
   }
 
-  /* A lone action should always sit in the visual center of the dock instead of
-     occupying whichever grid/flex slot happens to be first. */
-  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions:has(> button:only-child),
+  /* One action should never change size just because it came from a different
+     selection path. It fills the same inner frame for Play, Capture or Build. */
+  body.brasta-shell-locked .action-panel .button-row.actions:has(> button:only-child),
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions:has(> button:only-child),
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options:has(> button:only-child){
-    width:min(100%,280px);
-    margin-inline:auto;
+    width:100%!important;
+    margin:0!important;
   }
 
-  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions:has(> button:only-child) > button,
+  body.brasta-shell-locked .action-panel .button-row.actions:has(> button:only-child) > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions:has(> button:only-child) > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options:has(> button:only-child) > button{
     flex:1 1 100%!important;
+    width:100%!important;
     max-width:none!important;
+  }
+
+  body.brasta-shell-locked .action-panel.action-idle-prompt,
+  body.brasta-shell-locked .action-panel .selection-v2-note{
+    align-items:center;
+    justify-content:center;
+  }
+
+  body.brasta-shell-locked .action-panel .selection-v2-note{
+    display:flex;
+    flex:1 1 auto;
+    min-height:48px;
+    padding:0 8px;
   }
 }
 
 @media (max-width:430px){
   body.brasta-shell-locked .game-action-row,
   body.brasta-shell-locked .game-action-row > .action-panel{
-    min-height:56px;
+    min-height:68px;
   }
 
-  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions,
+  body.brasta-shell-locked .game-action-row > .action-panel{
+    padding:7px 8px;
+    border-radius:17px;
+  }
+
+  body.brasta-shell-locked .action-panel .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options{
-    gap:4px;
+    min-height:46px;
+    gap:5px;
   }
 
-  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions > button,
+  body.brasta-shell-locked .action-panel .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options > button{
-    min-height:32px;
+    min-height:46px!important;
     flex-basis:118px!important;
-    padding:5px 6px!important;
-    font-size:10px!important;
+    border-radius:17px!important;
+    padding:7px 8px!important;
+    font-size:11px!important;
   }
 }
 
