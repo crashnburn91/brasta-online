@@ -303,14 +303,14 @@ export default function AccountBridge() {
     }
     setOtpEmail(clean);
     setOtpCode('');
-    setMessage('Check your email for your Brasta sign-in link or 6-digit code.');
+    setMessage('Check your email for your Brasta sign-in link or sign-in code.');
   }
 
   async function verifyEmailCode(event: FormEvent) {
     event.preventDefault();
     const cleanEmail = otpEmail.trim();
-    const cleanCode = otpCode.replace(/\D/g, '').slice(0, 6);
-    if (!cleanEmail || cleanCode.length !== 6) return;
+    const cleanCode = otpCode.replace(/\D/g, '').slice(0, 10);
+    if (!cleanEmail || cleanCode.length < 6) return;
 
     setBusy(true);
     setMessage('');
@@ -417,20 +417,20 @@ export default function AccountBridge() {
                     <div className="account-divider"><span>or enter the code</span></div>
                     <form onSubmit={verifyEmailCode} className="account-email-form account-otp-form">
                       <label>
-                        6-digit sign-in code
+                        Sign-in code
                         <input
                           type="text"
                           inputMode="numeric"
                           autoComplete="one-time-code"
-                          maxLength={6}
+                          maxLength={10}
                           value={otpCode}
-                          onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="123456"
-                          aria-label="6-digit Brasta sign-in code"
+                          onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="Enter code"
+                          aria-label="Brasta sign-in code"
                         />
                       </label>
                       <small>Enter the code sent to {otpEmail}. This lets you sign in on this device even if you opened the email somewhere else.</small>
-                      <button className="primary" disabled={busy || otpCode.length !== 6} type="submit">Verify Code &amp; Sign In</button>
+                      <button className="primary" disabled={busy || otpCode.length < 6} type="submit">Verify Code &amp; Sign In</button>
                     </form>
                   </>
                 )}
