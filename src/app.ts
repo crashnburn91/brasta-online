@@ -545,7 +545,7 @@ namespace BrastaApp {
     const wasPregame = !!onlineRoom && !onlineRoom.started;
     const shouldLeave = role === 'spectator' || wasPregame;
     if (shouldLeave) onlineClient?.leaveRoom();
-    onlineClient?.close(); onlineClient = null; onlineRoom = null; onlineSession = null; state = null; connectionStatus = 'disconnected'; lastOnlineRevision = -1; context = null; resetInteraction(); if (code && shouldLeave) BrastaNet.clearSession(code, role); history.replaceState({}, '', location.pathname); render();
+    onlineClient?.close(); onlineClient = null; onlineRoom = null; onlineSession = null; state = null; inviteRoomCode = ''; connectionStatus = 'disconnected'; lastOnlineRevision = -1; context = null; resetInteraction(); if (code && shouldLeave) BrastaNet.clearSession(code, role); history.replaceState({}, '', location.pathname); render();
   }
 
   function renderLab(): void {
