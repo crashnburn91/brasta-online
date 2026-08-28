@@ -26,9 +26,9 @@
 
   function attachSocket(ws) {
     if (!ws || ws.__brastaBurnAttached) return;
-    if (!isGameSocket(ws)) return;
+    if (!isGameSocket(ws) || ws.__brastaBurnBotSocket) return;
     ws.__brastaBurnAttached = true;
-    activeSocket = ws;
+    if (ws.__brastaBurnPlayerSocket) activeSocket = ws;
     ws.addEventListener('message', (event) => {
       let message;
       try { message = JSON.parse(String(event.data)); } catch { return; }
@@ -53,6 +53,21 @@
   if (!WebSocket.prototype.__brastaBurnSendPatched) {
     Object.defineProperty(WebSocket.prototype, '__brastaBurnSendPatched', { value: true });
     WebSocket.prototype.send = function patchedBrastaSend(data) {
+      try {
+        const message = JSON.parse(String(data || ''));
+        if (message?.type === 'JOIN_ROOM') {
+          if (String(message.name || '').trim().startsWith('Brasta Bot')) {
+            this.__brastaBurnBotSocket = true;
+            this.__brastaBurnPlayerSocket = false;
+          } else {
+            this.__brastaBurnPlayerSocket = true;
+          }
+        } else if (message?.type === 'CREATE_ROOM') {
+          this.__brastaBurnPlayerSocket = true;
+        } else if (message?.type === 'SPECTATE_ROOM') {
+          this.__brastaBurnPlayerSocket = false;
+        }
+      } catch {}
       attachSocket(this);
       return nativeSend.call(this, data);
     };
@@ -60,11 +75,19 @@
 
   function primaryGameSocket() {
     const primary = window.__BRASTA_PRIMARY_GAME_SOCKET__;
-    if (primary && primary.readyState === WebSocket.OPEN) {
+    if (primary && !primary.__brastaBurnBotSocket) {
+      primary.__brastaBurnPlayerSocket = true;
       attachSocket(primary);
-      return primary;
+      if (primary.readyState === WebSocket.OPEN) return primary;
+      // A reconnecting human socket must never fall through to the bot socket.
+      return null;
     }
-    return activeSocket && activeSocket.readyState === WebSocket.OPEN ? activeSocket : null;
+    return activeSocket
+      && activeSocket.__brastaBurnPlayerSocket
+      && !activeSocket.__brastaBurnBotSocket
+      && activeSocket.readyState === WebSocket.OPEN
+      ? activeSocket
+      : null;
   }
 
   function send(payload) {
