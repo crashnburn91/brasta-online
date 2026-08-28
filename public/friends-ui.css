@@ -207,7 +207,22 @@
 .game-invite-row{
   background:linear-gradient(90deg,rgba(184,149,63,.08),transparent 58%);
 }
-.friend-invite-menu{position:relative}
+/* Invite menus need to escape the rounded friend-list frame. Only the
+   section that contains invite controls opens its overflow; other lists keep
+   their normal clipping behavior. */
+.friends-section > .friends-list:has(.friend-invite-menu){
+  overflow:visible;
+  position:relative;
+}
+.friends-section:has(.friend-invite-menu[open]){
+  position:relative;
+  z-index:40;
+}
+.friend-row:has(.friend-invite-menu[open]){
+  position:relative;
+  z-index:41;
+}
+.friend-invite-menu{position:relative;z-index:42}
 .friend-invite-menu>summary{
   list-style:none;
   min-height:34px;
@@ -227,7 +242,7 @@
 .friend-invite-menu[open]>summary{background:#2f7655;border-color:#6cb58f;color:#f3fff8}
 .friend-invite-popover{
   position:absolute;
-  z-index:20;
+  z-index:100;
   top:calc(100% + 6px);
   right:0;
   width:160px;
