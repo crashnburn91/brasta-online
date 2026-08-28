@@ -8,6 +8,10 @@ import {
   getFriendsSnapshot,
   presenceHeartbeat,
   sendFriendRequest,
+  sendMatchInvite,
+  consumeMatchInvite,
+  declineMatchInvite,
+  cancelMatchInvite,
   unblockFriend,
 } from '../../../lib/friends';
 
@@ -34,6 +38,11 @@ export async function POST(request: Request) {
       username?: string;
       relationshipId?: string;
       userId?: string;
+      inviteId?: string;
+      inviteType?: 'private' | 'ranked_2v2';
+      mode?: '1v1' | '2v2';
+      roomCode?: string;
+      partyCode?: string;
     };
     const action = String(body.action || 'status');
 
@@ -68,6 +77,29 @@ export async function POST(request: Request) {
     if (action === 'remove') {
       await deleteFriendship(identity.userId, String(body.relationshipId || ''));
       return json({ state: 'removed', ...(await getFriendsSnapshot(identity.userId)) });
+    }
+    if (action === 'send-invite') {
+      await sendMatchInvite({
+        userId: identity.userId,
+        targetId: String(body.userId || ''),
+        inviteType: body.inviteType === 'ranked_2v2' ? 'ranked_2v2' : 'private',
+        mode: body.mode === '2v2' ? '2v2' : body.mode === '1v1' ? '1v1' : null,
+        roomCode: body.roomCode || null,
+        partyCode: body.partyCode || null,
+      });
+      return json({ state: 'invite-sent', ...(await getFriendsSnapshot(identity.userId)) });
+    }
+    if (action === 'consume-invite') {
+      await consumeMatchInvite(identity.userId, String(body.inviteId || ''));
+      return json({ state: 'invite-consumed', ...(await getFriendsSnapshot(identity.userId)) });
+    }
+    if (action === 'decline-invite') {
+      await declineMatchInvite(identity.userId, String(body.inviteId || ''));
+      return json({ state: 'invite-declined', ...(await getFriendsSnapshot(identity.userId)) });
+    }
+    if (action === 'cancel-invite') {
+      await cancelMatchInvite(identity.userId, String(body.inviteId || ''));
+      return json({ state: 'invite-canceled', ...(await getFriendsSnapshot(identity.userId)) });
     }
     if (action === 'block') {
       await blockFriend(identity.userId, String(body.userId || ''));
