@@ -1,5 +1,5 @@
 .friends-dock{
-  position:static;
+  position:relative;
   min-height:40px;
   display:flex;
   align-items:center;
