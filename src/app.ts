@@ -265,7 +265,11 @@ namespace BrastaApp {
   function renderBoard(): string {
     if (!state) return '';
     const looseSelectable = state.phase === 'play' && canLocalPlayerAct();
-    return `<section class="table"><div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
+    const lastMove = state.lastMove
+      ? `<div class="last-move-banner board-last-move"><span>LAST MOVE</span><b>${escapeHtml(state.lastMove)}</b></div>`
+      : '';
+    const eventOverlay = state.phase === 'play' ? renderEventBanner(state.event, 'board') : '';
+    return `<section class="table">${lastMove}${eventOverlay}<div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
   }
 
   function renderOpening(): string {
@@ -352,7 +356,7 @@ namespace BrastaApp {
     return null;
   }
 
-  function renderEventBanner(event: string | null): string {
+  function renderEventBanner(event: string | null, placement: 'board' | 'round' = 'board'): string {
     if (!event) return '';
     const text = event.trim();
     if (/^(?:BUILD\b|Added to BUILD\b)/i.test(text)) return '';
@@ -360,8 +364,9 @@ namespace BrastaApp {
     const isTeamEvent = /BRASTA!|Jack sweep|BIG 2|BIG 10|LAST PICKUP!/i.test(text);
     const team = isTeamEvent ? teamForEvent(text) : null;
     const teamClass = team === 'A' ? ' team-event-blue' : team === 'B' ? ' team-event-red' : '';
+    const placementClass = placement === 'round' ? ' round-event-overlay' : ' board-event-overlay';
 
-    return `<div class="event${teamClass}" data-event-seq="${eventRenderSequence}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
+    return `<div class="event transient-event-overlay${placementClass}${teamClass}" data-event-seq="${eventRenderSequence}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
   }
 
   function renderRoundEnd(): string {
@@ -370,7 +375,7 @@ namespace BrastaApp {
     const row = (label: string, av: number, bv: number) => `<tr><td>${label}</td><td>${av}</td><td>${bv}</td></tr>`;
     let controls = `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
     if (context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
-    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderEventBanner(state.event)}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
+    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderEventBanner(state.event, 'round')}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
   }
   function renderMatchEnd(): string {
     if (!state || state.phase !== 'matchEnd') return '';
@@ -389,7 +394,7 @@ namespace BrastaApp {
       lastEventStateRef = state;
       eventRenderSequence += 1;
     }
-    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${state.phase === 'play' ? renderEventBanner(state.event) : ''}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${state.lastMove ? `<div class="last-move-banner"><span>LAST MOVE</span>${escapeHtml(state.lastMove)}</div>` : ''}${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
+    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
     bindGame();
   }
 
