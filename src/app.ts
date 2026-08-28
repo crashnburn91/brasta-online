@@ -306,7 +306,7 @@ namespace BrastaApp {
     const boardSelected = hasBoardSelection();
     if (!selectedCard && !boardSelected) {
       directActions = [];
-      return `<div class="action-panel"><p>Select a card in your hand or select cards on the table.</p></div>`;
+      return `<div class="action-panel action-idle-prompt"><p>Select a card in your hand or select cards on the table.</p></div>`;
     }
 
     const actions = selectionActions();
