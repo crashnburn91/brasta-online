@@ -10,6 +10,11 @@
   let shellLocked = false;
   let queued = false;
   let focusTimer = 0;
+  let pullStartX = 0;
+  let pullStartY = 0;
+  let pullDistance = 0;
+  let pullTracking = false;
+  let pullIndicator = null;
 
   function viewport() {
     const vv = window.visualViewport;
@@ -161,6 +166,85 @@
     window.setTimeout(queueSync, 180);
   }
 
+  function pullTargetIsSafe(target) {
+    if (!(target instanceof Element)) return true;
+    return !target.closest('button, input, textarea, select, a, [role="button"], [role="dialog"], .card, .build, .hand, .action-panel, .lobby-controls, .target-list');
+  }
+
+  function ensurePullIndicator() {
+    if (pullIndicator?.isConnected) return pullIndicator;
+    const el = document.createElement('div');
+    el.className = 'brasta-pull-refresh';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = '<span class="brasta-pull-refresh-icon">↻</span><span class="brasta-pull-refresh-label">Pull to refresh</span>';
+    document.body.appendChild(el);
+    pullIndicator = el;
+    return el;
+  }
+
+  function resetPullRefresh() {
+    pullTracking = false;
+    pullDistance = 0;
+    if (pullIndicator) {
+      pullIndicator.classList.remove('visible', 'armed');
+      pullIndicator.style.setProperty('--brasta-pull-distance', '0px');
+    }
+  }
+
+  function onPullStart(event) {
+    if (!shellLocked || keyboardOpen || document.querySelector('[role="dialog"], .burn-call-modal')) return;
+    const touch = event.touches?.[0];
+    if (!touch || !pullTargetIsSafe(event.target)) return;
+    pullStartX = touch.clientX;
+    pullStartY = touch.clientY;
+    pullDistance = 0;
+    pullTracking = true;
+  }
+
+  function onPullMove(event) {
+    if (!pullTracking || !shellLocked || keyboardOpen) return;
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    const dx = touch.clientX - pullStartX;
+    const dy = touch.clientY - pullStartY;
+
+    // Horizontal gestures or upward drags are not refresh gestures.
+    if (dy <= 0 || Math.abs(dx) > Math.max(38, dy * 0.55)) {
+      resetPullRefresh();
+      return;
+    }
+
+    // Ignore tiny movements so taps/clicks still feel completely normal.
+    if (dy < 12) return;
+
+    // Apply resistance like a native pull-to-refresh surface.
+    pullDistance = Math.min(118, Math.round(dy * 0.46));
+    const indicator = ensurePullIndicator();
+    const armed = pullDistance >= 52;
+    indicator.classList.add('visible');
+    indicator.classList.toggle('armed', armed);
+    indicator.style.setProperty('--brasta-pull-distance', `${pullDistance}px`);
+    const label = indicator.querySelector('.brasta-pull-refresh-label');
+    if (label) label.textContent = armed ? 'Release to refresh' : 'Pull to refresh';
+
+    // The locked shell has no document scroll to consume this movement; prevent
+    // browser rubber-band/gesture side effects only after we know it is a pull.
+    event.preventDefault();
+  }
+
+  function onPullEnd() {
+    if (!pullTracking) return;
+    const shouldRefresh = pullDistance >= 52;
+    resetPullRefresh();
+    if (!shouldRefresh) return;
+
+    const indicator = ensurePullIndicator();
+    indicator.classList.add('visible', 'refreshing');
+    const label = indicator.querySelector('.brasta-pull-refresh-label');
+    if (label) label.textContent = 'Refreshing…';
+    window.setTimeout(() => location.reload(), 90);
+  }
+
   function boot() {
     const app = document.getElementById('app') || document.body;
     new MutationObserver(queueSync).observe(app, { childList: true, subtree: true });
@@ -174,6 +258,10 @@
     window.visualViewport?.addEventListener('scroll', queueSync, { passive: true });
     document.addEventListener('focusin', onFocusChange, true);
     document.addEventListener('focusout', onFocusChange, true);
+    document.addEventListener('touchstart', onPullStart, { passive: true });
+    document.addEventListener('touchmove', onPullMove, { passive: false });
+    document.addEventListener('touchend', onPullEnd, { passive: true });
+    document.addEventListener('touchcancel', resetPullRefresh, { passive: true });
     window.addEventListener('pageshow', queueSync, { passive: true });
     queueSync();
   }
