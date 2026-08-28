@@ -59,6 +59,8 @@ export default function AccountBridge() {
   const [experienceLoading, setExperienceLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [username, setUsername] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -293,7 +295,36 @@ export default function AccountBridge() {
       },
     });
     setBusy(false);
-    setMessage(error ? error.message : 'Check your email for your Brasta sign-in link.');
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setOtpEmail(clean);
+    setOtpCode('');
+    setMessage('Check your email for your Brasta sign-in link or 6-digit code.');
+  }
+
+  async function verifyEmailCode(event: FormEvent) {
+    event.preventDefault();
+    const cleanEmail = otpEmail.trim();
+    const cleanCode = otpCode.replace(/\D/g, '').slice(0, 6);
+    if (!cleanEmail || cleanCode.length !== 6) return;
+
+    setBusy(true);
+    setMessage('');
+    const { error } = await supabase!.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanCode,
+      type: 'email',
+    });
+    setBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage('Signed in.');
   }
 
   async function saveUsername(event: FormEvent) {
@@ -377,8 +408,30 @@ export default function AccountBridge() {
                 <div className="account-divider"><span>or</span></div>
                 <form onSubmit={sendMagicLink} className="account-email-form">
                   <label>Email<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label>
-                  <button className="primary" disabled={busy || !email.trim()} type="submit">Email me a sign-in link</button>
+                  <button className="primary" disabled={busy || !email.trim()} type="submit">{otpEmail ? 'Send another email' : 'Email me a sign-in link'}</button>
                 </form>
+                {otpEmail && (
+                  <>
+                    <div className="account-divider"><span>or enter the code</span></div>
+                    <form onSubmit={verifyEmailCode} className="account-email-form account-otp-form">
+                      <label>
+                        6-digit sign-in code
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="123456"
+                          aria-label="6-digit Brasta sign-in code"
+                        />
+                      </label>
+                      <small>Enter the code sent to {otpEmail}. This lets you sign in on this device even if you opened the email somewhere else.</small>
+                      <button className="primary" disabled={busy || otpCode.length !== 6} type="submit">Verify Code &amp; Sign In</button>
+                    </form>
+                  </>
+                )}
                 <button className="account-guest" type="button" onClick={() => setOpen(false)}>Continue as Guest</button>
               </>
             ) : needsUsername ? (
