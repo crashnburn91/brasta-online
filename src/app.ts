@@ -276,7 +276,7 @@ namespace BrastaApp {
     if (!state || state.phase !== 'openingChoice') return '';
     const starterName = currentPlayerName(state.starterSeat);
     if (context === 'online' && (isSpectator() || onlineSession?.seat !== state.starterSeat)) return `<div class="action-panel opening-panel ${isSpectator() ? 'spectator-panel' : ''}"><h3>${escapeHtml(starterName)} is choosing the opening</h3><p>${isSpectator() ? 'You are spectating. ' : ''}Waiting for Seat ${state.starterSeat} to keep the first four or put them on the board.</p></div>`;
-    return `<div class="action-panel opening-panel"><h3>${escapeHtml(starterName)} — Opening choice</h3><p>Keep your first four cards, or put all four on the board and receive a replacement hand.</p><div class="button-row"><button class="primary" data-open="keep">Keep 4</button><button class="primary" data-open="put">Put 4 on Board</button></div></div>`;
+    return `<div class="action-panel opening-panel"><h3>${escapeHtml(starterName)} — Opening choice</h3><p>Keep your first four cards, or place all four on the board and receive a replacement hand.</p><div class="button-row opening-choice-actions"><button class="opening-choice-button opening-keep" data-open="keep">Keep Hand</button><button class="opening-choice-button opening-place" data-open="put">Place on Board</button></div></div>`;
   }
 
   function buildPicker(kind: 'capture' | 'add' | 'raise'): string {
