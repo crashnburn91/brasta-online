@@ -182,36 +182,35 @@ function looseSetsForBuild(state: Brasta.GameState, build: Brasta.Build): Brasta
   return [[]];
 }
 function burnPickupOptions(state: Brasta.GameState, offenderSeat: Brasta.Seat, cardId: Brasta.CardId): BurnPickupOption[] {
-  const legal = Brasta.legalActionsForCard(state, offenderSeat, cardId);
-  const canLoose = legal.some((action) => action.type === 'CAPTURE_LOOSE');
-  const canBuild = legal.some((action) => action.type === 'CAPTURE_BUILD');
-  if (!canLoose && !canBuild) return [];
-
+  // Derive burn eligibility from concrete capture commands against the
+  // authoritative board before the offender played the card loose. This avoids
+  // false negatives from the higher-level legal-action summary.
   const raw: Omit<BurnPickupOption, 'id'>[] = [];
-  if (canLoose) {
-    for (const looseIds of maximalLooseSetsForCard(state, cardId)) {
-      if (!looseIds.length) continue;
-      raw.push({
-        label: `Loose: ${cardListLabel(state, looseIds)}`,
-        kind: 'loose',
-        looseIds,
-        captureCount: looseIds.length + 1,
-      });
-    }
+
+  for (const looseIds of maximalLooseSetsForCard(state, cardId)) {
+    if (!looseIds.length) continue;
+    const command: Brasta.Command = { type: 'CAPTURE_LOOSE', seat: offenderSeat, cardId, looseIds };
+    if (!Brasta.applyCommand(state, command).ok) continue;
+    raw.push({
+      label: `Loose: ${cardListLabel(state, looseIds)}`,
+      kind: 'loose',
+      looseIds,
+      captureCount: looseIds.length + 1,
+    });
   }
 
-  if (canBuild) {
-    for (const build of Brasta.getCapturableBuilds(state, cardId)) {
-      for (const looseIds of looseSetsForBuild(state, build)) {
-        const extra = looseIds.length ? ` + ${cardListLabel(state, looseIds)}` : '';
-        raw.push({
-          label: `${Brasta.buildLabel(build)}${extra}`,
-          kind: 'build',
-          buildId: build.id,
-          looseIds,
-          captureCount: cardIdsInBuild(build).length + looseIds.length + 1,
-        });
-      }
+  for (const build of Brasta.getCapturableBuilds(state, cardId)) {
+    for (const looseIds of looseSetsForBuild(state, build)) {
+      const command: Brasta.Command = { type: 'CAPTURE_BUILD', seat: offenderSeat, cardId, buildId: build.id, looseIds };
+      if (!Brasta.applyCommand(state, command).ok) continue;
+      const extra = looseIds.length ? ` + ${cardListLabel(state, looseIds)}` : '';
+      raw.push({
+        label: `${Brasta.buildLabel(build)}${extra}`,
+        kind: 'build',
+        buildId: build.id,
+        looseIds,
+        captureCount: cardIdsInBuild(build).length + looseIds.length + 1,
+      });
     }
   }
 
