@@ -16,7 +16,7 @@ Under **Authentication → Email Templates**:
 - **Magic Link:** use `brasta-magic-link.html`
 - **Confirm signup:** use `brasta-confirm-signup.html`
 
-The templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, so the user-facing authentication link stays on `brasta.app`. The Brasta `/auth/confirm` page verifies the token with Supabase using `verifyOtp()` and then returns the player to the page they started from when possible.
+The templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, so the user-facing authentication link stays on `brasta.app`. They also display Supabase's `{{ .Token }}` six-digit OTP. The Brasta `/auth/confirm` page verifies clicked links with `verifyOtp()`, while the account modal can verify the six-digit code with the requested email address. This lets a player open the email on one device and type the code into the device they actually want to sign in on.
 
 ## Custom SMTP with Resend
 
