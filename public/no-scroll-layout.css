@@ -371,6 +371,22 @@ body.brasta-shell-locked.brasta-density-tight .action-panel > p{
   display:none;
 }
 
+body.brasta-shell-locked .action-panel.action-idle-prompt{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+body.brasta-shell-locked .action-panel.action-idle-prompt > p,
+body.brasta-shell-locked.brasta-density-tight .action-panel.action-idle-prompt > p{
+  display:block!important;
+  margin:0;
+  color:#bdc8c2;
+  font-size:12px;
+  line-height:1.25;
+}
+
 body.brasta-shell-locked.brasta-density-tight .action-panel button,
 body.brasta-shell-locked.brasta-density-tight .compact-context-actions button{
   min-height:34px;
