@@ -2,12 +2,22 @@
 .brasta-site-nav-inner{height:100%;max-width:1400px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .brasta-site-brand{display:inline-flex;align-items:center;color:#f7f2df;text-decoration:none;font-size:22px;font-weight:900;letter-spacing:.035em;line-height:1}
 .brasta-site-brand:hover{color:#fff8e8}
-.brasta-site-nav-account-space{width:150px;height:40px;flex:0 0 auto}
+.brasta-site-nav-account-space{width:260px;height:40px;flex:0 0 auto}
 
-/* The account control now belongs to the global navigation rather than
-   floating over the game surface. AccountBridge still owns the button and
-   modal; this layer only places/stylizes the trigger in the nav. */
-.account-dock{position:fixed!important;top:9px!important;right:max(16px,env(safe-area-inset-right))!important;bottom:auto!important;z-index:1200!important;min-height:40px;max-width:min(210px,42vw);padding:5px 11px 5px 5px!important;border-radius:10px!important;background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.14)!important;box-shadow:none!important;backdrop-filter:none!important;transition:background .15s ease,border-color .15s ease}
+/* Account + Friends share one fixed global-nav control cluster. */
+.account-nav-controls{
+  position:fixed;
+  top:9px;
+  right:max(16px,env(safe-area-inset-right));
+  z-index:1200;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  min-height:40px;
+  max-width:min(330px,58vw);
+}
+.account-dock{position:static!important;top:auto!important;right:auto!important;bottom:auto!important;z-index:auto!important;min-height:40px;max-width:min(210px,42vw);padding:5px 11px 5px 5px!important;border-radius:10px!important;background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.14)!important;box-shadow:none!important;backdrop-filter:none!important;transition:background .15s ease,border-color .15s ease}
 .account-dock:hover{background:rgba(255,255,255,.11)!important;border-color:rgba(216,183,94,.48)!important}
 .account-dock>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .account-dock img,.account-dock .account-avatar-fallback{width:30px;height:30px}
@@ -24,8 +34,9 @@
   .brasta-site-nav{height:52px}
   .brasta-site-nav-inner{padding:0 10px}
   .brasta-site-brand{font-size:19px}
-  .brasta-site-nav-account-space{width:124px;height:38px}
-  .account-dock{top:6px!important;right:max(8px,env(safe-area-inset-right))!important;min-height:40px;max-width:46vw;padding-right:9px!important}
+  .brasta-site-nav-account-space{width:190px;height:38px}
+  .account-nav-controls{top:6px;right:max(8px,env(safe-area-inset-right));gap:6px;max-width:62vw}
+  .account-dock{min-height:40px;max-width:46vw;padding-right:9px!important}
   .account-dock img,.account-dock .account-avatar-fallback{width:28px;height:28px}
   .account-dock>span:last-child{font-size:12px}
   .topbar{top:52px!important}
