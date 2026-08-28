@@ -28,6 +28,12 @@
   font-size:19px;
   line-height:1;
 }
+.friends-dock-icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:currentColor;
+}
 .friends-badge{
   min-width:18px;
   height:18px;
