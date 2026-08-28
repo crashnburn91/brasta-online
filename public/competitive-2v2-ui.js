@@ -690,6 +690,10 @@
     profile = null;
     void loadProfile();
   });
+  window.addEventListener('brasta-open-ranked-2v2-duo', () => {
+    if (roomCodeFromUrl()) return;
+    window.requestAnimationFrame(() => void openPartnerModal());
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
