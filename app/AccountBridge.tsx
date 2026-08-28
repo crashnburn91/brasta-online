@@ -114,6 +114,8 @@ export default function AccountBridge() {
       try { localStorage.removeItem(BRASTA_AUTH_TOKEN_KEY); } catch {}
       setProfile(null);
       setExperience(null);
+      setOtpEmail('');
+      setOtpCode('');
       setUsername('');
       setLinkedProviders(new Set());
       window.dispatchEvent(new CustomEvent('brasta-auth-changed', { detail: { signedIn: false } }));
