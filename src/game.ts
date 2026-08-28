@@ -604,7 +604,6 @@ namespace Brasta {
     } else {
       state.currentSeat = next;
       state.message = `Seat ${next}'s turn.`;
-      if (state.lastHandRound === state.round) appendEvent(state, 'LAST HAND!');
     }
   }
 
