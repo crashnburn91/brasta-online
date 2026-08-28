@@ -94,6 +94,13 @@ const newBlock = `function burnPickupOptions(state: Brasta.GameState, offenderSe
     .map((option, index) => ({ ...option, id: \`burn-option-\${index + 1}\` }));
 }`;
 
+if (
+  source.includes("const command: Brasta.Command = { type: 'CAPTURE_LOOSE'") &&
+  source.includes("const command: Brasta.Command = { type: 'CAPTURE_BUILD'")
+) {
+  console.log('Burn detection patch already applied');
+  process.exit(0);
+}
 if (source.includes(newBlock)) {
   console.log('Burn detection patch already applied');
   process.exit(0);
