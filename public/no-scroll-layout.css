@@ -461,6 +461,58 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   }
 }
 
+/* Mobile action-dock reflow. Centered nowrap rows can clip the first and last
+   legal actions when the burn button consumes horizontal space. In the locked
+   shell, prefer a compact grid so every action remains visible without a swipe. */
+@media (max-width:700px){
+  body.brasta-shell-locked .game-action-row{
+    align-items:end;
+  }
+
+  body.brasta-shell-locked .game-action-row > .action-panel.compact-action-dock{
+    max-height:none;
+    overflow:visible;
+  }
+
+  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:5px;
+    width:100%;
+    overflow:visible!important;
+    justify-content:stretch!important;
+  }
+
+  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions > button,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions > button,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options > button{
+    min-width:0!important;
+    width:100%!important;
+    max-width:none!important;
+    white-space:normal!important;
+    line-height:1.1;
+    padding:7px 7px!important;
+  }
+}
+
+@media (max-width:430px){
+  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options{
+    gap:4px;
+  }
+
+  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions > button,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions > button,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options > button{
+    min-height:32px;
+    padding:5px 6px!important;
+    font-size:10px!important;
+  }
+}
+
 /* Dense-board safeguards. A no-scroll shell must also handle unusually full
    tables, so card size and row allocation react to actual board population. */
 body.brasta-shell-locked .table:has(.loose-row > .card:nth-child(9)) .build-row{
