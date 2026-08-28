@@ -75,7 +75,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
-        <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.6" />
+        <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.7" />
       </head>
       <body>
         {children}
