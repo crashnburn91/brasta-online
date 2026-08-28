@@ -24,6 +24,7 @@ namespace BrastaApp {
   let lastEventStateRef: Brasta.GameState | null = null;
   let eventRenderSequence = 0;
   let inviteRoomCode = '';
+  let pendingFriendRoomMode: Brasta.Mode | null = null;
 
   const $ = <T extends HTMLElement = HTMLElement>(selector: string): T => document.querySelector(selector)! as T;
 
@@ -539,9 +540,31 @@ namespace BrastaApp {
     if (onlineClient) return onlineClient;
     onlineClient = new BrastaNet.Client((event) => {
       if (event.type === 'status') { connectionStatus = event.status; if (context === 'online') render(); }
-      else if (event.type === 'session') { onlineSession = event.session; inviteRoomCode = event.session.role === 'player' ? event.session.code : ''; context = 'online'; const key = event.session.role === 'spectator' ? 'spectate' : 'room'; history.replaceState({}, '', `${location.pathname}?${key}=${encodeURIComponent(event.session.code)}`); render(); }
+      else if (event.type === 'session') {
+        onlineSession = event.session;
+        inviteRoomCode = event.session.role === 'player' ? event.session.code : '';
+        context = 'online';
+        const key = event.session.role === 'spectator' ? 'spectate' : 'room';
+        history.replaceState({}, '', `${location.pathname}?${key}=${encodeURIComponent(event.session.code)}`);
+        if (pendingFriendRoomMode && event.session.role === 'player') {
+          const mode = pendingFriendRoomMode;
+          pendingFriendRoomMode = null;
+          window.dispatchEvent(new CustomEvent('brasta-friend-room-created', {
+            detail: { code: event.session.code, mode },
+          }));
+        }
+        render();
+      }
       else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; render(); }
-      else if (event.type === 'error') { commandPending = false; lastError = event.message; render(); }
+      else if (event.type === 'error') {
+        commandPending = false;
+        lastError = event.message;
+        if (pendingFriendRoomMode) {
+          pendingFriendRoomMode = null;
+          window.dispatchEvent(new CustomEvent('brasta-friend-room-create-error', { detail: { message: event.message } }));
+        }
+        render();
+      }
       else if (event.type === 'notice') { if (event.message && event.message !== 'Connected to Brasta.') notice = event.message; render(); }
     });
     return onlineClient;
@@ -642,5 +665,27 @@ namespace BrastaApp {
   }
 
   window.addEventListener('hashchange', () => { if (location.hash === '#lab') { context = 'lab'; state = null; resetInteraction(); renderLab(); } else if (context === 'lab') { context = null; state = null; resetInteraction(); renderLanding(); } });
+  window.addEventListener('brasta-create-friend-room', (rawEvent) => {
+    const event = rawEvent as CustomEvent<{ mode?: Brasta.Mode; targetScore?: Brasta.TargetScore }>;
+    if (context === 'online' || onlineRoom || onlineSession) {
+      window.dispatchEvent(new CustomEvent('brasta-friend-room-create-error', { detail: { message: 'Leave your current room before creating another private invite.' } }));
+      return;
+    }
+    const mode: Brasta.Mode = event.detail?.mode === '2v2' ? '2v2' : '1v1';
+    const targetScore: Brasta.TargetScore = Number(event.detail?.targetScore) === 220 ? 220 : 110;
+    const name = BrastaNet.lastName().trim() || 'Player';
+    pendingFriendRoomMode = mode;
+    context = 'online';
+    lastError = null;
+    notice = null;
+    void client().createRoom(name, mode, targetScore).catch((error) => {
+      pendingFriendRoomMode = null;
+      context = null;
+      lastError = (error as Error).message;
+      window.dispatchEvent(new CustomEvent('brasta-friend-room-create-error', { detail: { message: lastError } }));
+      renderLanding();
+    });
+  });
+
   window.addEventListener('DOMContentLoaded', () => { if (location.hash === '#lab') { context = 'lab'; renderLab(); return; } renderLanding(); void autoReconnectFromUrl(); });
 }
