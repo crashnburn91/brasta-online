@@ -1,0 +1,164 @@
+/* Brasta gameplay overlays
+   Last Move lives on the board edge as persistent context.
+   Special events float over the play surface and disappear automatically. */
+
+.table{
+  position:relative;
+}
+
+.table > .board-last-move{
+  position:absolute;
+  z-index:18;
+  top:0;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:max-content;
+  max-width:calc(100% - 28px);
+  margin:0;
+  padding:6px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:1px solid #ffffff28;
+  border-radius:999px;
+  background:#061812f2;
+  color:#dce7e0;
+  box-shadow:0 6px 18px #0005;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  pointer-events:none;
+}
+
+.table > .board-last-move span{
+  flex:0 0 auto;
+  margin:0;
+  color:#d8b75e;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+
+.table > .board-last-move b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:12px;
+  font-weight:500;
+  color:#dce7e0;
+}
+
+.transient-event-overlay{
+  z-index:32;
+  pointer-events:none;
+  margin:0!important;
+  padding:13px 20px!important;
+  min-width:min(72%,280px);
+  max-width:min(88%,560px)!important;
+  border-radius:18px!important;
+  text-align:center;
+  font-size:18px!important;
+  line-height:1.15;
+  font-weight:900!important;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+  box-shadow:0 14px 42px #0009,0 0 24px #d8b75e22;
+  opacity:1;
+  animation:brasta-event-overlay-in .2s ease-out both;
+  transition:opacity .22s ease,transform .22s ease;
+}
+
+.board-event-overlay{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+.round-end{
+  position:relative;
+}
+
+.round-event-overlay{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+.transient-event-overlay.brasta-event-leaving{
+  opacity:0;
+  transform:translate(-50%,-54%) scale(.97);
+}
+
+@keyframes brasta-event-overlay-in{
+  from{opacity:0;transform:translate(-50%,-45%) scale(.94)}
+  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
+
+@media (max-width:800px){
+  .table > .board-last-move{
+    max-width:calc(100% - 18px);
+    padding:5px 9px;
+    gap:6px;
+  }
+
+  .table > .board-last-move span{
+    font-size:9px;
+    letter-spacing:.12em;
+  }
+
+  .table > .board-last-move b{
+    font-size:11px;
+  }
+
+  .transient-event-overlay{
+    min-width:min(78%,250px);
+    max-width:90%!important;
+    padding:11px 16px!important;
+    border-radius:16px!important;
+    font-size:15px!important;
+  }
+}
+
+@media (max-width:430px){
+  .table > .board-last-move{
+    max-width:calc(100% - 12px);
+    padding:4px 8px;
+  }
+
+  .table > .board-last-move span{
+    font-size:8px;
+  }
+
+  .table > .board-last-move b{
+    font-size:10px;
+  }
+
+  .transient-event-overlay{
+    min-width:min(84%,230px);
+    padding:10px 14px!important;
+    font-size:14px!important;
+  }
+}
+
+/* The no-scroll shell normally clips the table. Allow these two intentional
+   overlays to cross the felt border while individual board rows remain clipped. */
+body.brasta-shell-locked .table{
+  overflow:visible;
+  margin-top:12px;
+}
+
+@media (max-width:430px){
+  body.brasta-shell-locked .table{
+    margin-top:10px;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .transient-event-overlay{
+    animation:none;
+    transition:none;
+  }
+}
