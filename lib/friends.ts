@@ -16,11 +16,23 @@ export type FriendRelationship = FriendProfile & {
   createdAt: string;
 };
 
+export type MatchInvite = FriendProfile & {
+  inviteId: string;
+  inviteType: 'private' | 'ranked_2v2';
+  mode: '1v1' | '2v2' | null;
+  roomCode: string | null;
+  partyCode: string | null;
+  createdAt: string;
+  expiresAt: string;
+};
+
 export type FriendsSnapshot = {
   friends: FriendRelationship[];
   incoming: FriendRelationship[];
   outgoing: FriendRelationship[];
   blocked: FriendProfile[];
+  gameInvitesIncoming: MatchInvite[];
+  gameInvitesOutgoing: MatchInvite[];
 };
 
 type FriendshipRow = {
@@ -37,6 +49,18 @@ type BlockRow = {
   blocker_id: string;
   blocked_id: string;
   created_at: string;
+};
+
+type MatchInviteRow = {
+  id: string;
+  inviter_id: string;
+  invitee_id: string;
+  invite_type: 'private' | 'ranked_2v2';
+  mode: '1v1' | '2v2' | null;
+  room_code: string | null;
+  party_code: string | null;
+  created_at: string;
+  expires_at: string;
 };
 
 type ProfileRow = {
@@ -91,6 +115,14 @@ function validUsername(value: string): boolean {
   return /^[A-Za-z0-9_]{3,20}$/.test(value);
 }
 
+function cleanRoomCode(value: unknown): string {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+}
+
+function cleanPartyCode(value: unknown): string {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+}
+
 async function profileByUsername(username: string): Promise<ProfileRow | null> {
   const rows = await rest<ProfileRow[]>(
     `profiles?username=ilike.${encodeURIComponent(username)}&select=id,username,display_name,avatar_url&limit=1`,
@@ -134,6 +166,15 @@ async function blockRows(userId: string): Promise<BlockRow[]> {
     `friend_blocks?or=(blocker_id.eq.${userId},blocked_id.eq.${userId})&select=blocker_id,blocked_id,created_at`,
     {},
     'Could not load blocks',
+  );
+}
+
+async function matchInviteRows(userId: string): Promise<MatchInviteRow[]> {
+  const now = encodeURIComponent(new Date().toISOString());
+  return rest<MatchInviteRow[]>(
+    `match_invites?or=(inviter_id.eq.${userId},invitee_id.eq.${userId})&expires_at=gt.${now}&select=id,inviter_id,invitee_id,invite_type,mode,room_code,party_code,created_at,expires_at&order=created_at.desc&limit=50`,
+    {},
+    'Could not load game invites',
   );
 }
 
@@ -194,12 +235,30 @@ export async function presenceHeartbeat(userId: string): Promise<void> {
   await touchPresence(userId);
 }
 
+function inviteItem(row: MatchInviteRow, profile: ProfileRow): MatchInvite {
+  return {
+    ...publicProfile(profile),
+    inviteId: row.id,
+    inviteType: row.invite_type,
+    mode: row.mode,
+    roomCode: row.room_code,
+    partyCode: row.party_code,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  };
+}
+
 export async function getFriendsSnapshot(userId: string): Promise<FriendsSnapshot> {
   await touchPresence(userId);
-  const [relationships, blocks] = await Promise.all([friendshipRows(userId), blockRows(userId)]);
+  const [relationships, blocks, invites] = await Promise.all([
+    friendshipRows(userId),
+    blockRows(userId),
+    matchInviteRows(userId),
+  ]);
   const otherIds = relationships.map((row) => row.requester_id === userId ? row.addressee_id : row.requester_id);
   const blockedIds = blocks.filter((row) => row.blocker_id === userId).map((row) => row.blocked_id);
-  const profiles = await profilesByIds([...otherIds, ...blockedIds]);
+  const inviteOtherIds = invites.map((row) => row.inviter_id === userId ? row.invitee_id : row.inviter_id);
+  const profiles = await profilesByIds([...otherIds, ...blockedIds, ...inviteOtherIds]);
   const acceptedIds = relationships.filter((row) => row.status === 'accepted')
     .map((row) => row.requester_id === userId ? row.addressee_id : row.requester_id);
   const online = await onlineMap(acceptedIds);
@@ -222,6 +281,17 @@ export async function getFriendsSnapshot(userId: string): Promise<FriendsSnapsho
     else outgoing.push(item);
   }
 
+  const gameInvitesIncoming: MatchInvite[] = [];
+  const gameInvitesOutgoing: MatchInvite[] = [];
+  for (const row of invites) {
+    const otherId = row.inviter_id === userId ? row.invitee_id : row.inviter_id;
+    const profile = profiles.get(otherId);
+    if (!profile) continue;
+    const item = inviteItem(row, profile);
+    if (row.invitee_id === userId) gameInvitesIncoming.push(item);
+    else gameInvitesOutgoing.push(item);
+  }
+
   friends.sort((a,b) => Number(Boolean(b.online)) - Number(Boolean(a.online)) || a.username.localeCompare(b.username));
   incoming.sort((a,b) => a.username.localeCompare(b.username));
   outgoing.sort((a,b) => a.username.localeCompare(b.username));
@@ -231,6 +301,8 @@ export async function getFriendsSnapshot(userId: string): Promise<FriendsSnapsho
     incoming,
     outgoing,
     blocked: blockedIds.map((id) => profiles.get(id)).filter((row): row is ProfileRow => Boolean(row)).map((row) => publicProfile(row)),
+    gameInvitesIncoming,
+    gameInvitesOutgoing,
   };
 }
 
@@ -297,11 +369,79 @@ export async function deleteFriendship(userId: string, relationshipId: string, p
   );
 }
 
+export async function sendMatchInvite(args: {
+  userId: string;
+  targetId: string;
+  inviteType: 'private' | 'ranked_2v2';
+  mode?: '1v1' | '2v2' | null;
+  roomCode?: string | null;
+  partyCode?: string | null;
+}): Promise<void> {
+  if (!args.targetId || args.targetId === args.userId) throw new Error('Choose a valid friend.');
+  const relationship = await exactFriendship(args.userId, args.targetId);
+  if (!relationship || relationship.status !== 'accepted') throw new Error('You can only invite accepted friends.');
+  if (await isBlockedEitherWay(args.userId, args.targetId)) throw new Error('This player cannot be invited.');
+
+  const roomCode = cleanRoomCode(args.roomCode);
+  const partyCode = cleanPartyCode(args.partyCode);
+  const mode = args.inviteType === 'ranked_2v2' ? '2v2' : (args.mode === '2v2' ? '2v2' : args.mode === '1v1' ? '1v1' : null);
+
+  if (args.inviteType === 'private' && roomCode.length < 4) throw new Error('Create a private room before inviting a friend.');
+  if (args.inviteType === 'ranked_2v2' && partyCode.length < 4) throw new Error('Create a ranked duo before inviting a friend.');
+
+  await rest<void>(
+    `match_invites?inviter_id=eq.${args.userId}&invitee_id=eq.${args.targetId}&invite_type=eq.${args.inviteType}`,
+    { method: 'DELETE' },
+    'Could not replace the previous game invite',
+  );
+
+  const ttlMinutes = args.inviteType === 'ranked_2v2' ? 10 : 30;
+  await rest<MatchInviteRow[]>(
+    'match_invites',
+    {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        inviter_id: args.userId,
+        invitee_id: args.targetId,
+        invite_type: args.inviteType,
+        mode,
+        room_code: args.inviteType === 'private' ? roomCode : null,
+        party_code: args.inviteType === 'ranked_2v2' ? partyCode : null,
+        expires_at: new Date(Date.now() + ttlMinutes * 60_000).toISOString(),
+      }),
+    },
+    'Could not send game invite',
+  );
+}
+
+export async function consumeMatchInvite(userId: string, inviteId: string): Promise<void> {
+  await rest<void>(
+    `match_invites?id=eq.${encodeURIComponent(inviteId)}&invitee_id=eq.${userId}`,
+    { method: 'DELETE' },
+    'Could not accept game invite',
+  );
+}
+
+export async function declineMatchInvite(userId: string, inviteId: string): Promise<void> {
+  await consumeMatchInvite(userId, inviteId);
+}
+
+export async function cancelMatchInvite(userId: string, inviteId: string): Promise<void> {
+  await rest<void>(
+    `match_invites?id=eq.${encodeURIComponent(inviteId)}&inviter_id=eq.${userId}`,
+    { method: 'DELETE' },
+    'Could not cancel game invite',
+  );
+}
+
 export async function blockFriend(userId: string, targetId: string): Promise<void> {
   if (!targetId || targetId === userId) throw new Error('That player cannot be blocked.');
   await Promise.all([
     rest<void>(`friendships?requester_id=eq.${userId}&addressee_id=eq.${targetId}`, { method: 'DELETE' }, 'Could not remove friendship'),
     rest<void>(`friendships?requester_id=eq.${targetId}&addressee_id=eq.${userId}`, { method: 'DELETE' }, 'Could not remove friendship'),
+    rest<void>(`match_invites?inviter_id=eq.${userId}&invitee_id=eq.${targetId}`, { method: 'DELETE' }, 'Could not clear game invites'),
+    rest<void>(`match_invites?inviter_id=eq.${targetId}&invitee_id=eq.${userId}`, { method: 'DELETE' }, 'Could not clear game invites'),
   ]);
   await rest<void>(
     'friend_blocks?on_conflict=blocker_id,blocked_id',
