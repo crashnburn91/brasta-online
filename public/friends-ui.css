@@ -200,6 +200,65 @@
 .friend-actions button:disabled{opacity:.45;cursor:default}
 .friend-actions .friend-accept{border-color:#6cb58f;background:#2f7655;color:#f3fff8}
 .friend-actions .friend-danger{border-color:rgba(198,107,97,.5);color:#f1a39b}
+.game-invites-section .friends-list{
+  border-color:rgba(216,183,94,.28);
+  box-shadow:inset 0 0 0 1px rgba(216,183,94,.05);
+}
+.game-invite-row{
+  background:linear-gradient(90deg,rgba(184,149,63,.08),transparent 58%);
+}
+.friend-invite-menu{position:relative}
+.friend-invite-menu>summary{
+  list-style:none;
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  border:1px solid rgba(108,181,143,.4);
+  border-radius:9px;
+  background:rgba(47,118,85,.22);
+  color:#c9f1d9;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+  user-select:none;
+}
+.friend-invite-menu>summary::-webkit-details-marker{display:none}
+.friend-invite-menu[open]>summary{background:#2f7655;border-color:#6cb58f;color:#f3fff8}
+.friend-invite-popover{
+  position:absolute;
+  z-index:20;
+  top:calc(100% + 6px);
+  right:0;
+  width:160px;
+  display:grid;
+  gap:5px;
+  padding:7px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;
+  background:#0a241a;
+  box-shadow:0 14px 34px rgba(0,0,0,.48);
+}
+.friend-invite-popover button{
+  width:100%;
+  min-height:36px;
+  text-align:left;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:9px;
+  padding:0 10px;
+  background:rgba(255,255,255,.06);
+  color:#f7f2e8;
+  font:inherit;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.friend-invite-popover button:hover{background:rgba(255,255,255,.11)}
+.friend-invite-popover button:last-child{
+  border-color:rgba(216,183,94,.32);
+  color:#f1d98e;
+}
+
 .friends-empty{
   padding:18px;
   border:1px dashed rgba(255,255,255,.12);
@@ -230,6 +289,9 @@
   line-height:1.4;
 }
 @media(max-width:700px){
+  .friend-invite-menu{order:-1}
+  .friend-invite-popover{right:auto;left:0;width:170px}
+
   .friends-dock{width:40px;padding:5px}
   .friends-dock-label{display:none}
   .friends-dock-icon{width:28px;height:28px}
