@@ -706,6 +706,33 @@ body.brasta-shell-locked .opening-choice-button:hover{
   }
 }
 
+/* Board card fit: don't let a wrapped loose-card row get clipped by the
+   fixed 50/50 build/loose split. If there are no builds, give the loose area
+   most of the table. On narrow/tight phones, six loose cards also scale just
+   enough to remain on one row when possible. */
+body.brasta-shell-locked .table:has(.build-row > .empty-note) .build-row{
+  height:26%;
+}
+
+body.brasta-shell-locked .table:has(.build-row > .empty-note) .loose-row{
+  height:74%;
+}
+
+body.brasta-shell-locked.brasta-density-tight .loose-row:has(> .card:nth-child(6)) > .card{
+  width:50px;
+  height:74px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .loose-row:has(> .card:nth-child(6)) > .card .corner{
+  top:3px;
+  left:4px;
+  font-size:11px;
+}
+
+body.brasta-shell-locked.brasta-density-tight .loose-row:has(> .card:nth-child(6)) > .card .suit{
+  font-size:23px;
+}
+
 /* Dense-board safeguards. A no-scroll shell must also handle unusually full
    tables, so card size and row allocation react to actual board population. */
 body.brasta-shell-locked .table:has(.loose-row > .card:nth-child(9)) .build-row{
