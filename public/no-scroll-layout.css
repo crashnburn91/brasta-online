@@ -461,6 +461,77 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   }
 }
 
+/* Dense-board safeguards. A no-scroll shell must also handle unusually full
+   tables, so card size and row allocation react to actual board population. */
+body.brasta-shell-locked .table:has(.loose-row > .card:nth-child(9)) .build-row{
+  height:36%;
+}
+body.brasta-shell-locked .table:has(.loose-row > .card:nth-child(9)) .loose-row{
+  height:64%;
+}
+
+body.brasta-shell-locked.brasta-density-compact .loose-row:has(> .card:nth-child(7)) > .card{
+  width:54px;
+  height:80px;
+}
+body.brasta-shell-locked.brasta-density-compact .loose-row:has(> .card:nth-child(7)) > .card .corner{
+  font-size:11px;
+}
+body.brasta-shell-locked.brasta-density-compact .loose-row:has(> .card:nth-child(7)) > .card .suit{
+  font-size:24px;
+}
+
+body.brasta-shell-locked .loose-row:has(> .card:nth-child(9)) > .card{
+  width:46px;
+  height:68px;
+}
+body.brasta-shell-locked .loose-row:has(> .card:nth-child(9)) > .card .corner{
+  top:3px;
+  left:4px;
+  font-size:10px;
+}
+body.brasta-shell-locked .loose-row:has(> .card:nth-child(9)) > .card .suit{
+  font-size:21px;
+}
+
+body.brasta-shell-locked .loose-row:has(> .card:nth-child(13)) > .card{
+  width:38px;
+  height:56px;
+  border-radius:5px;
+}
+body.brasta-shell-locked .loose-row:has(> .card:nth-child(13)) > .card .corner{
+  top:2px;
+  left:3px;
+  font-size:9px;
+}
+body.brasta-shell-locked .loose-row:has(> .card:nth-child(13)) > .card .suit{
+  font-size:18px;
+}
+
+body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build{
+  width:84px;
+  min-height:72px;
+  padding:23px 3px 3px;
+}
+body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .build-label{
+  top:3px;
+  left:3px;
+  right:3px;
+  padding:2px;
+  font-size:9px;
+}
+body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.tiny{
+  width:32px;
+  height:46px;
+  margin-left:-18px;
+}
+body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.tiny .corner{
+  font-size:8px;
+}
+body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.tiny .suit{
+  font-size:15px;
+}
+
 /* Virtual keyboard exception: the page may scroll only while a text-editing
    control is focused and the visual viewport has actually contracted. */
 html.brasta-keyboard-open,
