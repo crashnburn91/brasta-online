@@ -45,10 +45,36 @@
     return 'comfortable';
   }
 
-  function syncDensity(width, height) {
-    const density = densityFor(width, height);
+  function applyDensity(density) {
     for (const name of ['comfortable','compact','tight']) {
       setClass(`brasta-density-${name}`, shellLocked && density === name);
+    }
+  }
+
+  function layoutOverflows() {
+    if (!shellLocked) return false;
+    const app = document.getElementById('app');
+    const main = app?.querySelector(':scope > main');
+    if (!(main instanceof HTMLElement)) return false;
+    if (main.scrollHeight > main.clientHeight + 3 || main.scrollWidth > main.clientWidth + 3) return true;
+
+    const table = main.querySelector('.table');
+    if (table instanceof HTMLElement && table.scrollHeight > table.clientHeight + 3) return true;
+
+    const action = main.querySelector('.action-panel');
+    if (action instanceof HTMLElement && action.scrollWidth > action.clientWidth + 3) return true;
+    return false;
+  }
+
+  function syncDensity(width, height) {
+    let density = densityFor(width, height);
+    applyDensity(density);
+    // Content can occasionally be denser than viewport dimensions predict
+    // (many loose cards, several builds, long player names). Tighten once more
+    // rather than clipping or allowing the document to scroll.
+    if (shellLocked && density !== 'tight' && layoutOverflows()) {
+      density = 'tight';
+      applyDensity(density);
     }
   }
 
