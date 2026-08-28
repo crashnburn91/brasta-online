@@ -4,6 +4,7 @@
    document scrolling so focused fields can stay reachable. */
 :root{
   --brasta-visual-height:100dvh;
+  --brasta-site-nav-base:58px;
   --brasta-topbar-base:64px;
 }
 
@@ -18,12 +19,21 @@ body.brasta-shell-locked{
 
 body.brasta-shell-locked{
   min-height:0;
+  display:flex;
+  flex-direction:column;
 }
 
-body.brasta-shell-locked .brasta-bootstrap-root,
-body.brasta-shell-locked #app{
+body.brasta-shell-locked .brasta-site-nav{
+  position:relative;
+  top:auto;
+  flex:0 0 var(--brasta-site-nav-base);
+  height:var(--brasta-site-nav-base);
+}
+
+body.brasta-shell-locked .brasta-bootstrap-root{
+  flex:1 1 auto;
   width:100%;
-  height:100%;
+  height:auto;
   min-height:0;
   overflow:hidden;
 }
@@ -31,11 +41,15 @@ body.brasta-shell-locked #app{
 body.brasta-shell-locked #app{
   display:flex;
   flex-direction:column;
+  width:100%;
+  height:100%;
+  min-height:0;
+  overflow:hidden;
 }
 
 body.brasta-shell-locked .topbar{
-  position:relative;
-  top:auto;
+  position:relative!important;
+  top:auto!important;
   flex:0 0 auto;
   min-height:calc(var(--brasta-topbar-base) + env(safe-area-inset-top));
   height:calc(var(--brasta-topbar-base) + env(safe-area-inset-top));
@@ -125,8 +139,7 @@ body.brasta-shell-locked .round-end{
 }
 
 body.brasta-shell-locked .privacy-cover{
-  top:calc(var(--brasta-topbar-base) + env(safe-area-inset-top));
-  bottom:0;
+  inset:calc(var(--brasta-site-nav-base) + var(--brasta-topbar-base) + env(safe-area-inset-top)) 0 0!important;
 }
 
 /* Lobby uses the remaining viewport as a fixed layout budget. */
@@ -433,6 +446,12 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   font-size:10px;
 }
 
+@media (max-width:700px){
+  body.brasta-shell-locked{
+    --brasta-site-nav-base:52px;
+  }
+}
+
 /* Let the layout breathe horizontally on short landscape devices instead of
    stacking the hero into an unnecessarily tall column. */
 @media (min-width:600px){
@@ -454,10 +473,19 @@ body.brasta-keyboard-open{
   overscroll-behavior-y:contain;
 }
 
+body.brasta-keyboard-open{
+  display:block;
+}
+
+body.brasta-keyboard-open .brasta-site-nav{
+  position:sticky;
+  top:0;
+}
+
 body.brasta-keyboard-open .brasta-bootstrap-root,
 body.brasta-keyboard-open #app{
   height:auto;
-  min-height:var(--brasta-visual-height);
+  min-height:calc(var(--brasta-visual-height) - var(--brasta-site-nav-base));
   overflow:visible;
 }
 
