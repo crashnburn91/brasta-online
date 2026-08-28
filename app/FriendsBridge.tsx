@@ -304,7 +304,9 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
       });
       applySnapshot(data);
       setMessage(`Ranked 2v2 duo invite sent to ${friend.username}.`);
+      setOpen(false);
       window.dispatchEvent(new CustomEvent('brasta-competitive-updated'));
+      window.dispatchEvent(new CustomEvent('brasta-open-ranked-2v2-duo'));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send ranked duo invite.');
     } finally {
