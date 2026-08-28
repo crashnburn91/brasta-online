@@ -461,12 +461,16 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   }
 }
 
-/* Mobile action-dock reflow. Centered nowrap rows can clip the first and last
-   legal actions when the burn button consumes horizontal space. In the locked
-   shell, prefer a compact grid so every action remains visible without a swipe. */
+/* Mobile action-dock reflow. Keep every legal action visible without a swipe,
+   while making one-button and odd-button states visually centered and stable. */
 @media (max-width:700px){
   body.brasta-shell-locked .game-action-row{
     align-items:end;
+    min-height:60px;
+  }
+
+  body.brasta-shell-locked .game-action-row > .action-panel{
+    min-height:60px;
   }
 
   body.brasta-shell-locked .game-action-row > .action-panel.compact-action-dock{
@@ -477,27 +481,50 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options{
-    display:grid!important;
-    grid-template-columns:repeat(2,minmax(0,1fr));
+    display:flex!important;
+    flex-wrap:wrap!important;
     gap:5px;
     width:100%;
     overflow:visible!important;
-    justify-content:stretch!important;
+    justify-content:center!important;
+    align-items:stretch;
   }
 
   body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options > button{
+    flex:1 1 140px!important;
     min-width:0!important;
-    width:100%!important;
-    max-width:none!important;
+    width:auto!important;
+    max-width:280px!important;
     white-space:normal!important;
     line-height:1.1;
     padding:7px 7px!important;
   }
+
+  /* A lone action should always sit in the visual center of the dock instead of
+     occupying whichever grid/flex slot happens to be first. */
+  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions:has(> button:only-child),
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions:has(> button:only-child),
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options:has(> button:only-child){
+    width:min(100%,280px);
+    margin-inline:auto;
+  }
+
+  body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions:has(> button:only-child) > button,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions:has(> button:only-child) > button,
+  body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options:has(> button:only-child) > button{
+    flex:1 1 100%!important;
+    max-width:none!important;
+  }
 }
 
 @media (max-width:430px){
+  body.brasta-shell-locked .game-action-row,
+  body.brasta-shell-locked .game-action-row > .action-panel{
+    min-height:56px;
+  }
+
   body.brasta-shell-locked .action-panel.compact-action-dock .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options{
@@ -508,6 +535,7 @@ body.brasta-shell-locked.brasta-density-tight .waiting-copy{
   body.brasta-shell-locked .action-panel.selection-v2-has-target .button-row.actions > button,
   body.brasta-shell-locked .action-panel.selection-v2-has-target .selection-v2-options > button{
     min-height:32px;
+    flex-basis:118px!important;
     padding:5px 6px!important;
     font-size:10px!important;
   }
