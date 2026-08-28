@@ -56,7 +56,7 @@ namespace BrastaReleaseTests {
     assert(!!seat2Card, 'seat 2 did not receive final hand');
     const nextMove = Brasta.applyCommand(finalDeal.state, { type: 'PLAY_LOOSE', seat: 2, cardId: seat2Card });
     assert(nextMove.ok, nextMove.error || 'last-hand follow-up move failed');
-    assert((nextMove.state.event || '').includes('LAST HAND!'), 'LAST HAND banner did not persist');
+    assert(!(nextMove.state.event || '').includes('LAST HAND!'), 'LAST HAND should only be announced when the final deal begins');
   }
 
   {
