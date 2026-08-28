@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import FriendsBridge from './FriendsBridge';
 import {
   BRASTA_AUTH_RETURN_KEY,
   BRASTA_AUTH_TOKEN_KEY,
@@ -377,18 +378,21 @@ export default function AccountBridge() {
 
   return (
     <>
-      <button className="account-dock" type="button" onClick={() => setOpen(true)} aria-label={user ? 'Open Brasta account' : 'Sign in to Brasta'}>
-        {avatar ? <img src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-avatar-fallback">{user ? (displayName || user.email || 'B').slice(0, 1).toUpperCase() : 'B'}</span>}
-        <span className="account-dock-copy">
-          <b>{user ? (profile?.username || 'Finish Profile') : 'Sign In'}</b>
-          {user && experience && (
-            <>
-              <small>{experience.title} · Lv. {experience.level}</small>
-              <span className="account-xp-track" aria-hidden="true"><i style={{ width: `${experience.progressPercent}%` }} /></span>
-            </>
-          )}
-        </span>
-      </button>
+      <div className="account-nav-controls">
+        {user && profile?.username && <FriendsBridge accessToken={session?.access_token || ''} />}
+        <button className="account-dock" type="button" onClick={() => setOpen(true)} aria-label={user ? 'Open Brasta account' : 'Sign in to Brasta'}>
+          {avatar ? <img src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-avatar-fallback">{user ? (displayName || user.email || 'B').slice(0, 1).toUpperCase() : 'B'}</span>}
+          <span className="account-dock-copy">
+            <b>{user ? (profile?.username || 'Finish Profile') : 'Sign In'}</b>
+            {user && experience && (
+              <>
+                <small>{experience.title} · Lv. {experience.level}</small>
+                <span className="account-xp-track" aria-hidden="true"><i style={{ width: `${experience.progressPercent}%` }} /></span>
+              </>
+            )}
+          </span>
+        </button>
+      </div>
 
       {open && (
         <div className="account-modal-backdrop" role="presentation" onMouseDown={(event) => {
