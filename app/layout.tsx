@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
         <link rel="stylesheet" href="/seat-picker.css?v=0.5.18" />
         <link rel="stylesheet" href="/dealer-marker.css?v=0.5.19" />
-        <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.20" />
+        <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.21" />
         <link rel="stylesheet" href="/burn-callout.css?v=0.13.0" />
         <link rel="stylesheet" href="/account-ui.css?v=0.6.1" />
         <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
