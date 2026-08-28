@@ -34,6 +34,45 @@
 .selection-v2-hide-play-loose{display:none!important}
 .selection-v2-options{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .selection-v2-action{min-width:110px!important;min-height:42px;border-radius:14px!important;padding:9px 16px!important;font-weight:800!important;box-shadow:none!important}
+
+/* Action-color language: keep gameplay intent recognizable at a glance.
+   Play = green, Capture/Sweep = blue, Build/Add/Raise = matte gold. */
+.selection-v2-action.action-play{
+  background:#2f7655!important;
+  border-color:#6cb58f!important;
+  color:#f3fff8!important;
+}
+.selection-v2-action.action-capture{
+  background:#2e6489!important;
+  border-color:#6da8d0!important;
+  color:#f4fbff!important;
+}
+.selection-v2-action.action-build{
+  background:#b8953f!important;
+  border-color:#e0c46f!important;
+  color:#1f1807!important;
+}
+.selection-v2-action.action-burn{
+  background:#7b352f!important;
+  border-color:#c66b61!important;
+  color:#fff4f1!important;
+}
+.selection-v2-action.action-neutral{
+  background:#3d5148!important;
+  border-color:#7c9188!important;
+  color:#f1f5f3!important;
+}
+.selection-v2-action.action-play:hover,
+.selection-v2-action.action-capture:hover,
+.selection-v2-action.action-build:hover,
+.selection-v2-action.action-burn:hover,
+.selection-v2-action.action-neutral:hover{
+  filter:brightness(1.08);
+}
+.selection-v2-action:disabled{
+  filter:saturate(.45) brightness(.8);
+  opacity:.62;
+}
 .selection-v2-note{font-size:12px;color:#bdc8c2;padding:8px 2px}
 .action-panel.selection-v2-has-target .button-row.actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 .action-panel.selection-v2-has-target .selection-v2-options{display:flex;align-items:center;justify-content:center;gap:8px}
