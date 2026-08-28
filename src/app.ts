@@ -187,10 +187,18 @@ namespace BrastaApp {
     return actions;
   }
 
+  function directActionColorClass(action: DirectAction): string {
+    if (action.command.type === 'PLAY_LOOSE') return 'action-play';
+    if (action.command.type === 'CAPTURE_LOOSE' || action.command.type === 'CAPTURE_BUILD') return 'action-capture';
+    if (action.command.type === 'MAKE_BUILD' || action.command.type === 'ADD_TO_BUILD' || action.command.type === 'RAISE_BUILD') return 'action-build';
+    if (action.command.type === 'JACK_ACTION') return /burn/i.test(action.label) ? 'action-burn' : 'action-capture';
+    return 'action-neutral';
+  }
+
   function renderDirectButtons(actions: DirectAction[]): string {
     directActions = actions;
     return actions.map((action, index) =>
-      `<button class="primary selection-v2-action" data-direct-action="${index}">${escapeHtml(action.label)}</button>`
+      `<button class="primary selection-v2-action ${directActionColorClass(action)}" data-direct-action="${index}">${escapeHtml(action.label)}</button>`
     ).join('');
   }
 
