@@ -16,7 +16,7 @@ Under **Authentication → Email Templates**:
 - **Magic Link:** use `brasta-magic-link.html`
 - **Confirm signup:** use `brasta-confirm-signup.html`
 
-The templates intentionally use Supabase's `{{ .ConfirmationURL }}` variable so they continue to work with the existing Brasta `signInWithOtp()` flow and `/auth/callback` handler.
+The templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, so the user-facing authentication link stays on `brasta.app`. The Brasta `/auth/confirm` page verifies the token with Supabase using `verifyOtp()` and then returns the player to the page they started from when possible.
 
 ## Custom SMTP with Resend
 
@@ -36,5 +36,5 @@ Keep the Supabase email redirect/site URL settings pointed at:
 
 - The email uses table layout and inline CSS for broad email-client compatibility.
 - The visual language matches Brasta's dark green and matte-gold branding.
-- Do not replace `{{ .ConfirmationURL }}` with a hard-coded URL.
+- Keep the token-hash link pointed at `/auth/confirm`; do not switch it back to `{{ .ConfirmationURL }}` unless you intentionally want the email to expose the Supabase Auth domain.
 - Once SMTP is enabled, send a real sign-in email and verify SPF/DKIM/DMARC alignment before relying on it for production auth.
