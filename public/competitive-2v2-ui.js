@@ -274,9 +274,13 @@
     partyInFlight = true;
     try {
       const data = await api('party-status');
-      partyInfo = data.party || null;
+      const nextParty = data.party || null;
+      const partyChanged = JSON.stringify(nextParty) !== JSON.stringify(partyInfo);
+      partyInfo = nextParty;
       if (data.competitive) profile = data.competitive;
-      renderPartnerModal();
+      // Do not rebuild the partner modal on every status poll. Replacing its
+      // innerHTML destroys the join-code input while the player is typing.
+      if (partyChanged) renderPartnerModal();
       renderCard();
     } catch (error) {
       const status = document.querySelector('[data-duo-status]');
