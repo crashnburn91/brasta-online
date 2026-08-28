@@ -657,6 +657,50 @@ body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.ti
   font-size:15px;
 }
 
+/* Pull-to-refresh feedback for the viewport-locked shell. The browser's native
+   gesture is unavailable with overflow:hidden, so the shell provides an
+   equivalent gesture without re-enabling page scrolling. */
+.brasta-pull-refresh{
+  --brasta-pull-distance:0px;
+  position:fixed;
+  z-index:1600;
+  top:max(8px,env(safe-area-inset-top));
+  left:50%;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-height:34px;
+  padding:6px 11px;
+  border:1px solid #ffffff24;
+  border-radius:999px;
+  background:#0b281df2;
+  color:#d7e4dc;
+  box-shadow:0 8px 24px #0007;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.02em;
+  opacity:0;
+  pointer-events:none;
+  transform:translate(-50%,calc(-46px + var(--brasta-pull-distance)));
+  transition:opacity .12s ease,transform .08s linear,border-color .12s ease,color .12s ease;
+}
+.brasta-pull-refresh.visible{opacity:1}
+.brasta-pull-refresh.armed{border-color:#d8b75e88;color:#f5df9d}
+.brasta-pull-refresh-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  height:18px;
+  font-size:17px;
+  line-height:1;
+  transform:rotate(calc(var(--brasta-pull-distance) * 2.4));
+}
+.brasta-pull-refresh.refreshing .brasta-pull-refresh-icon{
+  animation:brasta-pull-refresh-spin .65s linear infinite;
+}
+@keyframes brasta-pull-refresh-spin{to{transform:rotate(360deg)}}
+
 /* Virtual keyboard exception: the page may scroll only while a text-editing
    control is focused and the visual viewport has actually contracted. */
 html.brasta-keyboard-open,
