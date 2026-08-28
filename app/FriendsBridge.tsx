@@ -83,6 +83,7 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [openInviteFor, setOpenInviteFor] = useState<string | null>(null);
 
   const applySnapshot = useCallback((data: Partial<Snapshot>) => {
     setSnapshot({
@@ -432,25 +433,19 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
                   {snapshot.friends.length ? (
                     <div className="friends-list">
                       {snapshot.friends.map((item) => (
-                        <div className="friend-row" key={item.relationshipId}>
+                        <div className={`friend-row friend-row-social${openInviteFor === item.id ? ' invite-expanded' : ''}`} key={item.relationshipId}>
                           <div className="friend-avatar">{avatar(item)}<i className={item.online ? 'online' : ''} aria-label={item.online ? 'Online' : 'Offline'} /></div>
                           <div className="friend-copy"><b>{item.username}</b><small>{item.online ? 'Online' : 'Offline'}{item.displayName && item.displayName !== item.username ? ` · ${item.displayName}` : ''}</small></div>
                           <div className="friend-actions friend-actions-secondary">
                             {!inRoom || currentRoom ? (
-                              <details className="friend-invite-menu">
-                                <summary>Invite</summary>
-                                <div className="friend-invite-popover">
-                                  {currentRoom ? (
-                                    <button disabled={busy} onClick={() => void inviteCurrentRoom(item)}>Current Room</button>
-                                  ) : (
-                                    <>
-                                      <button disabled={busy} onClick={() => void invitePrivate(item, '1v1')}>Private 1v1</button>
-                                      <button disabled={busy} onClick={() => void invitePrivate(item, '2v2')}>Private 2v2</button>
-                                      <button disabled={busy} onClick={() => void inviteRankedDuo(item)}>Ranked 2v2 Duo</button>
-                                    </>
-                                  )}
-                                </div>
-                              </details>
+                              <button
+                                className={openInviteFor === item.id ? 'friend-invite-trigger active' : 'friend-invite-trigger'}
+                                disabled={busy}
+                                aria-expanded={openInviteFor === item.id}
+                                onClick={() => setOpenInviteFor((current) => current === item.id ? null : item.id)}
+                              >
+                                {openInviteFor === item.id ? 'Close' : 'Invite'}
+                              </button>
                             ) : null}
                             <button disabled={busy} onClick={() => {
                               if (window.confirm(`Remove ${item.username} from your friends list?`)) void mutate('remove', { relationshipId: item.relationshipId });
@@ -459,6 +454,19 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
                               if (window.confirm(`Block ${item.username}? This also removes the friendship.`)) void mutate('block', { userId: item.id }, `${item.username} blocked.`);
                             }}>Block</button>
                           </div>
+                          {openInviteFor === item.id && (
+                            <div className="friend-invite-inline" aria-label={`Invite ${item.username}`}>
+                              {currentRoom ? (
+                                <button disabled={busy} onClick={() => { setOpenInviteFor(null); void inviteCurrentRoom(item); }}>Invite to Current Room</button>
+                              ) : (
+                                <>
+                                  <button disabled={busy} onClick={() => { setOpenInviteFor(null); void invitePrivate(item, '1v1'); }}>Private 1v1</button>
+                                  <button disabled={busy} onClick={() => { setOpenInviteFor(null); void invitePrivate(item, '2v2'); }}>Private 2v2</button>
+                                  <button className="ranked-duo-invite" disabled={busy} onClick={() => { setOpenInviteFor(null); void inviteRankedDuo(item); }}>Ranked 2v2 Duo</button>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
