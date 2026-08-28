@@ -58,7 +58,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.21" />
         <link rel="stylesheet" href="/burn-callout.css?v=0.13.0" />
         <link rel="stylesheet" href="/account-ui.css?v=0.6.1" />
-        <link rel="stylesheet" href="/account-nav.css?v=0.7.4" />
+        <link rel="stylesheet" href="/account-nav.css?v=0.7.5" />
+        <link rel="stylesheet" href="/friends-ui.css?v=0.1.0" />
         <link rel="stylesheet" href="/experience-ui.css?v=0.9.0" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.1" />
         <link rel="stylesheet" href="/competitive-account.css?v=0.8.1" />
