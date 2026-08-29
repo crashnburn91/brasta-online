@@ -113,7 +113,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/emote-ui.js?v=0.1.2" strategy="afterInteractive" />
-        <Script src="/mobile-game-header.js?v=0.1.3" strategy="afterInteractive" />
+        <Script src="/mobile-game-header.js?v=0.1.4" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
     </html>
