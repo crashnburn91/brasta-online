@@ -31,6 +31,9 @@ type CallableBurn = {
   offenderSeat: Brasta.Seat;
   cardId: Brasta.CardId;
   options: BurnPickupOption[];
+  // PLAY_LOOSE burns include the offender's played card in the pickup.
+  // Incomplete-capture burns only award the board cards that were left behind.
+  includePlayedCard?: boolean;
   claimedBySeat: Brasta.Seat | null;
   claimedAt: number | null;
 };
@@ -224,6 +227,74 @@ function burnPickupOptions(state: Brasta.GameState, offenderSeat: Brasta.Seat, c
     .slice(0, 12)
     .map((option, index) => ({ ...option, id: `burn-option-${index + 1}` }));
 }
+
+function burnOptionBoardIds(state: Brasta.GameState, option: BurnPickupOption): Brasta.CardId[] {
+  const ids = [...option.looseIds];
+  if (option.kind === 'build' && option.buildId) {
+    const build = state.builds.find((candidate) => candidate.id === option.buildId);
+    if (build) ids.push(...cardIdsInBuild(build));
+  }
+  return ids;
+}
+
+function missedCaptureBurnOptions(
+  before: Brasta.GameState,
+  after: Brasta.GameState,
+  command: Extract<Brasta.Command, { type: 'CAPTURE_LOOSE' | 'CAPTURE_BUILD' }>,
+): BurnPickupOption[] {
+  const actualBoardIds = new Set<Brasta.CardId>(command.looseIds);
+  const actualBuildId = command.type === 'CAPTURE_BUILD' ? command.buildId : null;
+
+  if (actualBuildId) {
+    const actualBuild = before.builds.find((build) => build.id === actualBuildId);
+    if (actualBuild) cardIdsInBuild(actualBuild).forEach((id) => actualBoardIds.add(id));
+  }
+
+  const raw: Omit<BurnPickupOption, 'id'>[] = [];
+  for (const candidate of burnPickupOptions(before, command.seat, command.cardId)) {
+    const expectedBoardIds = burnOptionBoardIds(before, candidate);
+
+    // A burn for an incomplete pickup only exists when the player's actual
+    // pickup is a strict subset of a larger legal pickup with the same card.
+    if (![...actualBoardIds].every((id) => expectedBoardIds.includes(id))) continue;
+
+    const missingLoose = candidate.looseIds.filter(
+      (id) => !actualBoardIds.has(id) && after.loose.includes(id),
+    );
+
+    const missedBuild = candidate.kind === 'build'
+      && !!candidate.buildId
+      && candidate.buildId !== actualBuildId
+      ? after.builds.find((build) => build.id === candidate.buildId)
+      : undefined;
+
+    const captureCount = missingLoose.length + (missedBuild ? cardIdsInBuild(missedBuild).length : 0);
+    if (!captureCount) continue;
+
+    const extra = missingLoose.length ? cardListLabel(after, missingLoose) : '';
+    raw.push({
+      label: missedBuild
+        ? `${Brasta.buildLabel(missedBuild)}${extra ? ` + ${extra}` : ''}`
+        : `Loose: ${extra}`,
+      kind: missedBuild ? 'build' : 'loose',
+      buildId: missedBuild?.id,
+      looseIds: missingLoose,
+      captureCount,
+    });
+  }
+
+  const deduped = new Map<string, Omit<BurnPickupOption, 'id'>>();
+  for (const option of raw) {
+    const key = `${option.kind}:${option.buildId || ''}:${[...option.looseIds].sort().join(',')}`;
+    deduped.set(key, option);
+  }
+
+  return [...deduped.values()]
+    .sort((a, b) => b.captureCount - a.captureCount || a.label.localeCompare(b.label))
+    .slice(0, 12)
+    .map((option, index) => ({ ...option, id: `burn-option-${index + 1}` }));
+}
+
 function specialCaptureAnnouncement(state: Brasta.GameState, team: Brasta.Team, ids: Brasta.CardId[]): string | null {
   const big2 = ids.some((id) => state.cards[id]?.rank === '2' && state.cards[id]?.suit === 'clubs');
   const big10 = ids.some((id) => state.cards[id]?.rank === '10' && state.cards[id]?.suit === 'diamonds');
@@ -235,11 +306,16 @@ function specialCaptureAnnouncement(state: Brasta.GameState, team: Brasta.Team, 
 function resolveBurn(room: StoredRoom, burn: CallableBurn, callerSeat: Brasta.Seat, option: BurnPickupOption): void {
   const state = room.gameState;
   if (!state || state.phase !== 'play') throw new Error('There is no active burn to resolve.');
-  if (!state.loose.includes(burn.cardId)) throw new Error('The burned card is no longer on the table.');
+  const includePlayedCard = burn.includePlayedCard !== false;
+  if (includePlayedCard && !state.loose.includes(burn.cardId)) throw new Error('The burned card is no longer on the table.');
   if (!option.looseIds.every((id) => state.loose.includes(id))) throw new Error('That burn pickup is no longer available.');
 
-  const captured: Brasta.CardId[] = [burn.cardId];
-  const looseToRemove = new Set<Brasta.CardId>([burn.cardId, ...option.looseIds]);
+  const captured: Brasta.CardId[] = [];
+  const looseToRemove = new Set<Brasta.CardId>(option.looseIds);
+  if (includePlayedCard) {
+    captured.push(burn.cardId);
+    looseToRemove.add(burn.cardId);
+  }
   captured.push(...option.looseIds);
 
   if (option.kind === 'build') {
@@ -345,16 +421,6 @@ async function broadcastLocalRoom(code: string): Promise<void> {
           room: snapshot,
           you: { seat: p.seat, name: p.name, isHost: p.token === room.hostToken, role: 'player' },
           state: room.gameState ? visibleStateForSeat(room.gameState, p.seat) : null,
-          canCallBurn: Boolean(
-            room.callableBurn
-            && room.gameState?.phase === 'play'
-            && room.callableBurn.offenderSeat !== p.seat
-            && (
-              !room.callableBurn.claimedBySeat
-              || !room.callableBurn.claimedAt
-              || Date.now() - room.callableBurn.claimedAt >= BURN_CLAIM_MS
-            )
-          ),
         },
       });
       continue;
@@ -660,14 +726,27 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (!result.ok) throw new Error(result.error || 'Move rejected.');
 
         room.callableBurn = null;
-        if (safe.type === 'PLAY_LOOSE' && result.state.phase === 'play') {
-          const options = burnPickupOptions(before, p.seat, safe.cardId);
+        if (result.state.phase === 'play') {
+          let options: BurnPickupOption[] = [];
+          let includePlayedCard = true;
+
+          if (safe.type === 'PLAY_LOOSE') {
+            options = burnPickupOptions(before, p.seat, safe.cardId);
+          } else if (safe.type === 'CAPTURE_LOOSE' || safe.type === 'CAPTURE_BUILD') {
+            // A player can also be burned for taking only part of everything
+            // their played card was legally able to capture. Example: capture
+            // a loose 10 with a 10 while leaving 6+4 on the table.
+            options = missedCaptureBurnOptions(before, result.state, safe);
+            includePlayedCard = false;
+          }
+
           if (options.length) {
             room.callableBurn = {
               id: crypto.randomUUID(),
               offenderSeat: p.seat,
               cardId: safe.cardId,
               options,
+              includePlayedCard,
               claimedBySeat: null,
               claimedAt: null,
             };
