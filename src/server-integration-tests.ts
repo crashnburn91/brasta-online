@@ -189,13 +189,62 @@ async function runSignedHostBotStartScenario(server: ServerApi): Promise<void> {
   }
 }
 
+async function runLateAccountClaimScenario(server: ServerApi): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/auth/v1/user')) {
+      return new Response(JSON.stringify({ id: 'late-claim-user', email: 'late@example.test' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (url.includes('/rest/v1/profiles')) {
+      return new Response(JSON.stringify([{ username: 'LateClaim', display_name: 'Late Claim', avatar_url: null }]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response('{}', { status: 404 });
+  }) as typeof fetch;
+
+  try {
+    const socket = new FakeSocket();
+    const conn = await server.registerSocket(socket);
+
+    await send(server, conn, {
+      type: 'CREATE_ROOM',
+      name: 'LateClaim',
+      mode: '1v1',
+      targetScore: 110,
+    });
+    const session = socket.latest('SESSION')?.session;
+    assert(session?.code, 'Late-claim room was not created');
+
+    const before = await server.getActiveMatchForAccount('late-claim-user');
+    assert(!before, 'Late-claim user should not be bound before auth arrives');
+
+    await send(server, conn, {
+      type: 'CLAIM_ACCOUNT',
+      accessToken: 'test-access-token-late-claim-user-1234567890',
+    });
+    const after = await server.getActiveMatchForAccount('late-claim-user');
+    assert(after?.roomCode === session.code, 'CLAIM_ACCOUNT did not register the active seat');
+
+    await server.unregisterSocket(conn);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 async function main(): Promise<void> {
   delete process.env.REDIS_URL;
   const server = await import('../lib/brasta-server');
   await runOpeningScenario(server, 'keep');
   await runOpeningScenario(server, 'put');
   await runSignedHostBotStartScenario(server);
-  console.log('3 online reconnect/start integration scenarios passed');
+  await runLateAccountClaimScenario(server);
+  console.log('4 online reconnect/start/account-claim integration scenarios passed');
 }
 
 main()
