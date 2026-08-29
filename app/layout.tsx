@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={brastaDisplay.variable}>
       <head>
-        <meta name="brasta-realtime-url" content={process.env.NEXT_PUBLIC_BRASTA_REALTIME_URL || ''} />
+        <meta name="brasta-realtime-url" content="" data-emote-test-build="true" />
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
@@ -78,6 +78,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.10" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
+        <link rel="stylesheet" href="/emote-ui.css?v=0.1.0" />
       </head>
       <body>
         {children}
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
+        <Script src="/emote-ui.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
     </html>
