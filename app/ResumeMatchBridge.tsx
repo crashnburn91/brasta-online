@@ -41,8 +41,40 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
       }
     };
 
+    const currentPlayerSession = () => {
+      try {
+        const code = String(new URLSearchParams(location.search).get('room') || '')
+          .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+        if (!code) return null;
+        const raw = localStorage.getItem(`brasta-online-session:player:${code}`);
+        if (!raw) return null;
+        const session = JSON.parse(raw) as { code?: string; token?: string; role?: string };
+        if (!session?.token || session.role !== 'player') return null;
+        return { roomCode: code, playerToken: session.token };
+      } catch {
+        return null;
+      }
+    };
+
+    const claimCurrentSeat = async () => {
+      const current = currentPlayerSession();
+      if (!current) return;
+      try {
+        await fetch('/api/active-match', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ action: 'claim', ...current }),
+          cache: 'no-store',
+        });
+      } catch {}
+    };
+
     const refresh = async () => {
       if (!alive) return;
+      await claimCurrentSeat();
       try {
         const response = await fetch('/api/active-match', {
           method: 'POST',
@@ -63,14 +95,17 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
     timer = window.setInterval(() => void refresh(), 5_000);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
     const onAuthChanged = () => void refresh();
+    const onPlayerSession = () => void refresh();
     window.addEventListener('focus', refresh);
     window.addEventListener('brasta-auth-changed', onAuthChanged);
+    window.addEventListener('brasta-player-session', onPlayerSession);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       alive = false;
       window.clearInterval(timer);
       window.removeEventListener('focus', refresh);
       window.removeEventListener('brasta-auth-changed', onAuthChanged);
+      window.removeEventListener('brasta-player-session', onPlayerSession);
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [accessToken]);
