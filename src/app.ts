@@ -665,6 +665,13 @@ namespace BrastaApp {
   }
 
   window.addEventListener('hashchange', () => { if (location.hash === '#lab') { context = 'lab'; state = null; resetInteraction(); renderLab(); } else if (context === 'lab') { context = null; state = null; resetInteraction(); renderLanding(); } });
+  window.addEventListener('brasta-send-emote', (rawEvent) => {
+    const event = rawEvent as CustomEvent<{ emote?: string }>;
+    const emote = String(event.detail?.emote || '').trim();
+    if (!emote || context !== 'online' || !onlineRoom?.started || onlineSession?.role !== 'player') return;
+    client().emote(emote);
+  });
+
   window.addEventListener('brasta-create-friend-room', (rawEvent) => {
     const event = rawEvent as CustomEvent<{ mode?: Brasta.Mode; targetScore?: Brasta.TargetScore }>;
     if (context === 'online' || onlineRoom || onlineSession) {
