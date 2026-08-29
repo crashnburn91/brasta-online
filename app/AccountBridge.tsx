@@ -297,7 +297,11 @@ export default function AccountBridge() {
   const user = session?.user || null;
   const displayName = profile?.display_name || profile?.username || (user ? suggestedDisplayName(user) : '');
   const avatar = profile?.avatar_url || (user ? suggestedAvatar(user) : null);
-  const needsUsername = Boolean(user && !profileLoading && !profile?.username);
+  // Once a signed-in user has no username, keep the completion flow stable
+  // even while background profile refreshes are running. Tying this to
+  // profileLoading caused the modal to flicker into the normal profile card
+  // during TOKEN_REFRESHED / duplicate session syncs.
+  const needsUsername = Boolean(user && !profile?.username);
 
   async function signIn(provider: OAuthProvider) {
     setBusy(true);
