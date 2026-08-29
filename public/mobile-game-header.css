@@ -1,0 +1,264 @@
+/* Test-build mobile gameplay header: merge branding/status/menu into one app bar,
+   leaving the legacy topbar as a compact scoreboard-only strip. */
+@media(max-width:700px){
+  body.brasta-mobile-merged-header{
+    --brasta-site-nav-base:50px;
+    --brasta-topbar-base:40px;
+  }
+
+  body.brasta-mobile-merged-header .brasta-site-nav{
+    height:50px!important;
+    min-height:50px!important;
+  }
+  body.brasta-mobile-merged-header .brasta-site-nav-inner{
+    height:50px;
+    padding:0 8px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+
+  body.brasta-mobile-merged-header .brasta-site-brand{
+    width:auto;
+    min-width:0;
+    height:auto;
+    padding:0;
+    border:0;
+    border-radius:0;
+    display:inline-flex;
+    align-items:center;
+    overflow:visible;
+    background:transparent;
+    color:#f7f2df;
+    font-size:20px!important;
+    line-height:1;
+    box-shadow:none;
+  }
+  body.brasta-mobile-merged-header .brasta-site-brand::before{content:none}
+
+  body.brasta-mobile-merged-header .mobile-header-menu{
+    position:fixed;
+    z-index:1255;
+    top:6px;
+    right:max(8px,env(safe-area-inset-right));
+    width:38px;
+    height:38px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:11px;
+    background:rgba(255,255,255,.045);
+    color:#f5f1e2;
+    font:inherit;
+    font-size:21px;
+    line-height:1;
+    cursor:pointer;
+  }
+  body.brasta-mobile-merged-header .mobile-header-menu[aria-expanded="true"]{
+    background:rgba(255,255,255,.11);
+    border-color:rgba(216,183,94,.42);
+  }
+
+  body.brasta-mobile-merged-header .account-nav-controls{
+    top:5px;
+    right:max(54px,calc(env(safe-area-inset-right) + 54px));
+    min-height:40px;
+    max-width:calc(100vw - 118px);
+  }
+
+  body.brasta-mobile-merged-header .brasta-site-nav-account-space{
+    width:1px!important;
+    min-width:1px!important;
+    flex:1 1 auto!important;
+  }
+
+  body.brasta-mobile-merged-header .topbar.live-score-enabled{
+    top:auto!important;
+    height:40px!important;
+    min-height:40px!important;
+    padding:0 8px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border-top:0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  body.brasta-mobile-merged-header .topbar.live-score-enabled > div:first-child{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .topbar.live-score-enabled > nav{
+    position:fixed!important;
+    z-index:1300;
+    top:0;
+    right:0;
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    pointer-events:none;
+  }
+  body.brasta-mobile-merged-header .topbar .match-menu{
+    position:fixed!important;
+    top:0;
+    right:0;
+    width:0;
+    height:0;
+    overflow:visible;
+    pointer-events:none;
+  }
+  body.brasta-mobile-merged-header .topbar .match-menu-trigger{
+    position:absolute!important;
+    width:1px!important;
+    height:1px!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+  body.brasta-mobile-merged-header .topbar .match-menu-panel{
+    top:50px!important;
+    right:8px!important;
+    pointer-events:auto;
+  }
+
+  body.brasta-mobile-merged-header .live-score-strip{
+    position:relative;
+    width:100%!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin:0!important;
+    padding:0 78px!important;
+    border-top:0!important;
+  }
+  body.brasta-mobile-merged-header .live-score-group{
+    gap:3px;
+  }
+  body.brasta-mobile-merged-header .live-score-divider{
+    height:18px;
+  }
+  body.brasta-mobile-merged-header .mobile-score-round-pill{
+    position:absolute;
+    left:8px;
+    top:50%;
+    transform:translateY(-50%);
+    flex:0 0 auto;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:22px;
+    padding:2px 6px;
+    border:1px solid rgba(255,255,255,.20);
+    border-radius:999px;
+    background:rgba(255,255,255,.035);
+    color:#dbe4df;
+    font-size:9px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+  body.brasta-mobile-merged-header .live-score-target{
+    position:absolute;
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
+    margin-left:0!important;
+    padding-left:0;
+  }
+
+  .mobile-connection-overlay{
+    position:fixed;
+    z-index:1550;
+    top:101px;
+    left:50%;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:38px;
+    padding:8px 13px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;
+    background:rgba(7,27,19,.96);
+    color:#f5f1e2;
+    box-shadow:0 12px 34px rgba(0,0,0,.52);
+    opacity:0;
+    pointer-events:none;
+    transform:translate(-50%,-8px) scale(.96);
+    transition:opacity .16s ease,transform .16s ease,border-color .16s ease;
+  }
+  .mobile-connection-overlay.show{
+    opacity:1;
+    transform:translate(-50%,0) scale(1);
+  }
+  .mobile-connection-overlay b{
+    font-size:11px;
+    letter-spacing:.03em;
+    white-space:nowrap;
+  }
+  .mobile-connection-overlay.reconnecting{
+    border-color:rgba(227,189,70,.42);
+  }
+  .mobile-connection-overlay.connected{
+    border-color:rgba(82,216,121,.46);
+    color:#d9ffe5;
+  }
+  .mobile-connection-spinner{
+    width:14px;
+    height:14px;
+    border:2px solid rgba(255,255,255,.18);
+    border-top-color:#e3bd46;
+    border-radius:50%;
+    animation:brasta-mobile-reconnect-spin .75s linear infinite;
+  }
+  .mobile-connection-check{
+    width:17px;
+    height:17px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:rgba(82,216,121,.16);
+    color:#76e696;
+    font-size:12px;
+    font-weight:900;
+    line-height:1;
+  }
+  @keyframes brasta-mobile-reconnect-spin{to{transform:rotate(360deg)}}
+
+  body.brasta-mobile-merged-header .privacy-cover{
+    inset:90px 0 0!important;
+  }
+}
+
+@media(max-width:430px){
+  body.brasta-mobile-merged-header .brasta-site-brand{
+    width:auto;
+    min-width:0;
+    height:auto;
+    font-size:18px!important;
+  }
+  body.brasta-mobile-merged-header .live-score-strip{gap:7px;padding-left:68px!important;padding-right:68px!important}
+  body.brasta-mobile-merged-header .live-score-group small{font-size:6.5px}
+  body.brasta-mobile-merged-header .live-team{font-size:10px}
+  body.brasta-mobile-merged-header .live-team b{font-size:13px}
+  body.brasta-mobile-merged-header .mobile-score-round-pill{
+    min-height:22px;
+    padding:2px 6px;
+    font-size:8px;
+  }
+  body.brasta-mobile-merged-header .live-score-target{font-size:8px}
+}
+
+/* Wide desktop/ultrawide: keep global and contextual header controls on the
+   same centered content rail instead of letting them hug the viewport edges. */
+@media(min-width:1401px){
+  body .account-nav-controls{
+    right:max(16px,calc((100vw - 1400px)/2 + 16px),env(safe-area-inset-right));
+  }
+
+  body .topbar{
+    padding-left:max(22px,calc((100vw - 1400px)/2 + 16px))!important;
+    padding-right:max(22px,calc((100vw - 1400px)/2 + 16px))!important;
+  }
+}

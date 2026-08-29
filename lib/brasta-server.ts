@@ -6,6 +6,9 @@ const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
 const PRESENCE_MS = 45_000;
 const EVENT_CHANNEL = 'brasta:room-events';
+const EMOTE_CHANNEL = 'brasta:room-emotes';
+const EMOTE_RATE_MS = 2_000;
+const ALLOWED_EMOTES = new Set(['wink','nod','thumbs_up','thumbs_down','eyebrow','laugh','wow','thinking']);
 const BURN_CLAIM_MS = 30_000;
 const memoryRooms = new Map<string, StoredRoom>();
 const localConnections = new Set<Connection>();
@@ -60,6 +63,7 @@ export type Connection = {
   seat: Brasta.Seat | null;
   token: string | null;
   role: ConnectionRole;
+  lastEmoteAt: number;
 };
 
 const cleanName = (v: unknown) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
@@ -439,14 +443,49 @@ async function broadcastLocalRoom(code: string): Promise<void> {
   }
 }
 
+type EmoteEvent = {
+  id: string;
+  roomCode: string;
+  seat: Brasta.Seat;
+  name: string;
+  emote: string;
+  at: number;
+};
+
+function broadcastLocalEmote(event: EmoteEvent): void {
+  for (const conn of localConnections) {
+    if (conn.closed || conn.roomCode !== event.roomCode || !conn.role) continue;
+    sendJson(conn, { type: 'EMOTE', event });
+  }
+}
+
+async function publishEmote(event: EmoteEvent): Promise<void> {
+  if (redis) {
+    await redis.publish(EMOTE_CHANNEL, JSON.stringify(event));
+    return;
+  }
+  broadcastLocalEmote(event);
+}
+
 async function ensureSubscriber(): Promise<void> {
   if (!redis || subscriberStarted) return;
   subscriberStarted = true;
   const sub = duplicateRedis();
   if (!sub) return;
-  sub.on('message', (_channel: string, code: string) => { void broadcastLocalRoom(code); });
+  sub.on('message', (channel: string, payload: string) => {
+    if (channel === EVENT_CHANNEL) {
+      void broadcastLocalRoom(payload);
+      return;
+    }
+    if (channel === EMOTE_CHANNEL) {
+      try {
+        const event = JSON.parse(payload) as EmoteEvent;
+        if (event?.roomCode && event?.seat && event?.emote) broadcastLocalEmote(event);
+      } catch {}
+    }
+  });
   sub.on('error', (err: unknown) => console.error('[brasta redis subscriber]', err));
-  await sub.subscribe(EVENT_CHANNEL);
+  await sub.subscribe(EVENT_CHANNEL, EMOTE_CHANNEL);
 }
 async function publishRoom(code: string): Promise<void> {
   await broadcastLocalRoom(code);
@@ -555,6 +594,26 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         }, false);
       }
       sendJson(conn, { type: 'PONG' });
+      return;
+    }
+
+    if (msg.type === 'EMOTE') {
+      const session = await requirePlayerSession(conn);
+      if (!session) return;
+      if (!session.room.started || !session.room.gameState) return sendError(conn, 'Emotes are available during active matches.');
+      const emote = String(msg.emote || '').trim();
+      if (!ALLOWED_EMOTES.has(emote)) return sendError(conn, 'Choose a valid Brasta emote.');
+      const now = Date.now();
+      if (now - conn.lastEmoteAt < EMOTE_RATE_MS) return;
+      conn.lastEmoteAt = now;
+      await publishEmote({
+        id: crypto.randomUUID(),
+        roomCode: session.room.code,
+        seat: session.p.seat,
+        name: session.p.name,
+        emote,
+        at: now,
+      });
       return;
     }
 
@@ -776,7 +835,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
 
 export async function registerSocket(ws: WireSocket): Promise<Connection> {
   await ensureSubscriber();
-  const conn: Connection = { id: crypto.randomUUID(), ws, closed: false, roomCode: null, seat: null, token: null, role: null };
+  const conn: Connection = { id: crypto.randomUUID(), ws, closed: false, roomCode: null, seat: null, token: null, role: null, lastEmoteAt: 0 };
   localConnections.add(conn);
   sendJson(conn, { type: 'NOTICE', message: redis ? 'Connected to Brasta.' : 'Connected to Brasta (local memory mode).' });
   return conn;

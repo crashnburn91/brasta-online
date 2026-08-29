@@ -1,0 +1,233 @@
+(() => {
+  'use strict';
+  if (window.__BRASTA_EMOTE_UI__) return;
+  window.__BRASTA_EMOTE_UI__ = true;
+
+  const EMOTES = [
+    { id: 'wink', glyph: '😉', label: 'Wink' },
+    { id: 'nod', glyph: '🙂', label: 'Nod' },
+    { id: 'thumbs_up', glyph: '👍', label: 'Thumbs Up' },
+    { id: 'thumbs_down', glyph: '👎', label: 'Thumbs Down' },
+    { id: 'eyebrow', glyph: '🤨', label: 'Eyebrow' },
+    { id: 'laugh', glyph: '😂', label: 'Laugh' },
+    { id: 'wow', glyph: '😮', label: 'Wow' },
+    { id: 'thinking', glyph: '🤔', label: 'Thinking' },
+  ];
+  const byId = new Map(EMOTES.map((item) => [item.id, item]));
+  const bubbleTimers = new Map();
+  let attachedSocket = null;
+  let humanSocket = null;
+  let lastSentAt = 0;
+  let queued = false;
+
+  function markSocketFromPayload(ws, payload) {
+    if (!ws || !payload || typeof payload.type !== 'string') return;
+    if (payload.type === 'CREATE_ROOM') {
+      ws.__brastaEmoteHumanSocket = true;
+      ws.__brastaEmoteBotSocket = false;
+      humanSocket = ws;
+      attachSocket(ws);
+      return;
+    }
+    if (payload.type === 'JOIN_ROOM') {
+      const name = String(payload.name || '').trim();
+      if (name.startsWith('Brasta Bot')) {
+        ws.__brastaEmoteBotSocket = true;
+        ws.__brastaEmoteHumanSocket = false;
+        return;
+      }
+      ws.__brastaEmoteHumanSocket = true;
+      ws.__brastaEmoteBotSocket = false;
+      humanSocket = ws;
+      attachSocket(ws);
+      return;
+    }
+    if (payload.type === 'SPECTATE_ROOM') {
+      ws.__brastaEmoteHumanSocket = false;
+    }
+  }
+
+  const previousSend = WebSocket.prototype.send;
+  if (!WebSocket.prototype.__brastaEmoteSendPatched) {
+    Object.defineProperty(WebSocket.prototype, '__brastaEmoteSendPatched', { value: true });
+    WebSocket.prototype.send = function patchedBrastaEmoteSend(data) {
+      try { markSocketFromPayload(this, JSON.parse(String(data || ''))); } catch {}
+      return previousSend.call(this, data);
+    };
+  }
+
+  function socket() {
+    if (humanSocket?.readyState === WebSocket.OPEN && !humanSocket.__brastaEmoteBotSocket) return humanSocket;
+
+    const primary = window.__BRASTA_PRIMARY_GAME_SOCKET__;
+    if (primary?.__brastaBurnPlayerSocket && !primary?.__brastaBurnBotSocket && primary.readyState === WebSocket.OPEN) {
+      humanSocket = primary;
+      attachSocket(primary);
+      return primary;
+    }
+
+    if (primary?.__brastaEmoteHumanSocket && !primary?.__brastaEmoteBotSocket && primary.readyState === WebSocket.OPEN) {
+      humanSocket = primary;
+      attachSocket(primary);
+      return primary;
+    }
+    return null;
+  }
+
+  function attachSocket(ws) {
+    if (!ws || ws === attachedSocket || ws.__brastaEmoteBotSocket || ws.__brastaBurnBotSocket) return;
+    attachedSocket = ws;
+    ws.addEventListener('message', onSocketMessage);
+    ws.addEventListener('close', () => {
+      if (attachedSocket === ws) attachedSocket = null;
+      if (humanSocket === ws) humanSocket = null;
+    });
+  }
+
+  function onSocketMessage(event) {
+    let message;
+    try { message = JSON.parse(String(event.data || '')); } catch { return; }
+    if (message?.type !== 'EMOTE' || !message.event) return;
+    const payload = message.event;
+    const seat = Number(payload.seat);
+    const item = byId.get(String(payload.emote || ''));
+    if (!item || !Number.isFinite(seat)) return;
+    showBubble(seat, item, String(payload.name || ''));
+  }
+
+  function showBubble(seat, item, name) {
+    const player = document.querySelector(`.player-chip[data-seat="${seat}"]`);
+    if (!(player instanceof HTMLElement)) return;
+
+    const old = player.querySelector('.player-emote-bubble');
+    old?.remove();
+    const previousTimer = bubbleTimers.get(seat);
+    if (previousTimer) window.clearTimeout(previousTimer);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'player-emote-bubble';
+    bubble.setAttribute('aria-label', `${name || 'Player'}: ${item.label}`);
+    bubble.innerHTML = `<span class="player-emote-glyph" aria-hidden="true">${item.glyph}</span><span class="player-emote-label">${item.label}</span>`;
+    player.appendChild(bubble);
+
+    requestAnimationFrame(() => bubble.classList.add('show'));
+    const timer = window.setTimeout(() => {
+      bubble.classList.remove('show');
+      bubble.classList.add('leaving');
+      window.setTimeout(() => bubble.remove(), 220);
+      bubbleTimers.delete(seat);
+    }, 2800);
+    bubbleTimers.set(seat, timer);
+  }
+
+  function closeTray() {
+    document.querySelectorAll('.emote-tray.open').forEach((tray) => tray.classList.remove('open'));
+    document.querySelectorAll('.emote-trigger[aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  function sendEmote(id) {
+    const item = byId.get(id);
+    if (!item) return;
+    closeTray();
+    const now = Date.now();
+    if (now - lastSentAt < 2000) return;
+    lastSentAt = now;
+    window.dispatchEvent(new CustomEvent('brasta-send-emote', { detail: { emote: id } }));
+  }
+
+  function buildControl() {
+    const control = document.createElement('div');
+    control.className = 'emote-control';
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'emote-trigger';
+    trigger.setAttribute('aria-label', 'Send emote');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.innerHTML = '<span aria-hidden="true">☺</span>';
+
+    const tray = document.createElement('div');
+    tray.className = 'emote-tray';
+    tray.setAttribute('role', 'menu');
+    tray.setAttribute('aria-label', 'Brasta emotes');
+
+    for (const item of EMOTES) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'emote-option';
+      button.dataset.emote = item.id;
+      button.setAttribute('role', 'menuitem');
+      button.setAttribute('aria-label', item.label);
+      button.title = item.label;
+      button.innerHTML = `<span aria-hidden="true">${item.glyph}</span><small>${item.label}</small>`;
+      button.onclick = (event) => {
+        event.stopPropagation();
+        sendEmote(item.id);
+      };
+      tray.appendChild(button);
+    }
+
+    trigger.onclick = (event) => {
+      event.stopPropagation();
+      const next = !tray.classList.contains('open');
+      closeTray();
+      tray.classList.toggle('open', next);
+      trigger.setAttribute('aria-expanded', next ? 'true' : 'false');
+    };
+
+    control.append(trigger, tray);
+    return control;
+  }
+
+  function shouldShow() {
+    return !!document.querySelector('.topbar .room-pill')
+      && !!document.querySelector('.table')
+      && !document.querySelector('.topbar .spectator-pill');
+  }
+
+  function enhance() {
+    queued = false;
+    socket();
+
+    const row = document.querySelector('[data-game-action-row]');
+    if (!row || !shouldShow()) {
+      document.querySelectorAll('.emote-control').forEach((node) => node.remove());
+      return;
+    }
+    if (row.querySelector('.emote-control')) return;
+
+    const control = buildControl();
+    const panel = row.querySelector('.action-panel');
+    if (panel) row.insertBefore(control, panel);
+    else row.insertBefore(control, row.firstChild);
+  }
+
+  function queueEnhance() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(enhance);
+  }
+
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element) || !event.target.closest('.emote-control')) closeTray();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeTray();
+  });
+
+  function start() {
+    new MutationObserver(queueEnhance).observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('brasta-emote-received', (rawEvent) => {
+      const payload = rawEvent.detail || {};
+      const seat = Number(payload.seat);
+      const item = byId.get(String(payload.emote || ''));
+      if (!item || !Number.isFinite(seat)) return;
+      showBubble(seat, item, String(payload.name || ''));
+    });
+    window.setInterval(() => socket(), 1000);
+    queueEnhance();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();

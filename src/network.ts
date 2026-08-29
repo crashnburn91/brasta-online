@@ -367,6 +367,11 @@ namespace BrastaNet {
         this.handler({ type: 'session', session });
       }
       else if (message.type === 'ROOM_STATE') this.handler({ type: 'room', update: message.update as RoomUpdate });
+      else if (message.type === 'EMOTE') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-emote-received', { detail: message.event }));
+        }
+      }
       else if (message.type === 'ERROR') this.handler({ type: 'error', message: String(message.message || 'Server rejected the request.') });
       else if (message.type === 'NOTICE') this.handler({ type: 'notice', message: String(message.message || '') });
     }
@@ -398,6 +403,7 @@ namespace BrastaNet {
     }
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
+    emote(emote: string): void { this.send({ type: 'EMOTE', emote }); }
     command(command: Brasta.Command): void { this.send({ type: 'COMMAND', command }); }
     nextRound(): void { this.send({ type: 'NEXT_ROUND' }); }
     endMatch(): void { this.send({ type: 'END_MATCH' }); }
