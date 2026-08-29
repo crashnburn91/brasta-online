@@ -78,7 +78,10 @@
       menu.className = 'mobile-header-menu';
       menu.setAttribute('aria-label', 'Open match menu');
       menu.innerHTML = '<span aria-hidden="true">☰</span>';
-      menu.addEventListener('click', () => {
+      menu.addEventListener('click', (event) => {
+        // match-menu.js closes menus on any document click. Stop this proxy
+        // button's click from bubbling after it opens the real menu.
+        event.stopPropagation();
         const trigger = document.querySelector('.topbar .match-menu-trigger');
         if (trigger instanceof HTMLButtonElement) {
           trigger.click();
