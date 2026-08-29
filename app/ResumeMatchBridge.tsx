@@ -31,18 +31,18 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
     let alive = true;
     let timer = 0;
 
-    const inRoom = () => {
-      // A stale ?room= / ?spectate= URL should not suppress Resume Match.
-      // Only hide the banner when this browser is actually rendering an
-      // active lobby/game surface.
-      return Boolean(document.querySelector('.lobby, .table'));
+    const currentRenderedRoomCode = () => {
+      if (!document.querySelector('.lobby, .table')) return '';
+      try {
+        return String(new URLSearchParams(location.search).get('room') || '')
+          .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      } catch {
+        return '';
+      }
     };
 
     const refresh = async () => {
-      if (!alive || inRoom()) {
-        if (alive) setMatch(null);
-        return;
-      }
+      if (!alive) return;
       try {
         const response = await fetch('/api/active-match', {
           method: 'POST',
@@ -51,7 +51,11 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
         });
         const data = await response.json().catch(() => ({}));
         if (!alive) return;
-        if (response.ok) setMatch((data.match || null) as ActiveMatch | null);
+        if (response.ok) {
+          const nextMatch = (data.match || null) as ActiveMatch | null;
+          const currentCode = currentRenderedRoomCode();
+          setMatch(nextMatch && currentCode && currentCode === nextMatch.roomCode ? null : nextMatch);
+        }
       } catch {}
     };
 
