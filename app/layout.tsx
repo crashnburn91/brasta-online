@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Cinzel } from 'next/font/google';
 import type { ReactNode } from 'react';
+import PresenceTracker from './PresenceTracker';
 
 const brastaDisplay = Cinzel({
   subsets: ['latin'],
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
       </head>
       <body>
+        <PresenceTracker />
         {children}
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
