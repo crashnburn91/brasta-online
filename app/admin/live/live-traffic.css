@@ -124,11 +124,11 @@ body:has(.traffic-shell){
   white-space:nowrap;
 }
 .traffic-table-wrap{
-  overflow:auto;
+  overflow:visible;
 }
 .traffic-table{
   width:100%;
-  min-width:1240px;
+  table-layout:fixed;
   border-collapse:collapse;
   font-size:12px;
 }
@@ -146,6 +146,8 @@ body:has(.traffic-shell){
   border-top:1px solid rgba(255,255,255,.055);
   vertical-align:middle;
   color:#d7dfdb;
+  overflow-wrap:anywhere;
+  word-break:break-word;
 }
 .traffic-table td small{
   display:block;
@@ -210,10 +212,49 @@ body:has(.traffic-shell){
   text-align:center;
   font-size:13px;
 }
+@media(max-width:1100px){
+  .traffic-table thead{display:none}
+  .traffic-table,
+  .traffic-table tbody,
+  .traffic-table tr,
+  .traffic-table td{display:block;width:100%}
+  .traffic-table tr{
+    padding:14px 16px;
+    border-top:1px solid rgba(255,255,255,.07);
+  }
+  .traffic-table tr:first-child{border-top:0}
+  .traffic-table td{
+    padding:5px 0;
+    border-top:0;
+  }
+  .traffic-table td::before{
+    display:inline-block;
+    min-width:88px;
+    margin-right:8px;
+    color:#71877e;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+    vertical-align:top;
+  }
+  .traffic-table td:nth-child(1)::before{content:"Visitor"}
+  .traffic-table td:nth-child(2)::before{content:"Device"}
+  .traffic-table td:nth-child(3)::before{content:"Display"}
+  .traffic-table td:nth-child(4)::before{content:"Network"}
+  .traffic-table td:nth-child(5)::before{content:"Activity"}
+  .traffic-table td:nth-child(6)::before{content:"Source"}
+  .traffic-table td:nth-child(7)::before{content:"Session"}
+  .traffic-visitor{display:inline-flex;vertical-align:top}
+}
 @media(max-width:820px){
   .traffic-shell{width:min(100% - 20px,1180px);padding-top:18px}
   .traffic-header{align-items:center}
   .traffic-header p{display:none}
   .traffic-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .traffic-table{min-width:760px}
+}
+@media(max-width:520px){
+  .traffic-header{align-items:flex-start;flex-direction:column}
+  .traffic-back{min-height:34px}
+  .traffic-table td::before{display:block;min-width:0;margin:0 0 3px}
 }
