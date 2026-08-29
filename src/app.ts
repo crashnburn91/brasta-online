@@ -545,6 +545,7 @@ namespace BrastaApp {
         onlineSession = event.session;
         inviteRoomCode = event.session.role === 'player' ? event.session.code : '';
         context = 'online';
+        if (event.session.role === 'player') client().claimAccount();
         const key = event.session.role === 'spectator' ? 'spectate' : 'room';
         history.replaceState({}, '', `${location.pathname}?${key}=${encodeURIComponent(event.session.code)}`);
         if (pendingFriendRoomMode && event.session.role === 'player') {
@@ -681,6 +682,10 @@ namespace BrastaApp {
     const emote = String(event.detail?.emote || '').trim();
     if (!emote || context !== 'online' || !onlineRoom?.started || onlineSession?.role !== 'player') return;
     client().emote(emote);
+  });
+
+  window.addEventListener('brasta-auth-changed', () => {
+    if (context === 'online' && onlineSession?.role === 'player') client().claimAccount();
   });
 
   window.addEventListener('brasta-account-resume', (rawEvent) => {
