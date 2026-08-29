@@ -401,6 +401,29 @@ async function verifiedAccountId(accessToken: unknown): Promise<string | null> {
   const identity = await verifyBrastaAccessToken(accessToken);
   return identity?.userId || null;
 }
+async function bindVerifiedAccountToSeat(
+  roomCode: string,
+  seat: Brasta.Seat,
+  seatToken: string,
+  accessToken: unknown,
+): Promise<void> {
+  const accountId = await verifiedAccountId(accessToken);
+  if (!accountId) return;
+
+  const changed = await mutateRoom(roomCode, (room) => {
+    const p = room.seats[String(seat)];
+    if (!p || p.token !== seatToken) return null;
+    if (p.accountId && p.accountId !== accountId) return null;
+    p.accountId = accountId;
+    return p;
+  }, false);
+
+  if (changed?.result) {
+    await bindParticipantActiveMatch(changed.room, changed.result);
+    await publishRoom(changed.room.code);
+  }
+}
+
 
 async function rankedAssignmentRoom(userId: string): Promise<string | null> {
   if (!redis || !userId) return null;
@@ -714,21 +737,13 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const name = cleanName(msg.name);
       const mode: Brasta.Mode | null = msg.mode === '2v2' ? '2v2' : msg.mode === '1v1' ? '1v1' : null;
       const targetScore: Brasta.TargetScore = Number(msg.targetScore) === 220 ? 220 : 110;
-      const accountId = await verifiedAccountId(msg.accessToken);
-      if (accountId) {
-        if (await rankedAssignmentRoom(accountId)) {
-          return sendError(conn, 'Finish your active ranked match before creating a private room.');
-        }
-        const active = await getActiveMatchForAccount(accountId);
-        if (active) return sendError(conn, 'You already have an active match. Resume or leave that match before creating another room.');
-      }
       if (!name) return sendError(conn, 'Enter a display name.');
       if (!mode) return sendError(conn, 'Choose 1v1 or 2v2.');
       const token = makeToken();
       let room: StoredRoom | null = null;
       for (let i = 0; i < 25 && !room; i++) {
         const code = await makeRoomCode();
-        const p: Participant = { seat: 1, name, token, connectionId: conn.id, lastSeen: Date.now(), accountId: accountId || undefined };
+        const p: Participant = { seat: 1, name, token, connectionId: conn.id, lastSeen: Date.now() };
         const candidate: StoredRoom = { code, mode, targetScore, createdAt: Date.now(), lastActivity: Date.now(), started: false, revision: 0, hostToken: token, seats: { '1': p }, spectators: {}, gameState: null, callableBurn: null };
         if (await createRoomIfAbsent(candidate)) room = candidate;
       }
@@ -736,8 +751,11 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const p = room.seats['1'];
       await attachPlayer(conn, room, p);
       await saveRoom(room);
-      await bindParticipantActiveMatch(room, p);
       await publishRoom(room.code);
+      // Account binding is verified after the lobby is already visible so a
+      // slow auth lookup can never make Create Room / Play vs Bot appear stuck.
+      void bindVerifiedAccountToSeat(room.code, p.seat, p.token, msg.accessToken)
+        .catch((error) => console.error('[brasta account seat bind]', error));
       return;
     }
 
@@ -746,17 +764,6 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const code = cleanCode(msg.code);
       const name = cleanName(msg.name);
       const reconnectToken = typeof msg.token === 'string' ? msg.token : '';
-      const accountId = await verifiedAccountId(msg.accessToken);
-      if (accountId) {
-        const rankedRoom = await rankedAssignmentRoom(accountId);
-        if (rankedRoom && rankedRoom !== code) {
-          return sendError(conn, 'Finish your active ranked match before joining a private room.');
-        }
-        const active = await getActiveMatchForAccount(accountId);
-        if (active && active.roomCode !== code) {
-          return sendError(conn, 'You already have an active match. Resume or leave that match before joining another room.');
-        }
-      }
       // Persist the membership/session change under the room lock, but wait to
       // publish until the new socket is attached. Never save `changed.room`
       // again afterward: another player may have advanced the game meanwhile.
@@ -765,39 +772,25 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
           const existing = participantForToken(room, reconnectToken);
           if (existing) {
             if (name) existing.name = name;
-            if (accountId && !existing.accountId) existing.accountId = accountId;
             applyNames(room);
             existing.connectionId = conn.id;
             existing.lastSeen = Date.now();
             return existing;
           }
         }
-        if (accountId) {
-          const existing = participantForAccount(room, accountId);
-          if (existing) {
-            const wasHost = existing.token === room.hostToken;
-            existing.token = makeToken();
-            existing.connectionId = conn.id;
-            existing.lastSeen = Date.now();
-            if (name) existing.name = name;
-            if (wasHost) room.hostToken = existing.token;
-            applyNames(room);
-            return existing;
-          }
-        }
-        if (room.started) throw new Error('This game has already started. Sign in with the account that owns this seat to resume it, or use the Spectate link.');
+        if (room.started) throw new Error('This game has already started. Use Resume Match while signed into the account that owns this seat, or use the Spectate link.');
         if (!name) throw new Error('Enter a display name.');
-        if (accountId && participantForAccount(room, accountId)) throw new Error('This account is already seated in the room.');
         const seat = activeSeats(room).find((s) => !room.seats[String(s)]);
         if (!seat) throw new Error('That room is full. You can still spectate it.');
-        const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now(), accountId: accountId || undefined };
+        const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now() };
         room.seats[String(seat)] = p;
         return p;
       }, false);
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
       await supersedeLocalSeat(conn, changed.room.code, changed.result.seat);
       await attachPlayer(conn, changed.room, changed.result);
-      await bindParticipantActiveMatch(changed.room, changed.result);
+      void bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken)
+        .catch((error) => console.error('[brasta account seat bind]', error));
       // publishRoom re-loads the latest authoritative room from storage, so if
       // gameplay advanced while the socket was attaching, the reconnecting
       // player receives that newer state rather than an older snapshot.
