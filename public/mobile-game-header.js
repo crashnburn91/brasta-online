@@ -38,7 +38,12 @@
       status = document.createElement('span');
       status.className = 'mobile-header-connection disconnected';
       status.setAttribute('role', 'status');
-      navInner.appendChild(status);
+    }
+    const brand = navInner.querySelector('.brasta-site-brand');
+    if (brand instanceof HTMLElement && status.previousElementSibling !== brand) {
+      brand.insertAdjacentElement('afterend', status);
+    } else if (!(brand instanceof HTMLElement) && status.parentElement !== navInner) {
+      navInner.prepend(status);
     }
     syncConnection(topbar, status);
 
