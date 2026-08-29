@@ -752,10 +752,14 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       await attachPlayer(conn, room, p);
       await saveRoom(room);
       await publishRoom(room.code);
-      // Account binding is verified after the lobby is already visible so a
-      // slow auth lookup can never make Create Room / Play vs Bot appear stuck.
-      void bindVerifiedAccountToSeat(room.code, p.seat, p.token, msg.accessToken)
-        .catch((error) => console.error('[brasta account seat bind]', error));
+      // The lobby is already visible before this verification begins because
+      // SESSION/ROOM_STATE were sent above. Await the binding here so the
+      // cross-device resume registry is guaranteed to be durable.
+      try {
+        await bindVerifiedAccountToSeat(room.code, p.seat, p.token, msg.accessToken);
+      } catch (error) {
+        console.error('[brasta account seat bind]', error);
+      }
       return;
     }
 
@@ -789,12 +793,14 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
       await supersedeLocalSeat(conn, changed.room.code, changed.result.seat);
       await attachPlayer(conn, changed.room, changed.result);
-      void bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken)
-        .catch((error) => console.error('[brasta account seat bind]', error));
-      // publishRoom re-loads the latest authoritative room from storage, so if
-      // gameplay advanced while the socket was attaching, the reconnecting
-      // player receives that newer state rather than an older snapshot.
+      // Publish the join immediately, then finish the account binding before
+      // this message handler returns so another device can discover the match.
       await publishRoom(changed.room.code);
+      try {
+        await bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken);
+      } catch (error) {
+        console.error('[brasta account seat bind]', error);
+      }
       return;
     }
 
@@ -877,7 +883,6 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         room.gameState = Brasta.startMatch(room.mode, crypto.randomInt(1, 0x7fffffff), room.targetScore);
         room.callableBurn = null;
         applyNames(room); room.started = true; room.revision++;
-        void Promise.all(Object.values(room.seats).map((seatPlayer) => bindParticipantActiveMatch(room, seatPlayer)));
         return null;
       }
       if (!room.started || !room.gameState) throw new Error('The game has not started yet.');
@@ -979,6 +984,9 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       throw new Error('Unsupported room command.');
     });
     if (!changed) return sendError(conn, 'That room no longer exists.');
+    if (msg.type === 'START_GAME') {
+      await Promise.all(Object.values(changed.room.seats).map((seatPlayer) => bindParticipantActiveMatch(changed.room, seatPlayer)));
+    }
     if (changed.room.gameState?.phase === 'matchEnd') await clearRoomActiveMatches(changed.room);
     if (changed.result && typeof changed.result === 'object' && 'type' in changed.result) sendJson(conn, changed.result);
   } catch (err) {
