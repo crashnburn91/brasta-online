@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={brastaDisplay.variable}>
       <head>
-        <meta name="brasta-realtime-url" content={process.env.NEXT_PUBLIC_BRASTA_REALTIME_URL || ''} />
+        <meta name="brasta-realtime-url" content="" data-account-rejoin-test-build="true" />
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
         <link rel="stylesheet" href="/lobby-polish.css?v=4" />
@@ -80,6 +80,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
         <link rel="stylesheet" href="/emote-ui.css?v=0.1.3" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.4" />
+        <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
       </head>
       <body>
         {children}
