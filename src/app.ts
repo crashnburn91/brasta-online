@@ -545,7 +545,12 @@ namespace BrastaApp {
         onlineSession = event.session;
         inviteRoomCode = event.session.role === 'player' ? event.session.code : '';
         context = 'online';
-        if (event.session.role === 'player') client().claimAccount();
+        if (event.session.role === 'player') {
+          client().claimAccount();
+          window.dispatchEvent(new CustomEvent('brasta-player-session', {
+            detail: { code: event.session.code, seat: event.session.seat },
+          }));
+        }
         const key = event.session.role === 'spectator' ? 'spectate' : 'room';
         history.replaceState({}, '', `${location.pathname}?${key}=${encodeURIComponent(event.session.code)}`);
         if (pendingFriendRoomMode && event.session.role === 'player') {
