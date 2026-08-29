@@ -32,12 +32,10 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
     let timer = 0;
 
     const inRoom = () => {
-      try {
-        const params = new URLSearchParams(location.search);
-        return Boolean(params.get('room') || params.get('spectate'));
-      } catch {
-        return false;
-      }
+      // A stale ?room= / ?spectate= URL should not suppress Resume Match.
+      // Only hide the banner when this browser is actually rendering an
+      // active lobby/game surface.
+      return Boolean(document.querySelector('.lobby, .table'));
     };
 
     const refresh = async () => {
@@ -58,14 +56,17 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
     };
 
     void refresh();
-    timer = window.setInterval(() => void refresh(), 15_000);
+    timer = window.setInterval(() => void refresh(), 5_000);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    const onAuthChanged = () => void refresh();
     window.addEventListener('focus', refresh);
+    window.addEventListener('brasta-auth-changed', onAuthChanged);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       alive = false;
       window.clearInterval(timer);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('brasta-auth-changed', onAuthChanged);
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [accessToken]);
