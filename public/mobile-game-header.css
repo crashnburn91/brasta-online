@@ -43,28 +43,6 @@
     letter-spacing:-.03em;
   }
 
-  body.brasta-mobile-merged-header .mobile-header-connection{
-    width:10px;
-    min-width:10px;
-    height:10px;
-    border-radius:50%;
-    border:1px solid rgba(255,255,255,.22);
-    background:#7f8984;
-    box-shadow:0 0 0 4px rgba(255,255,255,.03);
-  }
-  body.brasta-mobile-merged-header .mobile-header-connection.connected{
-    background:#52d879;
-    box-shadow:0 0 0 4px rgba(82,216,121,.09),0 0 10px rgba(82,216,121,.38);
-  }
-  body.brasta-mobile-merged-header .mobile-header-connection.connecting{
-    background:#e3bd46;
-    box-shadow:0 0 0 4px rgba(227,189,70,.08);
-  }
-  body.brasta-mobile-merged-header .mobile-header-connection.disconnected{
-    background:#e45763;
-    box-shadow:0 0 0 4px rgba(228,87,99,.08);
-  }
-
   body.brasta-mobile-merged-header .mobile-header-menu{
     position:fixed;
     z-index:1255;
@@ -151,15 +129,16 @@
   }
 
   body.brasta-mobile-merged-header .live-score-strip{
+    position:relative;
     width:100%!important;
     grid-column:auto!important;
     grid-row:auto!important;
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:7px;
+    gap:10px;
     margin:0!important;
-    padding:0 2px!important;
+    padding:0 78px!important;
     border-top:0!important;
   }
   body.brasta-mobile-merged-header .live-score-group{
@@ -169,6 +148,10 @@
     height:18px;
   }
   body.brasta-mobile-merged-header .mobile-score-round-pill{
+    position:absolute;
+    left:8px;
+    top:50%;
+    transform:translateY(-50%);
     flex:0 0 auto;
     display:inline-flex;
     align-items:center;
@@ -184,9 +167,71 @@
     white-space:nowrap;
   }
   body.brasta-mobile-merged-header .live-score-target{
+    position:absolute;
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
     margin-left:0!important;
     padding-left:0;
   }
+
+  .mobile-connection-overlay{
+    position:fixed;
+    z-index:1550;
+    top:101px;
+    left:50%;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:38px;
+    padding:8px 13px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;
+    background:rgba(7,27,19,.96);
+    color:#f5f1e2;
+    box-shadow:0 12px 34px rgba(0,0,0,.52);
+    opacity:0;
+    pointer-events:none;
+    transform:translate(-50%,-8px) scale(.96);
+    transition:opacity .16s ease,transform .16s ease,border-color .16s ease;
+  }
+  .mobile-connection-overlay.show{
+    opacity:1;
+    transform:translate(-50%,0) scale(1);
+  }
+  .mobile-connection-overlay b{
+    font-size:11px;
+    letter-spacing:.03em;
+    white-space:nowrap;
+  }
+  .mobile-connection-overlay.reconnecting{
+    border-color:rgba(227,189,70,.42);
+  }
+  .mobile-connection-overlay.connected{
+    border-color:rgba(82,216,121,.46);
+    color:#d9ffe5;
+  }
+  .mobile-connection-spinner{
+    width:14px;
+    height:14px;
+    border:2px solid rgba(255,255,255,.18);
+    border-top-color:#e3bd46;
+    border-radius:50%;
+    animation:brasta-mobile-reconnect-spin .75s linear infinite;
+  }
+  .mobile-connection-check{
+    width:17px;
+    height:17px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:rgba(82,216,121,.16);
+    color:#76e696;
+    font-size:12px;
+    font-weight:900;
+    line-height:1;
+  }
+  @keyframes brasta-mobile-reconnect-spin{to{transform:rotate(360deg)}}
 
   body.brasta-mobile-merged-header .privacy-cover{
     inset:90px 0 0!important;
@@ -200,7 +245,7 @@
     height:32px;
   }
   body.brasta-mobile-merged-header .brasta-site-brand::before{font-size:20px}
-  body.brasta-mobile-merged-header .live-score-strip{gap:4px}
+  body.brasta-mobile-merged-header .live-score-strip{gap:7px;padding-left:68px!important;padding-right:68px!important}
   body.brasta-mobile-merged-header .live-score-group small{font-size:6.5px}
   body.brasta-mobile-merged-header .live-team{font-size:10px}
   body.brasta-mobile-merged-header .live-team b{font-size:13px}
