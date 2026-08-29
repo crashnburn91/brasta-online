@@ -412,6 +412,10 @@ namespace BrastaNet {
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
     emote(emote: string): void { this.send({ type: 'EMOTE', emote }); }
+    claimAccount(accessToken?: string): void {
+      const token = accessToken || authAccessToken();
+      if (token) this.send({ type: 'CLAIM_ACCOUNT', accessToken: token });
+    }
     command(command: Brasta.Command): void { this.send({ type: 'COMMAND', command }); }
     nextRound(): void { this.send({ type: 'NEXT_ROUND' }); }
     endMatch(): void { this.send({ type: 'END_MATCH' }); }
