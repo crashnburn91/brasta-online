@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis } from './redis';
+import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
 import {
   competitiveBackendReady,
@@ -704,6 +705,9 @@ export async function ranked2v2QueueAction(
     return { state: 'unavailable' as const, message: 'Ranked play needs its backend secret configured.' };
   }
   const { identity, accessToken } = await authFromRequest(request);
+  if (action === 'join' && await getActiveMatch(identity.userId)) {
+    throw new Error('Finish or leave your active private match before joining ranked.');
+  }
   const status = await getCompetitiveStatus(accessToken, '2v2');
   let party = await readPartyForUser(identity.userId);
   const assignment = await readAssignment(identity.userId);
@@ -797,6 +801,27 @@ async function loadRankedRoom(code: string): Promise<RankedRoom | null> {
     const room = JSON.parse(raw) as RankedRoom;
     return room.ranked?.mode === '2v2' && room.ranked?.matchId ? room : null;
   } catch { return null; }
+}
+
+export async function getRanked2v2ActiveAssignment(userId: string): Promise<Ranked2v2Assignment | null> {
+  if (!userId || !redis) return null;
+  const assignment = await readAssignment(userId);
+  if (!assignment) return null;
+  const room = await loadRankedRoom(assignment.roomCode);
+  if (!room || room.ranked.finalized || room.gameState?.phase === 'matchEnd') {
+    await redis.del(assignmentKey(userId));
+    return null;
+  }
+  const participant = Object.values(room.seats).find((p) => p.authUserId === userId);
+  if (!participant) {
+    await redis.del(assignmentKey(userId));
+    return null;
+  }
+  if (assignment.token !== participant.token) {
+    assignment.token = participant.token;
+    await writeAssignment(userId, assignment);
+  }
+  return assignment;
 }
 
 async function saveRankedRoom(room: RankedRoom, publish = true): Promise<void> {

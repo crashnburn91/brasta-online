@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import FriendsBridge from './FriendsBridge';
+import ResumeMatchBridge from './ResumeMatchBridge';
 import {
   BRASTA_AUTH_RETURN_KEY,
   BRASTA_AUTH_TOKEN_KEY,
@@ -425,6 +426,7 @@ export default function AccountBridge() {
 
   return (
     <>
+      <ResumeMatchBridge accessToken={session?.access_token || ''} />
       <div className="account-nav-controls">
         {user && profile?.username && <FriendsBridge accessToken={session?.access_token || ''} />}
         <button className="account-dock" type="button" onClick={() => setOpen(true)} aria-label={user ? 'Open Brasta account' : 'Sign in to Brasta'}>

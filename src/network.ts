@@ -50,6 +50,7 @@ namespace BrastaNet {
 
   const SESSION_PREFIX = 'brasta-online-session:';
   const LAST_NAME_KEY = 'brasta-online-last-name';
+  const AUTH_TOKEN_KEY = 'brasta-auth-access-token';
   const DIAGNOSTICS_KEY = 'brasta-network-diagnostics-v1';
   const MAX_DIAGNOSTICS = 80;
   const CONNECT_TIMEOUT_MS = 10000;
@@ -61,6 +62,7 @@ namespace BrastaNet {
   export function normalizeCode(code: string): string { return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
   export function rememberName(name: string): void { try { localStorage.setItem(LAST_NAME_KEY, name.trim()); } catch {} }
   export function lastName(): string { try { return localStorage.getItem(LAST_NAME_KEY) || ''; } catch { return ''; } }
+  export function authAccessToken(): string { try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; } }
   function sessionKey(code: string, role: SessionRole): string { return `${SESSION_PREFIX}${role}:${normalizeCode(code)}`; }
   function legacySessionKey(code: string): string { return SESSION_PREFIX + normalizeCode(code); }
 
@@ -234,6 +236,7 @@ namespace BrastaNet {
               code: this.resume.code,
               name: this.resume.name,
               token: this.resume.token,
+              accessToken: this.resume.role === 'player' ? authAccessToken() || undefined : undefined,
             });
           }
           resolve();
@@ -387,13 +390,18 @@ namespace BrastaNet {
     async createRoom(name: string, mode: Brasta.Mode, targetScore: Brasta.TargetScore = 110): Promise<void> {
       this.resume = null;
       await this.connect();
-      this.send({ type: 'CREATE_ROOM', name: name.trim(), mode, targetScore });
+      this.send({ type: 'CREATE_ROOM', name: name.trim(), mode, targetScore, accessToken: authAccessToken() || undefined });
     }
     async joinRoom(code: string, name: string, token?: string): Promise<void> {
       const normalized = normalizeCode(code);
       this.resume = token ? { code: normalized, name: name.trim(), token, role: 'player' } : null;
       await this.connect();
-      this.send({ type: 'JOIN_ROOM', code: normalized, name: name.trim(), token: token || undefined });
+      this.send({ type: 'JOIN_ROOM', code: normalized, name: name.trim(), token: token || undefined, accessToken: authAccessToken() || undefined });
+    }
+    async resumeAccount(accessToken: string): Promise<void> {
+      this.resume = null;
+      await this.connect();
+      this.send({ type: 'RESUME_ACCOUNT', accessToken });
     }
     async spectateRoom(code: string, name: string, token?: string): Promise<void> {
       const normalized = normalizeCode(code);
@@ -404,6 +412,10 @@ namespace BrastaNet {
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
     emote(emote: string): void { this.send({ type: 'EMOTE', emote }); }
+    claimAccount(accessToken?: string): void {
+      const token = accessToken || authAccessToken();
+      if (token) this.send({ type: 'CLAIM_ACCOUNT', accessToken: token });
+    }
     command(command: Brasta.Command): void { this.send({ type: 'COMMAND', command }); }
     nextRound(): void { this.send({ type: 'NEXT_ROUND' }); }
     endMatch(): void { this.send({ type: 'END_MATCH' }); }

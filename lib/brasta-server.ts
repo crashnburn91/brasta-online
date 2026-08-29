@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis, duplicateRedis } from './redis';
+import { verifyBrastaAccessToken } from './supabase-auth';
+import { clearActiveMatch, getActiveMatch, setActiveMatch } from './account-active-match';
 
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
@@ -19,7 +21,7 @@ export type WireSocket = {
   close(code?: number, reason?: string): void;
 };
 
-type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string };
+type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; accountId?: string };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
 type BurnPickupOption = {
   id: string;
@@ -82,6 +84,9 @@ function normalizeRoom(room: StoredRoom): StoredRoom {
 function activeSeats(room: StoredRoom): Brasta.Seat[] { return Brasta.activeSeats(room.mode); }
 function participantForToken(room: StoredRoom, token: string): Participant | null {
   return Object.values(room.seats).find((p) => p.token === token) || null;
+}
+function participantForAccount(room: StoredRoom, accountId: string): Participant | null {
+  return Object.values(room.seats).find((p) => p.accountId === accountId) || null;
 }
 function spectatorForToken(room: StoredRoom, token: string): Spectator | null {
   return room.spectators?.[token] || null;
@@ -375,6 +380,119 @@ async function deleteRoom(code: string): Promise<void> {
   await redis.del(roomKey(code));
 }
 
+async function bindParticipantActiveMatch(room: StoredRoom, p: Participant): Promise<void> {
+  if (!p.accountId) return;
+  await setActiveMatch(p.accountId, {
+    roomCode: room.code,
+    seat: p.seat,
+    mode: room.mode,
+    updatedAt: Date.now(),
+  });
+}
+
+async function clearRoomActiveMatches(room: StoredRoom): Promise<void> {
+  await Promise.all(Object.values(room.seats)
+    .filter((p) => !!p.accountId)
+    .map((p) => clearActiveMatch(p.accountId!, room.code)));
+}
+
+async function verifiedAccountId(accessToken: unknown): Promise<string | null> {
+  if (typeof accessToken !== 'string' || accessToken.length < 20) return null;
+  const identity = await verifyBrastaAccessToken(accessToken);
+  return identity?.userId || null;
+}
+async function bindVerifiedAccountToSeat(
+  roomCode: string,
+  seat: Brasta.Seat,
+  seatToken: string,
+  accessToken: unknown,
+): Promise<void> {
+  const accountId = await verifiedAccountId(accessToken);
+  if (!accountId) return;
+
+  const changed = await mutateRoom(roomCode, (room) => {
+    const p = room.seats[String(seat)];
+    if (!p || p.token !== seatToken) return null;
+    if (p.accountId && p.accountId !== accountId) return null;
+    p.accountId = accountId;
+    return p;
+  }, false);
+
+  if (changed?.result) {
+    await bindParticipantActiveMatch(changed.room, changed.result);
+    await publishRoom(changed.room.code);
+  }
+}
+
+
+async function rankedAssignmentRoom(userId: string): Promise<string | null> {
+  if (!redis || !userId) return null;
+  const [oneVOne, twoVTwo] = await Promise.all([
+    redis.get(`brasta:ranked:assignment:${userId}`),
+    redis.get(`brasta:ranked:assignment:2v2:${userId}`),
+  ]);
+  for (const raw of [oneVOne, twoVTwo]) {
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as { roomCode?: string };
+      const roomCode = cleanCode(parsed.roomCode);
+      if (roomCode) return roomCode;
+    } catch {}
+  }
+  return null;
+}
+
+export async function claimActiveMatchForAccount(userId: string, roomCode: string, playerToken: string) {
+  const code = cleanCode(roomCode);
+  if (!userId || !code || !playerToken) return null;
+
+  const changed = await mutateRoom(code, (room) => {
+    const p = participantForToken(room, playerToken);
+    if (!p) return null;
+    if (p.accountId && p.accountId !== userId) return null;
+    p.accountId = userId;
+    return p;
+  }, false);
+
+  if (!changed?.result) return null;
+  await bindParticipantActiveMatch(changed.room, changed.result);
+  await publishRoom(changed.room.code);
+
+  return {
+    roomCode: changed.room.code,
+    mode: changed.room.mode,
+    seat: changed.result.seat,
+    started: changed.room.started,
+  };
+}
+
+export async function getActiveMatchForAccount(userId: string) {
+  const ref = await getActiveMatch(userId);
+  if (!ref) return null;
+  const room = await loadRoom(ref.roomCode);
+  if (!room) {
+    await clearActiveMatch(userId, ref.roomCode);
+    return null;
+  }
+  const p = participantForAccount(room, userId);
+  if (!p) {
+    await clearActiveMatch(userId, ref.roomCode);
+    return null;
+  }
+  if (room.gameState?.phase === 'matchEnd') {
+    await clearActiveMatch(userId, ref.roomCode);
+    return null;
+  }
+  return {
+    roomCode: room.code,
+    mode: room.mode,
+    seat: p.seat,
+    started: room.started,
+    connected: Date.now() - p.lastSeen < PRESENCE_MS,
+    updatedAt: ref.updatedAt,
+  };
+}
+
 async function acquireLock(code: string): Promise<string | null> {
   if (!redis) return 'memory';
   const token = crypto.randomUUID();
@@ -418,7 +536,13 @@ async function broadcastLocalRoom(code: string): Promise<void> {
     if (conn.role === 'player') {
       if (!conn.seat) continue;
       const p = room.seats[String(conn.seat)];
-      if (!p || p.token !== conn.token || p.connectionId !== conn.id) continue;
+      if (!p) continue;
+      if (p.token !== conn.token || p.connectionId !== conn.id) {
+        sendJson(conn, { type: 'NOTICE', message: 'This seat was resumed from another device.' });
+        conn.closed = true;
+        try { conn.ws.close(4001, 'Resumed on another device'); } catch {}
+        continue;
+      }
       sendJson(conn, {
         type: 'ROOM_STATE',
         update: {
@@ -510,6 +634,15 @@ async function supersedeLocalSocket(conn: Connection, roomCode: string, token: s
     }
   }
 }
+async function supersedeLocalSeat(conn: Connection, roomCode: string, seat: Brasta.Seat): Promise<void> {
+  for (const old of localConnections) {
+    if (old !== conn && !old.closed && old.roomCode === roomCode && old.seat === seat && old.role === 'player') {
+      sendJson(old, { type: 'NOTICE', message: 'This seat was resumed from another device.' });
+      old.closed = true;
+      try { old.ws.close(4001, 'Resumed on another device'); } catch {}
+    }
+  }
+}
 async function attachPlayer(conn: Connection, room: StoredRoom, p: Participant): Promise<void> {
   await supersedeLocalSocket(conn, room.code, p.token, 'player');
   p.connectionId = conn.id;
@@ -536,6 +669,7 @@ async function detach(conn: Connection, intentional = false): Promise<void> {
   const seat = conn.seat;
   const token = conn.token;
   const role = conn.role;
+  let removedAccountId: string | null = null;
   conn.roomCode = null; conn.seat = null; conn.token = null; conn.role = null;
   if (!code || !token || !role) return;
 
@@ -554,6 +688,7 @@ async function detach(conn: Connection, intentional = false): Promise<void> {
     p.lastSeen = 0;
     if (intentional && !room.started) {
       const wasHost = p.token === room.hostToken;
+      removedAccountId = p.accountId || null;
       delete room.seats[String(seat)];
       if (wasHost) {
         const next = Object.values(room.seats).sort((a, b) => a.seat - b.seat)[0];
@@ -561,7 +696,11 @@ async function detach(conn: Connection, intentional = false): Promise<void> {
       }
     }
   });
-  if (updated && Object.keys(updated.room.seats).length === 0) await deleteRoom(code);
+  if (removedAccountId) await clearActiveMatch(removedAccountId, code);
+  if (updated && Object.keys(updated.room.seats).length === 0) {
+    await clearRoomActiveMatches(updated.room);
+    await deleteRoom(code);
+  }
 }
 
 async function requirePlayerSession(conn: Connection): Promise<{ room: StoredRoom; p: Participant } | null> {
@@ -594,6 +733,17 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         }, false);
       }
       sendJson(conn, { type: 'PONG' });
+      return;
+    }
+
+    if (msg.type === 'CLAIM_ACCOUNT') {
+      const session = await requirePlayerSession(conn);
+      if (!session) return;
+      try {
+        await bindVerifiedAccountToSeat(session.room.code, session.p.seat, session.p.token, msg.accessToken);
+      } catch (error) {
+        console.error('[brasta account seat claim]', error);
+      }
       return;
     }
 
@@ -637,6 +787,14 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       await attachPlayer(conn, room, p);
       await saveRoom(room);
       await publishRoom(room.code);
+      // The lobby is already visible before this verification begins because
+      // SESSION/ROOM_STATE were sent above. Await the binding here so the
+      // cross-device resume registry is guaranteed to be durable.
+      try {
+        await bindVerifiedAccountToSeat(room.code, p.seat, p.token, msg.accessToken);
+      } catch (error) {
+        console.error('[brasta account seat bind]', error);
+      }
       return;
     }
 
@@ -659,7 +817,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
             return existing;
           }
         }
-        if (room.started) throw new Error('This game has already started. Reconnect from the browser that originally joined the room, or use the Spectate link.');
+        if (room.started) throw new Error('This game has already started. Use Resume Match while signed into the account that owns this seat, or use the Spectate link.');
         if (!name) throw new Error('Enter a display name.');
         const seat = activeSeats(room).find((s) => !room.seats[String(s)]);
         if (!seat) throw new Error('That room is full. You can still spectate it.');
@@ -668,10 +826,44 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         return p;
       }, false);
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
+      await supersedeLocalSeat(conn, changed.room.code, changed.result.seat);
       await attachPlayer(conn, changed.room, changed.result);
-      // publishRoom re-loads the latest authoritative room from storage, so if
-      // gameplay advanced while the socket was attaching, the reconnecting
-      // player receives that newer state rather than an older snapshot.
+      // Publish the join immediately, then finish the account binding before
+      // this message handler returns so another device can discover the match.
+      await publishRoom(changed.room.code);
+      try {
+        await bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken);
+      } catch (error) {
+        console.error('[brasta account seat bind]', error);
+      }
+      return;
+    }
+
+    if (msg.type === 'RESUME_ACCOUNT') {
+      await detach(conn, false);
+      const identity = await verifyBrastaAccessToken(typeof msg.accessToken === 'string' ? msg.accessToken : '');
+      if (!identity?.userId) return sendError(conn, 'Sign in again to resume your match.');
+      const ref = await getActiveMatch(identity.userId);
+      if (!ref) return sendError(conn, 'No active match was found for this account.');
+
+      const changed = await mutateRoom(ref.roomCode, (room) => {
+        const existing = participantForAccount(room, identity.userId);
+        if (!existing) throw new Error('Your saved match seat is no longer available.');
+        if (room.gameState?.phase === 'matchEnd') throw new Error('That match has already ended.');
+        const wasHost = existing.token === room.hostToken;
+        existing.token = makeToken();
+        existing.connectionId = conn.id;
+        existing.lastSeen = Date.now();
+        if (wasHost) room.hostToken = existing.token;
+        return existing;
+      }, false);
+      if (!changed) {
+        await clearActiveMatch(identity.userId, ref.roomCode);
+        return sendError(conn, 'That match is no longer available.');
+      }
+      await supersedeLocalSeat(conn, changed.room.code, changed.result.seat);
+      await attachPlayer(conn, changed.room, changed.result);
+      await bindParticipantActiveMatch(changed.room, changed.result);
       await publishRoom(changed.room.code);
       return;
     }
@@ -725,7 +917,8 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (!activeSeats(room).every((s) => !!room.seats[String(s)])) throw new Error('All seats must be filled before starting.');
         room.gameState = Brasta.startMatch(room.mode, crypto.randomInt(1, 0x7fffffff), room.targetScore);
         room.callableBurn = null;
-        applyNames(room); room.started = true; room.revision++; return null;
+        applyNames(room); room.started = true; room.revision++;
+        return null;
       }
       if (!room.started || !room.gameState) throw new Error('The game has not started yet.');
 
@@ -826,6 +1019,10 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       throw new Error('Unsupported room command.');
     });
     if (!changed) return sendError(conn, 'That room no longer exists.');
+    if (msg.type === 'START_GAME') {
+      await Promise.all(Object.values(changed.room.seats).map((seatPlayer) => bindParticipantActiveMatch(changed.room, seatPlayer)));
+    }
+    if (changed.room.gameState?.phase === 'matchEnd') await clearRoomActiveMatches(changed.room);
     if (changed.result && typeof changed.result === 'object' && 'type' in changed.result) sendJson(conn, changed.result);
   } catch (err) {
     console.error('[brasta action]', err);
