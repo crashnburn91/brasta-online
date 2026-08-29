@@ -51,11 +51,99 @@ function pageKey(): string {
   return room ? `${location.pathname}|${state}|${room}` : `${location.pathname}|${state}`;
 }
 
+type ClientDetails = {
+  language: string;
+  timezone: string;
+  referrer: string;
+  standalone: boolean;
+  screenWidth: number;
+  screenHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  pixelRatio: number;
+  platform: string;
+  platformVersion: string;
+  architecture: string;
+  bitness: string;
+  model: string;
+  browserHint: string;
+  browserHintVersion: string;
+};
+
+async function clientDetails(): Promise<ClientDetails> {
+  const details: ClientDetails = {
+    language: navigator.language || '',
+    timezone: (() => {
+      try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+    })(),
+    referrer: document.referrer || '',
+    standalone: window.matchMedia?.('(display-mode: standalone)').matches === true
+      || (navigator as any).standalone === true,
+    screenWidth: Number(window.screen?.width || 0),
+    screenHeight: Number(window.screen?.height || 0),
+    viewportWidth: Number(window.innerWidth || document.documentElement.clientWidth || 0),
+    viewportHeight: Number(window.innerHeight || document.documentElement.clientHeight || 0),
+    pixelRatio: Number(window.devicePixelRatio || 1),
+    platform: String((navigator as any).userAgentData?.platform || navigator.platform || ''),
+    platformVersion: '',
+    architecture: '',
+    bitness: '',
+    model: '',
+    browserHint: '',
+    browserHintVersion: '',
+  };
+
+  try {
+    const uaData = (navigator as any).userAgentData;
+    if (uaData?.getHighEntropyValues) {
+      const high = await uaData.getHighEntropyValues([
+        'architecture',
+        'bitness',
+        'model',
+        'platformVersion',
+        'fullVersionList',
+      ]);
+      details.platform = String(high.platform || uaData.platform || details.platform || '');
+      details.platformVersion = String(high.platformVersion || '');
+      details.architecture = String(high.architecture || '');
+      details.bitness = String(high.bitness || '');
+      details.model = String(high.model || '');
+
+      const versions = Array.isArray(high.fullVersionList) ? high.fullVersionList : [];
+      const preferred = versions.find((item: any) => /Microsoft Edge|Google Chrome|Chromium|Opera/i.test(String(item?.brand || '')))
+        || versions.find((item: any) => !/Not.?A.?Brand/i.test(String(item?.brand || '')))
+        || null;
+      if (preferred) {
+        details.browserHint = String(preferred.brand || '')
+          .replace(/^Google Chrome$/i, 'Chrome')
+          .replace(/^Microsoft Edge$/i, 'Edge');
+        details.browserHintVersion = String(preferred.version || '');
+      }
+    }
+  } catch {
+    // Client hints are optional and unsupported by Safari/Firefox.
+  }
+
+  return details;
+}
+
 export default function PresenceTracker() {
   useEffect(() => {
     const sessionId = visitorSessionId();
     let stopped = false;
     let inFlight = false;
+    let cachedDetails: ClientDetails | null = null;
+
+    const getDetails = async () => {
+      const base = cachedDetails || await clientDetails();
+      cachedDetails = base;
+      return {
+        ...base,
+        viewportWidth: Number(window.innerWidth || document.documentElement.clientWidth || 0),
+        viewportHeight: Number(window.innerHeight || document.documentElement.clientHeight || 0),
+        pixelRatio: Number(window.devicePixelRatio || 1),
+      };
+    };
 
     const heartbeat = async () => {
       if (stopped || inFlight) return;
@@ -75,6 +163,7 @@ export default function PresenceTracker() {
             path: location.pathname,
             pageKey: pageKey(),
             visible: document.visibilityState === 'visible',
+            client: await getDetails(),
           }),
           cache: 'no-store',
           keepalive: true,
@@ -90,12 +179,20 @@ export default function PresenceTracker() {
     const onFocus = () => void heartbeat();
     const onAuth = () => void heartbeat();
     const onNavigation = () => void heartbeat();
+    const onResize = () => {
+      cachedDetails = cachedDetails ? {
+        ...cachedDetails,
+        viewportWidth: Number(window.innerWidth || 0),
+        viewportHeight: Number(window.innerHeight || 0),
+      } : null;
+    };
 
     const observer = new MutationObserver(() => void heartbeat());
     const app = document.getElementById('app');
     if (app) observer.observe(app, { childList: true, subtree: false });
 
     window.addEventListener('focus', onFocus);
+    window.addEventListener('resize', onResize);
     window.addEventListener('popstate', onNavigation);
     window.addEventListener('brasta-auth-changed', onAuth);
     window.addEventListener('brasta-player-session', onNavigation);
@@ -109,6 +206,7 @@ export default function PresenceTracker() {
       observer.disconnect();
       window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('resize', onResize);
       window.removeEventListener('popstate', onNavigation);
       window.removeEventListener('brasta-auth-changed', onAuth);
       window.removeEventListener('brasta-player-session', onNavigation);
