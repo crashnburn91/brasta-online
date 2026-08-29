@@ -402,6 +402,15 @@ async function verifiedAccountId(accessToken: unknown): Promise<string | null> {
   return identity?.userId || null;
 }
 
+async function hasRankedAssignment(userId: string): Promise<boolean> {
+  if (!redis || !userId) return false;
+  const [oneVOne, twoVTwo] = await Promise.all([
+    redis.exists(`brasta:ranked:assignment:${userId}`),
+    redis.exists(`brasta:ranked:assignment:2v2:${userId}`),
+  ]);
+  return Boolean(oneVOne || twoVTwo);
+}
+
 export async function getActiveMatchForAccount(userId: string) {
   const ref = await getActiveMatch(userId);
   if (!ref) return null;
@@ -699,6 +708,9 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const targetScore: Brasta.TargetScore = Number(msg.targetScore) === 220 ? 220 : 110;
       const accountId = await verifiedAccountId(msg.accessToken);
       if (accountId) {
+        if (await hasRankedAssignment(accountId)) {
+          return sendError(conn, 'Finish your active ranked match before creating a private room.');
+        }
         const active = await getActiveMatchForAccount(accountId);
         if (active) return sendError(conn, 'You already have an active match. Resume or leave that match before creating another room.');
       }
@@ -728,6 +740,9 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const reconnectToken = typeof msg.token === 'string' ? msg.token : '';
       const accountId = await verifiedAccountId(msg.accessToken);
       if (accountId) {
+        if (await hasRankedAssignment(accountId)) {
+          return sendError(conn, 'Finish your active ranked match before joining a private room.');
+        }
         const active = await getActiveMatchForAccount(accountId);
         if (active && active.roomCode !== code) {
           return sendError(conn, 'You already have an active match. Resume or leave that match before joining another room.');
