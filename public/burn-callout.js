@@ -4,6 +4,7 @@
 
   let activeSocket = null;
   let pendingBurnId = null;
+  let burnAvailable = false;
   let queued = false;
 
   function isGameSocket(ws) {
@@ -33,19 +34,30 @@
       let message;
       try { message = JSON.parse(String(event.data)); } catch { return; }
       if (!message || typeof message.type !== 'string') return;
-      if (message.type === 'BURN_OPTIONS') {
+      if (message.type === 'ROOM_STATE') {
+        burnAvailable = Boolean(message.update?.canCallBurn);
+        queueEnhance();
+      } else if (message.type === 'BURN_OPTIONS') {
+        burnAvailable = false;
         pendingBurnId = String(message.burnId || '');
+        queueEnhance();
         showOptions(Array.isArray(message.options) ? message.options : []);
       } else if (message.type === 'BURN_RESULT') {
+        burnAvailable = false;
         closeOptions();
+        queueEnhance();
         showToast(String(message.message || 'No valid burn to call.'));
       } else if (message.type === 'BURN_RESOLVED') {
+        burnAvailable = false;
         closeOptions();
+        queueEnhance();
       }
     });
     ws.addEventListener('close', () => {
       if (activeSocket === ws) activeSocket = null;
+      burnAvailable = false;
       closeOptions();
+      queueEnhance();
     });
   }
 
@@ -166,6 +178,7 @@
 
   function shouldShowButton(panel) {
     return !!panel
+      && burnAvailable
       && !!document.querySelector('.topbar .room-pill')
       && !!document.querySelector('.table')
       && !document.querySelector('.topbar .spectator-pill');
