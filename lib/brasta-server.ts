@@ -472,7 +472,13 @@ async function broadcastLocalRoom(code: string): Promise<void> {
     if (conn.role === 'player') {
       if (!conn.seat) continue;
       const p = room.seats[String(conn.seat)];
-      if (!p || p.token !== conn.token || p.connectionId !== conn.id) continue;
+      if (!p) continue;
+      if (p.token !== conn.token || p.connectionId !== conn.id) {
+        sendJson(conn, { type: 'NOTICE', message: 'This seat was resumed from another device.' });
+        conn.closed = true;
+        try { conn.ws.close(4001, 'Resumed on another device'); } catch {}
+        continue;
+      }
       sendJson(conn, {
         type: 'ROOM_STATE',
         update: {
@@ -692,6 +698,10 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const mode: Brasta.Mode | null = msg.mode === '2v2' ? '2v2' : msg.mode === '1v1' ? '1v1' : null;
       const targetScore: Brasta.TargetScore = Number(msg.targetScore) === 220 ? 220 : 110;
       const accountId = await verifiedAccountId(msg.accessToken);
+      if (accountId) {
+        const active = await getActiveMatchForAccount(accountId);
+        if (active) return sendError(conn, 'You already have an active match. Resume or leave that match before creating another room.');
+      }
       if (!name) return sendError(conn, 'Enter a display name.');
       if (!mode) return sendError(conn, 'Choose 1v1 or 2v2.');
       const token = makeToken();
@@ -717,6 +727,12 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const name = cleanName(msg.name);
       const reconnectToken = typeof msg.token === 'string' ? msg.token : '';
       const accountId = await verifiedAccountId(msg.accessToken);
+      if (accountId) {
+        const active = await getActiveMatchForAccount(accountId);
+        if (active && active.roomCode !== code) {
+          return sendError(conn, 'You already have an active match. Resume or leave that match before joining another room.');
+        }
+      }
       // Persist the membership/session change under the room lock, but wait to
       // publish until the new socket is attached. Never save `changed.room`
       // again afterward: another player may have advanced the game meanwhile.
