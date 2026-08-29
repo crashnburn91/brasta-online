@@ -16,19 +16,72 @@
   const byId = new Map(EMOTES.map((item) => [item.id, item]));
   const bubbleTimers = new Map();
   let attachedSocket = null;
+  let humanSocket = null;
   let lastSentAt = 0;
   let queued = false;
 
-  function socket() {
-    const ws = window.__BRASTA_PRIMARY_GAME_SOCKET__;
-    return ws && ws.readyState === WebSocket.OPEN ? ws : null;
+  function markSocketFromPayload(ws, payload) {
+    if (!ws || !payload || typeof payload.type !== 'string') return;
+    if (payload.type === 'CREATE_ROOM') {
+      ws.__brastaEmoteHumanSocket = true;
+      ws.__brastaEmoteBotSocket = false;
+      humanSocket = ws;
+      attachSocket(ws);
+      return;
+    }
+    if (payload.type === 'JOIN_ROOM') {
+      const name = String(payload.name || '').trim();
+      if (name.startsWith('Brasta Bot')) {
+        ws.__brastaEmoteBotSocket = true;
+        ws.__brastaEmoteHumanSocket = false;
+        return;
+      }
+      ws.__brastaEmoteHumanSocket = true;
+      ws.__brastaEmoteBotSocket = false;
+      humanSocket = ws;
+      attachSocket(ws);
+      return;
+    }
+    if (payload.type === 'SPECTATE_ROOM') {
+      ws.__brastaEmoteHumanSocket = false;
+    }
   }
 
-  function attachSocket() {
-    const ws = window.__BRASTA_PRIMARY_GAME_SOCKET__;
-    if (!ws || ws === attachedSocket) return;
+  const previousSend = WebSocket.prototype.send;
+  if (!WebSocket.prototype.__brastaEmoteSendPatched) {
+    Object.defineProperty(WebSocket.prototype, '__brastaEmoteSendPatched', { value: true });
+    WebSocket.prototype.send = function patchedBrastaEmoteSend(data) {
+      try { markSocketFromPayload(this, JSON.parse(String(data || ''))); } catch {}
+      return previousSend.call(this, data);
+    };
+  }
+
+  function socket() {
+    if (humanSocket?.readyState === WebSocket.OPEN && !humanSocket.__brastaEmoteBotSocket) return humanSocket;
+
+    const primary = window.__BRASTA_PRIMARY_GAME_SOCKET__;
+    if (primary?.__brastaBurnPlayerSocket && !primary?.__brastaBurnBotSocket && primary.readyState === WebSocket.OPEN) {
+      humanSocket = primary;
+      attachSocket(primary);
+      return primary;
+    }
+
+    if (primary?.__brastaEmoteHumanSocket && !primary?.__brastaEmoteBotSocket && primary.readyState === WebSocket.OPEN) {
+      humanSocket = primary;
+      attachSocket(primary);
+      return primary;
+    }
+    return null;
+  }
+
+  function attachSocket(ws) {
+    if (!ws || ws === attachedSocket || ws.__brastaEmoteBotSocket || ws.__brastaBurnBotSocket) return;
     attachedSocket = ws;
     ws.addEventListener('message', onSocketMessage);
+    ws.addEventListener('close', () => {
+      if (attachedSocket === ws) attachedSocket = null;
+      if (humanSocket === ws) humanSocket = null;
+    });
   }
 
   function onSocketMessage(event) {
@@ -74,13 +127,14 @@
 
   function sendEmote(id) {
     const item = byId.get(id);
+    if (!item) return;
+    closeTray();
     const ws = socket();
-    if (!item || !ws) return;
+    if (!ws) return;
     const now = Date.now();
     if (now - lastSentAt < 2000) return;
     lastSentAt = now;
     try { ws.send(JSON.stringify({ type: 'EMOTE', emote: id })); } catch {}
-    closeTray();
   }
 
   function buildControl() {
@@ -135,7 +189,7 @@
 
   function enhance() {
     queued = false;
-    attachSocket();
+    socket();
 
     const row = document.querySelector('[data-game-action-row]');
     if (!row || !shouldShow()) {
@@ -165,7 +219,7 @@
 
   function start() {
     new MutationObserver(queueEnhance).observe(document.documentElement, { childList: true, subtree: true });
-    window.setInterval(attachSocket, 1000);
+    window.setInterval(() => socket(), 1000);
     queueEnhance();
   }
 
