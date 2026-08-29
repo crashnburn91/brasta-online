@@ -30,6 +30,39 @@
     try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
   }
 
+  function refreshAuthToken() {
+    return new Promise((resolve, reject) => {
+      const requestId = `ranked-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      let settled = false;
+      const cleanup = () => {
+        window.removeEventListener('brasta-auth-token-refreshed', onResult);
+        window.clearTimeout(timer);
+      };
+      const onResult = (event) => {
+        if (event?.detail?.requestId !== requestId || settled) return;
+        settled = true;
+        cleanup();
+        if (event.detail.ok && event.detail.accessToken) resolve(event.detail.accessToken);
+        else reject(new Error(event.detail.message || 'Your Brasta session expired. Please sign in again.'));
+      };
+      const timer = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('Your Brasta session could not be refreshed. Please sign in again.'));
+      }, 8000);
+
+      window.addEventListener('brasta-auth-token-refreshed', onResult);
+      window.dispatchEvent(new CustomEvent('brasta-refresh-auth-token', { detail: { requestId } }));
+    });
+  }
+
+  function authExpired(response, data) {
+    const message = String(data?.error || data?.message || '');
+    return response.status === 401 || /jwt\s*expired|token\s*expired|session\s*expired|invalid\s+(?:jwt|token)/i.test(message);
+  }
+
+
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, (char) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
@@ -62,7 +95,7 @@
     } catch { return null; }
   }
 
-  async function api(action, extra = {}, requireAuth = true) {
+  async function api(action, extra = {}, requireAuth = true, retriedAuth = false) {
     const accessToken = token();
     if (requireAuth && !accessToken) throw new Error('Sign in to use ranked play.');
     const response = await fetch('/api/competitive', {
@@ -75,6 +108,10 @@
       cache: 'no-store',
     });
     const data = await response.json().catch(() => ({}));
+    if (requireAuth && !retriedAuth && authExpired(response, data)) {
+      await refreshAuthToken();
+      return api(action, extra, requireAuth, true);
+    }
     if (!response.ok || data.error) throw new Error(data.error || `Competitive service returned ${response.status}.`);
     return data;
   }
