@@ -9,11 +9,49 @@
 .emote-option>span{font-size:25px;line-height:1}
 .emote-option small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b9c9c1;font-size:8px;font-weight:800;text-transform:uppercase}
 .player-chip{overflow:visible!important}
-.player-emote-bubble{position:absolute;z-index:50;left:50%;top:-12px;min-width:62px;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;border:1px solid rgba(255,255,255,.19);border-radius:999px;background:rgba(7,27,19,.95);color:#fff;box-shadow:0 10px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;transform:translate(-50%,5px) scale(.9);transition:opacity .18s ease,transform .18s ease}
+.player-emote-bubble{position:absolute;z-index:50;left:50%;top:-4px;min-width:62px;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px;border:1px solid rgba(255,255,255,.19);border-radius:999px;background:rgba(7,27,19,.95);color:#fff;box-shadow:0 10px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;transform:translate(-50%,3px) scale(.9);transition:opacity .18s ease,transform .18s ease}
 .player-chip.team-A-player .player-emote-bubble{border-color:rgba(95,184,240,.5)}
 .player-chip.team-B-player .player-emote-bubble{border-color:rgba(255,119,119,.5)}
-.player-emote-bubble.show{opacity:1;transform:translate(-50%,-6px) scale(1)}
-.player-emote-bubble.leaving{opacity:0;transform:translate(-50%,-12px) scale(.96)}
+.player-emote-bubble.show{opacity:1;transform:translate(-50%,-2px) scale(1)}
+.player-emote-bubble.leaving{opacity:0;transform:translate(-50%,-7px) scale(.96)}
 .player-emote-glyph{font-size:25px;line-height:1}.player-emote-label{color:#dbe5df;font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
-@media(max-width:600px){.game-action-row:has(>.emote-control){gap:5px}.emote-trigger{width:38px!important;min-width:38px!important;min-height:36px!important;font-size:19px!important}.emote-tray{left:0;right:auto;width:min(244px,82vw)}.player-emote-label{display:none}.player-emote-bubble{min-width:42px;padding:5px 7px}.player-emote-glyph{font-size:24px}}
+@media(max-width:700px){
+  .game-action-row:has(>.emote-control){gap:6px;align-items:stretch}
+  .emote-control{align-self:stretch}
+  .emote-trigger{
+    width:52px!important;
+    min-width:52px!important;
+    height:100%!important;
+    min-height:72px!important;
+    border-radius:18px!important;
+    font-size:22px!important;
+  }
+  .game-action-row>.burn-call-button{
+    align-self:stretch!important;
+    min-width:58px!important;
+    min-height:72px!important;
+    height:auto!important;
+    border-radius:18px!important;
+    padding:8px 10px!important;
+  }
+  .emote-tray{left:0;right:auto;width:min(244px,82vw)}
+  .player-emote-label{display:none}
+  .player-emote-bubble{min-width:42px;padding:5px 7px}
+  .player-emote-glyph{font-size:24px}
+}
+@media(max-width:430px){
+  .emote-trigger{
+    width:50px!important;
+    min-width:50px!important;
+    min-height:68px!important;
+    border-radius:17px!important;
+  }
+  .game-action-row>.burn-call-button{
+    width:50px!important;
+    min-width:50px!important;
+    min-height:68px!important;
+    border-radius:17px!important;
+    padding:7px!important;
+  }
+}
 @media(prefers-reduced-motion:reduce){.emote-tray,.player-emote-bubble{transition:none}}
