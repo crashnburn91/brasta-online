@@ -129,12 +129,10 @@
     const item = byId.get(id);
     if (!item) return;
     closeTray();
-    const ws = socket();
-    if (!ws) return;
     const now = Date.now();
     if (now - lastSentAt < 2000) return;
     lastSentAt = now;
-    try { ws.send(JSON.stringify({ type: 'EMOTE', emote: id })); } catch {}
+    window.dispatchEvent(new CustomEvent('brasta-send-emote', { detail: { emote: id } }));
   }
 
   function buildControl() {
@@ -219,6 +217,13 @@
 
   function start() {
     new MutationObserver(queueEnhance).observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('brasta-emote-received', (rawEvent) => {
+      const payload = rawEvent.detail || {};
+      const seat = Number(payload.seat);
+      const item = byId.get(String(payload.emote || ''));
+      if (!item || !Number.isFinite(seat)) return;
+      showBubble(seat, item, String(payload.name || ''));
+    });
     window.setInterval(() => socket(), 1000);
     queueEnhance();
   }
