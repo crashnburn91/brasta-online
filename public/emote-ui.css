@@ -1,8 +1,8 @@
-.game-action-row:has(>.emote-control){grid-template-columns:minmax(0,1fr) auto auto}
+.game-action-row:has(>.emote-control){grid-template-columns:auto minmax(0,1fr) auto}
 .emote-control{position:relative;align-self:center;display:flex;align-items:center;justify-content:center}
 .emote-trigger{display:inline-grid!important;place-items:center;width:42px!important;min-width:42px!important;min-height:38px!important;padding:0!important;border:1px solid #6d8e7e!important;border-radius:10px!important;background:#174532!important;color:#f5ead4!important;font-size:21px!important;line-height:1!important;box-shadow:0 7px 20px rgba(0,0,0,.35);touch-action:manipulation}
 .emote-trigger:hover,.emote-trigger[aria-expanded="true"]{background:#27654c!important;border-color:#8eb7a3!important}
-.emote-tray{position:absolute;z-index:120;right:0;bottom:calc(100% + 9px);width:244px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(9,31,23,.97);box-shadow:0 18px 46px rgba(0,0,0,.65);opacity:0;visibility:hidden;transform:translateY(7px) scale(.97);transform-origin:bottom right;transition:opacity .14s ease,transform .14s ease,visibility .14s}
+.emote-tray{position:absolute;z-index:120;left:0;right:auto;bottom:calc(100% + 9px);width:244px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(9,31,23,.97);box-shadow:0 18px 46px rgba(0,0,0,.65);opacity:0;visibility:hidden;transform:translateY(7px) scale(.97);transform-origin:bottom left;transition:opacity .14s ease,transform .14s ease,visibility .14s}
 .emote-tray.open{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
 .emote-option{min-width:0!important;min-height:58px!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 3px!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:11px!important;background:rgba(255,255,255,.04)!important;color:#f7f2e8!important;box-shadow:none!important}
 .emote-option:hover{background:rgba(255,255,255,.08)!important;border-color:rgba(216,183,94,.33)!important}
@@ -15,5 +15,5 @@
 .player-emote-bubble.show{opacity:1;transform:translate(-50%,-6px) scale(1)}
 .player-emote-bubble.leaving{opacity:0;transform:translate(-50%,-12px) scale(.96)}
 .player-emote-glyph{font-size:25px;line-height:1}.player-emote-label{color:#dbe5df;font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
-@media(max-width:600px){.game-action-row:has(>.emote-control){gap:5px}.emote-trigger{width:38px!important;min-width:38px!important;min-height:36px!important;font-size:19px!important}.emote-tray{right:-44px;width:min(244px,82vw)}.player-emote-label{display:none}.player-emote-bubble{min-width:42px;padding:5px 7px}.player-emote-glyph{font-size:24px}}
+@media(max-width:600px){.game-action-row:has(>.emote-control){gap:5px}.emote-trigger{width:38px!important;min-width:38px!important;min-height:36px!important;font-size:19px!important}.emote-tray{left:0;right:auto;width:min(244px,82vw)}.player-emote-label{display:none}.player-emote-bubble{min-width:42px;padding:5px 7px}.player-emote-glyph{font-size:24px}}
 @media(prefers-reduced-motion:reduce){.emote-tray,.player-emote-bubble{transition:none}}
