@@ -249,3 +249,16 @@
   }
   body.brasta-mobile-merged-header .live-score-target{font-size:8px}
 }
+
+/* Wide desktop/ultrawide: keep global and contextual header controls on the
+   same centered content rail instead of letting them hug the viewport edges. */
+@media(min-width:1401px){
+  body .account-nav-controls{
+    right:max(16px,calc((100vw - 1400px)/2 + 16px),env(safe-area-inset-right));
+  }
+
+  body .topbar{
+    padding-left:max(22px,calc((100vw - 1400px)/2 + 16px))!important;
+    padding-right:max(22px,calc((100vw - 1400px)/2 + 16px))!important;
+  }
+}
