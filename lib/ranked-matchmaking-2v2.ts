@@ -328,9 +328,6 @@ export async function ranked2v2PartyAction(
     return { state: 'unavailable' as const, message: 'Ranked play needs its backend secret configured.' };
   }
   const { identity, accessToken } = await authFromRequest(request);
-  if (action === 'join' && await getActiveMatch(identity.userId)) {
-    throw new Error('Finish or leave your active private match before joining ranked.');
-  }
   const status = await getCompetitiveStatus(accessToken, '2v2');
   if (await readAssignment(identity.userId)) throw new Error('Finish your current ranked 2v2 match before changing partners.');
 
@@ -708,6 +705,9 @@ export async function ranked2v2QueueAction(
     return { state: 'unavailable' as const, message: 'Ranked play needs its backend secret configured.' };
   }
   const { identity, accessToken } = await authFromRequest(request);
+  if (action === 'join' && await getActiveMatch(identity.userId)) {
+    throw new Error('Finish or leave your active private match before joining ranked.');
+  }
   const status = await getCompetitiveStatus(accessToken, '2v2');
   let party = await readPartyForUser(identity.userId);
   const assignment = await readAssignment(identity.userId);
