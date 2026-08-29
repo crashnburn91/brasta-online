@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis } from './redis';
+import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
 import {
   competitiveBackendReady,
@@ -309,6 +310,9 @@ export async function rankedQueueAction(request: Request, action: 'status' | 'jo
     return { state: 'unavailable' as const, message: 'Ranked play needs its backend secret configured.' };
   }
   const { identity, accessToken } = await authFromRequest(request);
+  if (action === 'join' && await getActiveMatch(identity.userId)) {
+    throw new Error('Finish or leave your active private match before joining ranked.');
+  }
   const status = await getCompetitiveStatus(accessToken, '1v1');
   const assignment = await readAssignment(identity.userId);
   if (assignment) return queuePayload(status, null, assignment);
