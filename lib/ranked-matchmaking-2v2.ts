@@ -799,6 +799,27 @@ async function loadRankedRoom(code: string): Promise<RankedRoom | null> {
   } catch { return null; }
 }
 
+export async function getRanked2v2ActiveAssignment(userId: string): Promise<Ranked2v2Assignment | null> {
+  if (!userId || !redis) return null;
+  const assignment = await readAssignment(userId);
+  if (!assignment) return null;
+  const room = await loadRankedRoom(assignment.roomCode);
+  if (!room || room.ranked.finalized || room.gameState?.phase === 'matchEnd') {
+    await redis.del(assignmentKey(userId));
+    return null;
+  }
+  const participant = Object.values(room.seats).find((p) => p.authUserId === userId);
+  if (!participant) {
+    await redis.del(assignmentKey(userId));
+    return null;
+  }
+  if (assignment.token !== participant.token) {
+    assignment.token = participant.token;
+    await writeAssignment(userId, assignment);
+  }
+  return assignment;
+}
+
 async function saveRankedRoom(room: RankedRoom, publish = true): Promise<void> {
   const r = await requireRedis();
   room.lastActivity = Date.now();
