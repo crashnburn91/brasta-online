@@ -25,6 +25,7 @@ namespace BrastaApp {
   let eventRenderSequence = 0;
   let inviteRoomCode = '';
   let pendingFriendRoomMode: Brasta.Mode | null = null;
+  let pendingAccountResume = false;
 
   const $ = <T extends HTMLElement = HTMLElement>(selector: string): T => document.querySelector(selector)! as T;
 
@@ -553,6 +554,12 @@ namespace BrastaApp {
             detail: { code: event.session.code, mode },
           }));
         }
+        if (pendingAccountResume && event.session.role === 'player') {
+          pendingAccountResume = false;
+          window.dispatchEvent(new CustomEvent('brasta-account-resume-success', {
+            detail: { code: event.session.code, seat: event.session.seat },
+          }));
+        }
         render();
       }
       else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; render(); }
@@ -562,6 +569,10 @@ namespace BrastaApp {
         if (pendingFriendRoomMode) {
           pendingFriendRoomMode = null;
           window.dispatchEvent(new CustomEvent('brasta-friend-room-create-error', { detail: { message: event.message } }));
+        }
+        if (pendingAccountResume) {
+          pendingAccountResume = false;
+          window.dispatchEvent(new CustomEvent('brasta-account-resume-error', { detail: { message: event.message } }));
         }
         render();
       }
@@ -670,6 +681,30 @@ namespace BrastaApp {
     const emote = String(event.detail?.emote || '').trim();
     if (!emote || context !== 'online' || !onlineRoom?.started || onlineSession?.role !== 'player') return;
     client().emote(emote);
+  });
+
+  window.addEventListener('brasta-account-resume', (rawEvent) => {
+    const event = rawEvent as CustomEvent<{ accessToken?: string }>;
+    const accessToken = String(event.detail?.accessToken || '').trim();
+    if (!accessToken) {
+      window.dispatchEvent(new CustomEvent('brasta-account-resume-error', { detail: { message: 'Sign in again to resume your match.' } }));
+      return;
+    }
+    if (context === 'online' || onlineRoom || onlineSession) {
+      window.dispatchEvent(new CustomEvent('brasta-account-resume-error', { detail: { message: 'Leave your current room before resuming another match.' } }));
+      return;
+    }
+    pendingAccountResume = true;
+    context = 'online';
+    lastError = null;
+    notice = null;
+    void client().resumeAccount(accessToken).catch((error) => {
+      pendingAccountResume = false;
+      context = null;
+      lastError = (error as Error).message;
+      window.dispatchEvent(new CustomEvent('brasta-account-resume-error', { detail: { message: lastError } }));
+      renderLanding();
+    });
   });
 
   window.addEventListener('brasta-create-friend-room', (rawEvent) => {
