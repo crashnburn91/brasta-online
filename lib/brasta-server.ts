@@ -712,6 +712,17 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       return;
     }
 
+    if (msg.type === 'CLAIM_ACCOUNT') {
+      const session = await requirePlayerSession(conn);
+      if (!session) return;
+      try {
+        await bindVerifiedAccountToSeat(session.room.code, session.p.seat, session.p.token, msg.accessToken);
+      } catch (error) {
+        console.error('[brasta account seat claim]', error);
+      }
+      return;
+    }
+
     if (msg.type === 'EMOTE') {
       const session = await requirePlayerSession(conn);
       if (!session) return;
