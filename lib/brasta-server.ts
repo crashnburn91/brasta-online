@@ -345,6 +345,16 @@ async function broadcastLocalRoom(code: string): Promise<void> {
           room: snapshot,
           you: { seat: p.seat, name: p.name, isHost: p.token === room.hostToken, role: 'player' },
           state: room.gameState ? visibleStateForSeat(room.gameState, p.seat) : null,
+          canCallBurn: Boolean(
+            room.callableBurn
+            && room.gameState?.phase === 'play'
+            && room.callableBurn.offenderSeat !== p.seat
+            && (
+              !room.callableBurn.claimedBySeat
+              || !room.callableBurn.claimedAt
+              || Date.now() - room.callableBurn.claimedAt >= BURN_CLAIM_MS
+            )
+          ),
         },
       });
       continue;
