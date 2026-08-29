@@ -402,13 +402,21 @@ async function verifiedAccountId(accessToken: unknown): Promise<string | null> {
   return identity?.userId || null;
 }
 
-async function hasRankedAssignment(userId: string): Promise<boolean> {
-  if (!redis || !userId) return false;
+async function rankedAssignmentRoom(userId: string): Promise<string | null> {
+  if (!redis || !userId) return null;
   const [oneVOne, twoVTwo] = await Promise.all([
-    redis.exists(`brasta:ranked:assignment:${userId}`),
-    redis.exists(`brasta:ranked:assignment:2v2:${userId}`),
+    redis.get(`brasta:ranked:assignment:${userId}`),
+    redis.get(`brasta:ranked:assignment:2v2:${userId}`),
   ]);
-  return Boolean(oneVOne || twoVTwo);
+  for (const raw of [oneVOne, twoVTwo]) {
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as { roomCode?: string };
+      const roomCode = cleanCode(parsed.roomCode);
+      if (roomCode) return roomCode;
+    } catch {}
+  }
+  return null;
 }
 
 export async function getActiveMatchForAccount(userId: string) {
@@ -708,7 +716,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const targetScore: Brasta.TargetScore = Number(msg.targetScore) === 220 ? 220 : 110;
       const accountId = await verifiedAccountId(msg.accessToken);
       if (accountId) {
-        if (await hasRankedAssignment(accountId)) {
+        if (await rankedAssignmentRoom(accountId)) {
           return sendError(conn, 'Finish your active ranked match before creating a private room.');
         }
         const active = await getActiveMatchForAccount(accountId);
@@ -740,7 +748,8 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const reconnectToken = typeof msg.token === 'string' ? msg.token : '';
       const accountId = await verifiedAccountId(msg.accessToken);
       if (accountId) {
-        if (await hasRankedAssignment(accountId)) {
+        const rankedRoom = await rankedAssignmentRoom(accountId);
+        if (rankedRoom && rankedRoom !== code) {
           return sendError(conn, 'Finish your active ranked match before joining a private room.');
         }
         const active = await getActiveMatchForAccount(accountId);
