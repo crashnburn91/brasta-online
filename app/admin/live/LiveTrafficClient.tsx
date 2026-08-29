@@ -12,7 +12,25 @@ type Presence = {
   path: string;
   visible: boolean;
   device: 'mobile' | 'tablet' | 'desktop';
+  deviceModel?: string | null;
+  os?: string | null;
+  osVersion?: string | null;
   browser: string;
+  browserVersion?: string | null;
+  ip?: string | null;
+  city?: string | null;
+  country?: string | null;
+  countryRegion?: string | null;
+  ipTimezone?: string | null;
+  language?: string | null;
+  browserTimezone?: string | null;
+  referrer?: string | null;
+  standalone?: boolean;
+  screenWidth?: number | null;
+  screenHeight?: number | null;
+  viewportWidth?: number | null;
+  viewportHeight?: number | null;
+  pixelRatio?: number | null;
   firstSeen: number;
   lastSeen: number;
 };
@@ -61,6 +79,29 @@ function activityLabel(activity: Presence['activity']): string {
     case 'auth': return 'Auth';
     default: return 'Other';
   }
+}
+
+function deviceLabel(session: Presence): string {
+  if (session.deviceModel) return session.deviceModel;
+  return session.device.charAt(0).toUpperCase() + session.device.slice(1);
+}
+
+function osLabel(session: Presence): string {
+  const name = session.os || 'Unknown OS';
+  return session.osVersion ? `${name} ${session.osVersion}` : name;
+}
+
+function browserLabel(session: Presence): string {
+  return session.browserVersion ? `${session.browser} ${session.browserVersion}` : session.browser;
+}
+
+function dimensions(width?: number | null, height?: number | null): string {
+  return width && height ? `${Math.round(width)}×${Math.round(height)}` : 'Unknown';
+}
+
+function locationLabel(session: Presence): string {
+  const parts = [session.city, session.countryRegion, session.country].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'Location unavailable';
 }
 
 export default function LiveTrafficClient() {
@@ -136,7 +177,7 @@ export default function LiveTrafficClient() {
         <div>
           <span className="traffic-kicker">BRASTA ADMIN</span>
           <h1>Live Traffic</h1>
-          <p>Real-time browser presence without storing visitor IP addresses.</p>
+          <p>Real-time browser presence. IP and network details expire with the short-lived presence record.</p>
         </div>
         <a href="/" className="traffic-back">Back to Brasta</a>
       </header>
@@ -192,10 +233,11 @@ export default function LiveTrafficClient() {
                     <tr>
                       <th>Visitor</th>
                       <th>Device</th>
+                      <th>Display & Locale</th>
+                      <th>Network</th>
                       <th>Activity</th>
-                      <th>Room</th>
+                      <th>Source</th>
                       <th>Session</th>
-                      <th>Seen</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -210,17 +252,44 @@ export default function LiveTrafficClient() {
                             </span>
                           </div>
                         </td>
+
                         <td>
-                          <b className="traffic-device">{session.device}</b>
-                          <small>{session.browser}</small>
+                          <b className="traffic-device">{deviceLabel(session)}</b>
+                          <small>{osLabel(session)}</small>
+                          <small>{browserLabel(session)}</small>
                         </td>
-                        <td><span className={`traffic-activity ${session.activity}`}>{activityLabel(session.activity)}</span></td>
-                        <td>{session.roomCode ? <code>{session.roomCode}</code> : '—'}</td>
+
+                        <td>
+                          <b>{dimensions(session.screenWidth, session.screenHeight)}</b>
+                          <small>
+                            Viewport {dimensions(session.viewportWidth, session.viewportHeight)}
+                            {session.pixelRatio ? ` · DPR ${session.pixelRatio}` : ''}
+                          </small>
+                          <small>{session.language || 'Unknown locale'} · {session.browserTimezone || 'Unknown timezone'}</small>
+                          <small>{session.standalone ? 'Installed / standalone' : 'Browser tab'}</small>
+                        </td>
+
+                        <td>
+                          <code className="traffic-ip">{session.ip || 'IP unavailable'}</code>
+                          <small>{locationLabel(session)}</small>
+                          <small>{session.ipTimezone || 'IP timezone unavailable'}</small>
+                        </td>
+
+                        <td>
+                          <span className={`traffic-activity ${session.activity}`}>{activityLabel(session.activity)}</span>
+                          <small>{session.roomCode ? <>Room <code>{session.roomCode}</code></> : 'No room'}</small>
+                        </td>
+
+                        <td>
+                          <b>{session.referrer || 'Direct'}</b>
+                          <small>{session.path || '/'}</small>
+                        </td>
+
                         <td>
                           <b>{duration(session.firstSeen)}</b>
                           <small>{session.sessionId.slice(0, 8)}</small>
+                          <small>Seen {ago(session.lastSeen)}</small>
                         </td>
-                        <td>{ago(session.lastSeen)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -228,6 +297,10 @@ export default function LiveTrafficClient() {
               </div>
             )}
           </section>
+
+          <p className="traffic-retention-note">
+            IP address, approximate Vercel geolocation, and device details are attached only to the live presence record and expire about 15 minutes after the browser stops reporting.
+          </p>
         </>
       )}
     </main>
