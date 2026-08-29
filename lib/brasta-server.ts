@@ -442,6 +442,30 @@ async function rankedAssignmentRoom(userId: string): Promise<string | null> {
   return null;
 }
 
+export async function claimActiveMatchForAccount(userId: string, roomCode: string, playerToken: string) {
+  const code = cleanCode(roomCode);
+  if (!userId || !code || !playerToken) return null;
+
+  const changed = await mutateRoom(code, (room) => {
+    const p = participantForToken(room, playerToken);
+    if (!p) return null;
+    if (p.accountId && p.accountId !== userId) return null;
+    p.accountId = userId;
+    return p;
+  }, false);
+
+  if (!changed?.result) return null;
+  await bindParticipantActiveMatch(changed.room, changed.result);
+  await publishRoom(changed.room.code);
+
+  return {
+    roomCode: changed.room.code,
+    mode: changed.room.mode,
+    seat: changed.result.seat,
+    started: changed.room.started,
+  };
+}
+
 export async function getActiveMatchForAccount(userId: string) {
   const ref = await getActiveMatch(userId);
   if (!ref) return null;
