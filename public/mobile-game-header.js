@@ -4,6 +4,9 @@
   window.__BRASTA_MOBILE_MERGED_HEADER__ = true;
 
   let queued = false;
+  let lastConnectionState = null;
+  let reconnectSeen = false;
+  let connectedTimer = 0;
 
   function topbarRoundText(topbar) {
     const first = topbar?.querySelector(':scope > div:first-child');
@@ -16,36 +19,57 @@
     return round ? String(round.textContent || '').trim() : '';
   }
 
-  function syncConnection(topbar, status) {
+  function connectionState(topbar) {
     const source = topbar?.querySelector('.connection');
-    const state = source?.classList.contains('connected')
-      ? 'connected'
-      : source?.classList.contains('connecting')
-        ? 'connecting'
-        : 'disconnected';
-    status.className = `mobile-header-connection ${state}`;
-    const label = state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting' : 'Disconnected';
-    status.setAttribute('aria-label', label);
-    status.title = label;
+    if (source?.classList.contains('connected')) return 'connected';
+    if (source?.classList.contains('connecting')) return 'connecting';
+    return 'disconnected';
+  }
+
+  function connectionOverlay() {
+    let overlay = document.querySelector('.mobile-connection-overlay');
+    if (overlay instanceof HTMLElement) return overlay;
+
+    overlay = document.createElement('div');
+    overlay.className = 'mobile-connection-overlay';
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.innerHTML = '<span class="mobile-connection-spinner" aria-hidden="true"></span><b>Reconnecting…</b>';
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function syncConnectionOverlay(topbar) {
+    const state = connectionState(topbar);
+    const overlay = connectionOverlay();
+
+    if (state === 'connecting' || state === 'disconnected') {
+      reconnectSeen = true;
+      if (connectedTimer) {
+        window.clearTimeout(connectedTimer);
+        connectedTimer = 0;
+      }
+      overlay.className = 'mobile-connection-overlay show reconnecting';
+      overlay.innerHTML = '<span class="mobile-connection-spinner" aria-hidden="true"></span><b>Reconnecting…</b>';
+    } else if (state === 'connected' && reconnectSeen && lastConnectionState !== 'connected') {
+      reconnectSeen = false;
+      overlay.className = 'mobile-connection-overlay show connected';
+      overlay.innerHTML = '<span class="mobile-connection-check" aria-hidden="true">✓</span><b>Connected</b>';
+      if (connectedTimer) window.clearTimeout(connectedTimer);
+      connectedTimer = window.setTimeout(() => {
+        overlay.className = 'mobile-connection-overlay';
+        connectedTimer = 0;
+      }, 1200);
+    } else if (state === 'connected' && !reconnectSeen && lastConnectionState === null) {
+      overlay.className = 'mobile-connection-overlay';
+    }
+
+    lastConnectionState = state;
   }
 
   function ensureGlobalControls(topbar) {
     const navInner = document.querySelector('.brasta-site-nav-inner');
     if (!(navInner instanceof HTMLElement)) return;
-
-    let status = navInner.querySelector('.mobile-header-connection');
-    if (!(status instanceof HTMLElement)) {
-      status = document.createElement('span');
-      status.className = 'mobile-header-connection disconnected';
-      status.setAttribute('role', 'status');
-    }
-    const brand = navInner.querySelector('.brasta-site-brand');
-    if (brand instanceof HTMLElement && status.previousElementSibling !== brand) {
-      brand.insertAdjacentElement('afterend', status);
-    } else if (!(brand instanceof HTMLElement) && status.parentElement !== navInner) {
-      navInner.prepend(status);
-    }
-    syncConnection(topbar, status);
 
     let menu = navInner.querySelector('.mobile-header-menu');
     if (!(menu instanceof HTMLButtonElement)) {
@@ -90,19 +114,20 @@
     }
     pill.textContent = roundText;
 
-    const target = strip.querySelector('.live-score-target');
-    if (target) {
-      if (pill.parentElement !== strip || pill.nextElementSibling !== target) {
-        strip.insertBefore(pill, target);
-      }
-    } else if (pill.parentElement !== strip) {
-      strip.appendChild(pill);
+    if (pill.parentElement !== strip || pill !== strip.firstElementChild) {
+      strip.insertBefore(pill, strip.firstChild);
     }
   }
 
   function cleanInactive() {
     document.body.classList.remove('brasta-mobile-merged-header');
-    document.querySelectorAll('.mobile-header-connection,.mobile-header-menu').forEach((node) => node.remove());
+    document.querySelectorAll('.mobile-header-menu,.mobile-connection-overlay').forEach((node) => node.remove());
+    if (connectedTimer) {
+      window.clearTimeout(connectedTimer);
+      connectedTimer = 0;
+    }
+    lastConnectionState = null;
+    reconnectSeen = false;
   }
 
   function enhance() {
@@ -117,6 +142,7 @@
     document.body.classList.add('brasta-mobile-merged-header');
     ensureGlobalControls(topbar);
     ensureRoundPill(topbar);
+    syncConnectionOverlay(topbar);
   }
 
   function queueEnhance() {
