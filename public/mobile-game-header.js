@@ -124,7 +124,7 @@
 
   function cleanInactive() {
     document.body.classList.remove('brasta-mobile-merged-header');
-    document.querySelectorAll('.mobile-header-menu,.mobile-connection-overlay').forEach((node) => node.remove());
+    document.querySelectorAll('.mobile-header-menu,.mobile-connection-overlay,.mobile-score-round-pill').forEach((node) => node.remove());
     if (connectedTimer) {
       window.clearTimeout(connectedTimer);
       connectedTimer = 0;
@@ -137,7 +137,11 @@
     queued = false;
     const topbar = document.querySelector('.topbar');
     const activeMatch = !!topbar && !!document.querySelector('.players') && !!document.querySelector('.table');
-    if (!activeMatch) {
+    const mobileViewport = window.matchMedia('(max-width: 700px)').matches;
+
+    // The merged header is a mobile-only enhancement. On desktop/ultrawide,
+    // leave the native match header, round text, connection status and menu alone.
+    if (!activeMatch || !mobileViewport) {
       cleanInactive();
       return;
     }
