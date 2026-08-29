@@ -173,6 +173,9 @@ async function runSignedHostBotStartScenario(server: ServerApi): Promise<void> {
     const hostSession = hostSocket.latest('SESSION')?.session;
     assert(hostSession?.code, 'Signed host room was not created');
 
+    const activeBeforeStart = await server.getActiveMatchForAccount('signed-host-user');
+    assert(activeBeforeStart?.roomCode === hostSession.code, 'Signed host room was not registered for cross-device resume');
+
     await send(server, bot, { type: 'JOIN_ROOM', code: hostSession.code, name: 'Brasta Bot' });
     assert(botSocket.latest('SESSION')?.session?.seat === 2, 'Bot did not join seat 2');
 
