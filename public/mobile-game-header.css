@@ -3,7 +3,7 @@
 @media(max-width:700px){
   body.brasta-mobile-merged-header{
     --brasta-site-nav-base:50px;
-    --brasta-topbar-base:42px;
+    --brasta-topbar-base:40px;
   }
 
   body.brasta-mobile-merged-header .brasta-site-nav{
@@ -15,13 +15,13 @@
     padding:0 8px;
     display:flex;
     align-items:center;
-    gap:7px;
+    gap:5px;
   }
 
   body.brasta-mobile-merged-header .brasta-site-brand{
-    width:38px;
-    min-width:38px;
-    height:38px;
+    width:34px;
+    min-width:34px;
+    height:34px;
     padding:0;
     border:1px solid rgba(240,217,140,.55);
     border-radius:10px;
@@ -37,7 +37,7 @@
   body.brasta-mobile-merged-header .brasta-site-brand::before{
     content:"B";
     font-family:var(--font-brasta-display),Cinzel,"Trajan Pro",Georgia,"Times New Roman",serif;
-    font-size:23px;
+    font-size:21px;
     font-weight:800;
     line-height:1;
     letter-spacing:-.03em;
@@ -104,8 +104,8 @@
 
   body.brasta-mobile-merged-header .topbar.live-score-enabled{
     top:auto!important;
-    height:42px!important;
-    min-height:42px!important;
+    height:40px!important;
+    min-height:40px!important;
     padding:0 8px!important;
     display:flex!important;
     align-items:center!important;
@@ -163,7 +163,7 @@
     border-top:0!important;
   }
   body.brasta-mobile-merged-header .live-score-group{
-    gap:4px;
+    gap:3px;
   }
   body.brasta-mobile-merged-header .live-score-divider{
     height:18px;
@@ -173,8 +173,8 @@
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    min-height:24px;
-    padding:3px 7px;
+    min-height:22px;
+    padding:2px 6px;
     border:1px solid rgba(255,255,255,.20);
     border-radius:999px;
     background:rgba(255,255,255,.035);
@@ -189,18 +189,18 @@
   }
 
   body.brasta-mobile-merged-header .privacy-cover{
-    inset:92px 0 0!important;
+    inset:90px 0 0!important;
   }
 }
 
 @media(max-width:430px){
   body.brasta-mobile-merged-header .brasta-site-brand{
-    width:36px;
-    min-width:36px;
-    height:36px;
+    width:32px;
+    min-width:32px;
+    height:32px;
   }
-  body.brasta-mobile-merged-header .brasta-site-brand::before{font-size:22px}
-  body.brasta-mobile-merged-header .live-score-strip{gap:5px}
+  body.brasta-mobile-merged-header .brasta-site-brand::before{font-size:20px}
+  body.brasta-mobile-merged-header .live-score-strip{gap:4px}
   body.brasta-mobile-merged-header .live-score-group small{font-size:6.5px}
   body.brasta-mobile-merged-header .live-team{font-size:10px}
   body.brasta-mobile-merged-header .live-team b{font-size:13px}
