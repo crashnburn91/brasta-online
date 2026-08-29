@@ -78,7 +78,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.10" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
-        <link rel="stylesheet" href="/emote-ui.css?v=0.1.0" />
+        <link rel="stylesheet" href="/emote-ui.css?v=0.1.1" />
       </head>
       <body>
         {children}
@@ -111,7 +111,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
-        <Script src="/emote-ui.js?v=0.1.0" strategy="afterInteractive" />
+        <Script src="/emote-ui.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
     </html>
