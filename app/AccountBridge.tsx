@@ -172,6 +172,53 @@ export default function AccountBridge() {
   }, [configured, supabase, syncSession]);
 
   useEffect(() => {
+    if (!configured || !supabase) return;
+
+    let refreshInFlight: Promise<string> | null = null;
+
+    const refreshToken = () => {
+      if (refreshInFlight) return refreshInFlight;
+      refreshInFlight = (async () => {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error || !data.session?.access_token) {
+          throw error || new Error('Could not refresh your Brasta session.');
+        }
+        try { localStorage.setItem(BRASTA_AUTH_TOKEN_KEY, data.session.access_token); } catch {}
+        setSession(data.session);
+        return data.session.access_token;
+      })().finally(() => {
+        refreshInFlight = null;
+      });
+      return refreshInFlight;
+    };
+
+    const onRefreshRequest = (rawEvent: Event) => {
+      const event = rawEvent as CustomEvent<{ requestId?: string }>;
+      const requestId = String(event.detail?.requestId || '');
+      void refreshToken()
+        .then((accessToken) => {
+          window.dispatchEvent(new CustomEvent('brasta-auth-token-refreshed', {
+            detail: { requestId, ok: true, accessToken },
+          }));
+        })
+        .catch((error) => {
+          window.dispatchEvent(new CustomEvent('brasta-auth-token-refreshed', {
+            detail: {
+              requestId,
+              ok: false,
+              message: error instanceof Error ? error.message : 'Could not refresh your Brasta session.',
+            },
+          }));
+        });
+    };
+
+    window.addEventListener('brasta-refresh-auth-token', onRefreshRequest as EventListener);
+    return () => window.removeEventListener('brasta-refresh-auth-token', onRefreshRequest as EventListener);
+  }, [configured, supabase]);
+
+
+
+  useEffect(() => {
     const accessToken = session?.access_token;
     if (!accessToken) return;
 
