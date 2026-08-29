@@ -1,0 +1,213 @@
+/* Test-build mobile gameplay header: merge branding/status/menu into one app bar,
+   leaving the legacy topbar as a compact scoreboard-only strip. */
+@media(max-width:700px){
+  body.brasta-mobile-merged-header{
+    --brasta-site-nav-base:50px;
+    --brasta-topbar-base:42px;
+  }
+
+  body.brasta-mobile-merged-header .brasta-site-nav{
+    height:50px!important;
+    min-height:50px!important;
+  }
+  body.brasta-mobile-merged-header .brasta-site-nav-inner{
+    height:50px;
+    padding:0 8px;
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  body.brasta-mobile-merged-header .brasta-site-brand{
+    width:38px;
+    min-width:38px;
+    height:38px;
+    padding:0;
+    border:1px solid rgba(240,217,140,.55);
+    border-radius:10px;
+    display:grid;
+    place-items:center;
+    overflow:hidden;
+    background:#b8953f;
+    color:#112117;
+    font-size:0!important;
+    line-height:1;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  body.brasta-mobile-merged-header .brasta-site-brand::before{
+    content:"B";
+    font-family:var(--font-brasta-display),Cinzel,"Trajan Pro",Georgia,"Times New Roman",serif;
+    font-size:23px;
+    font-weight:800;
+    line-height:1;
+    letter-spacing:-.03em;
+  }
+
+  body.brasta-mobile-merged-header .mobile-header-connection{
+    width:10px;
+    min-width:10px;
+    height:10px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.22);
+    background:#7f8984;
+    box-shadow:0 0 0 4px rgba(255,255,255,.03);
+  }
+  body.brasta-mobile-merged-header .mobile-header-connection.connected{
+    background:#52d879;
+    box-shadow:0 0 0 4px rgba(82,216,121,.09),0 0 10px rgba(82,216,121,.38);
+  }
+  body.brasta-mobile-merged-header .mobile-header-connection.connecting{
+    background:#e3bd46;
+    box-shadow:0 0 0 4px rgba(227,189,70,.08);
+  }
+  body.brasta-mobile-merged-header .mobile-header-connection.disconnected{
+    background:#e45763;
+    box-shadow:0 0 0 4px rgba(228,87,99,.08);
+  }
+
+  body.brasta-mobile-merged-header .mobile-header-menu{
+    position:fixed;
+    z-index:1255;
+    top:6px;
+    right:max(8px,env(safe-area-inset-right));
+    width:38px;
+    height:38px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:11px;
+    background:rgba(255,255,255,.045);
+    color:#f5f1e2;
+    font:inherit;
+    font-size:21px;
+    line-height:1;
+    cursor:pointer;
+  }
+  body.brasta-mobile-merged-header .mobile-header-menu[aria-expanded="true"]{
+    background:rgba(255,255,255,.11);
+    border-color:rgba(216,183,94,.42);
+  }
+
+  body.brasta-mobile-merged-header .account-nav-controls{
+    top:5px;
+    right:max(54px,calc(env(safe-area-inset-right) + 54px));
+    min-height:40px;
+    max-width:calc(100vw - 118px);
+  }
+
+  body.brasta-mobile-merged-header .brasta-site-nav-account-space{
+    width:1px!important;
+    min-width:1px!important;
+    flex:1 1 auto!important;
+  }
+
+  body.brasta-mobile-merged-header .topbar.live-score-enabled{
+    top:auto!important;
+    height:42px!important;
+    min-height:42px!important;
+    padding:0 8px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border-top:0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  body.brasta-mobile-merged-header .topbar.live-score-enabled > div:first-child{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .topbar.live-score-enabled > nav{
+    position:fixed!important;
+    z-index:1300;
+    top:0;
+    right:0;
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    pointer-events:none;
+  }
+  body.brasta-mobile-merged-header .topbar .match-menu{
+    position:fixed!important;
+    top:0;
+    right:0;
+    width:0;
+    height:0;
+    overflow:visible;
+    pointer-events:none;
+  }
+  body.brasta-mobile-merged-header .topbar .match-menu-trigger{
+    position:absolute!important;
+    width:1px!important;
+    height:1px!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+  body.brasta-mobile-merged-header .topbar .match-menu-panel{
+    top:50px!important;
+    right:8px!important;
+    pointer-events:auto;
+  }
+
+  body.brasta-mobile-merged-header .live-score-strip{
+    width:100%!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    margin:0!important;
+    padding:0 2px!important;
+    border-top:0!important;
+  }
+  body.brasta-mobile-merged-header .live-score-group{
+    gap:4px;
+  }
+  body.brasta-mobile-merged-header .live-score-divider{
+    height:18px;
+  }
+  body.brasta-mobile-merged-header .mobile-score-round-pill{
+    flex:0 0 auto;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:24px;
+    padding:3px 7px;
+    border:1px solid rgba(255,255,255,.20);
+    border-radius:999px;
+    background:rgba(255,255,255,.035);
+    color:#dbe4df;
+    font-size:9px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+  body.brasta-mobile-merged-header .live-score-target{
+    margin-left:0!important;
+    padding-left:0;
+  }
+
+  body.brasta-mobile-merged-header .privacy-cover{
+    inset:92px 0 0!important;
+  }
+}
+
+@media(max-width:430px){
+  body.brasta-mobile-merged-header .brasta-site-brand{
+    width:36px;
+    min-width:36px;
+    height:36px;
+  }
+  body.brasta-mobile-merged-header .brasta-site-brand::before{font-size:22px}
+  body.brasta-mobile-merged-header .live-score-strip{gap:5px}
+  body.brasta-mobile-merged-header .live-score-group small{font-size:6.5px}
+  body.brasta-mobile-merged-header .live-team{font-size:10px}
+  body.brasta-mobile-merged-header .live-team b{font-size:13px}
+  body.brasta-mobile-merged-header .mobile-score-round-pill{
+    min-height:22px;
+    padding:2px 6px;
+    font-size:8px;
+  }
+  body.brasta-mobile-merged-header .live-score-target{font-size:8px}
+}
