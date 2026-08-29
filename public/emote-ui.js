@@ -145,9 +145,9 @@
     if (row.querySelector('.emote-control')) return;
 
     const control = buildControl();
-    const burn = row.querySelector('.burn-call-button');
-    if (burn) row.insertBefore(control, burn);
-    else row.appendChild(control);
+    const panel = row.querySelector('.action-panel');
+    if (panel) row.insertBefore(control, panel);
+    else row.insertBefore(control, row.firstChild);
   }
 
   function queueEnhance() {
