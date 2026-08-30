@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import type { Session, User } from '@supabase/supabase-js';
 import FriendsBridge from './FriendsBridge';
 import ResumeMatchBridge from './ResumeMatchBridge';
+import TournamentBridge from './TournamentBridge';
 import {
   BRASTA_AUTH_RETURN_KEY,
   BRASTA_AUTH_TOKEN_KEY,
@@ -432,6 +433,7 @@ export default function AccountBridge() {
     <>
       <ResumeMatchBridge accessToken={session?.access_token || ''} />
       <div className="account-nav-controls">
+        <TournamentBridge accessToken={session?.access_token || ''} userId={session?.user.id || ''} />
         {user && profile?.username && <FriendsBridge accessToken={session?.access_token || ''} />}
         <button className="account-dock" type="button" onClick={() => setOpen(true)} aria-label={user ? 'Open Brasta account' : 'Sign in to Brasta'}>
           {avatar ? <img src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-avatar-fallback">{user ? (displayName || user.email || 'B').slice(0, 1).toUpperCase() : 'B'}</span>}
