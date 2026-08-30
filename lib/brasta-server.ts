@@ -1060,9 +1060,8 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
           ? `${timedOutName} timed out — ${result.state.lastMove || 'a Jack was auto-played.'}`
           : `${timedOutName} timed out — ${Brasta.cardLabel(card)} was played loose.`;
 
-        const previousPhase = room.gameState.phase;
         room.gameState = result.state;
-        if (room.gameState.phase === 'roundEnd' && previousPhase !== 'roundEnd') {
+        if (room.gameState.phase === 'roundEnd') {
           ranked.roundEndedAt = Date.now();
         } else if (room.gameState.phase !== 'roundEnd') {
           delete ranked.roundEndedAt;
