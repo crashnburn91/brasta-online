@@ -21,7 +21,7 @@ namespace BrastaApp {
   let onlineRoom: BrastaNet.RoomSnapshot | null = null;
   let connectionStatus: ConnectionStatus = 'disconnected';
   let lastOnlineRevision = -1;
-  let lastEventStateRef: Brasta.GameState | null = null;
+  let lastEventIdentity = '';
   let eventRenderSequence = 0;
   let inviteRoomCode = '';
   let pendingFriendRoomMode: Brasta.Mode | null = null;
@@ -392,9 +392,17 @@ namespace BrastaApp {
 
   function renderGame(): void {
     const app = $('#app'); if (!state) { renderLanding(); return; }
-    if (state !== lastEventStateRef) {
-      lastEventStateRef = state;
-      eventRenderSequence += 1;
+    // Online ROOM_STATE updates replace the GameState object even when the
+    // underlying move/event has not changed. Using object identity here made
+    // transient event banners look "new" on every render, so a dismissed Jack
+    // Sweep/Brasta/Big-card banner would immediately come back until the next
+    // turn. Track the actual event + move instead.
+    const eventIdentity = state.event
+      ? `${state.round}|${state.event}|${state.lastMove || ''}`
+      : '';
+    if (eventIdentity !== lastEventIdentity) {
+      lastEventIdentity = eventIdentity;
+      if (eventIdentity) eventRenderSequence += 1;
     }
     app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
     bindGame();
