@@ -371,12 +371,28 @@ namespace BrastaApp {
     return `<div class="event transient-event-overlay${placementClass}${teamClass}" data-event-seq="${eventRenderSequence}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
   }
 
+  function currentRoomIsRanked(): boolean {
+    if (context !== 'online' || !onlineRoom?.code) return false;
+    try {
+      const code = onlineRoom.code;
+      return Boolean(
+        localStorage.getItem(`brasta-ranked-room:${code}`)
+        || localStorage.getItem(`brasta-ranked-2v2-room:${code}`)
+      );
+    } catch {
+      return false;
+    }
+  }
+
   function renderRoundEnd(): string {
     if (!state || state.phase !== 'roundEnd' || !state.roundScore) return '';
     const a = state.roundScore.A, b = state.roundScore.B;
     const row = (label: string, av: number, bv: number) => `<tr><td>${label}</td><td>${av}</td><td>${bv}</td></tr>`;
-    let controls = `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
-    if (context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
+    const rankedRound = currentRoomIsRanked();
+    let controls = rankedRound
+      ? '<span class="empty-note">Next ranked round starting automatically…</span>'
+      : `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
+    if (!rankedRound && context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
     return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderEventBanner(state.event, 'round')}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
   }
   function renderMatchEnd(): string {
