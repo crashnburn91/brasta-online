@@ -57,6 +57,9 @@ const server = http.createServer(async (req, res) => {
         redisConfigured: status.redisConfigured,
         redisOk: status.redisOk,
         connections: status.localConnections,
+        heartbeatPongs: status.heartbeatPongs,
+        roomWrites: status.roomWrites,
+        presenceLeaseRoomWrites: status.presenceLeaseRoomWrites,
         uptimeSeconds: Math.round(process.uptime()),
       });
     } catch (error) {

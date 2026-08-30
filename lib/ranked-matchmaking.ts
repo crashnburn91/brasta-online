@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis } from './redis';
+import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
 import {
@@ -17,7 +18,6 @@ const ROOM_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_TTL_SECONDS = 120;
 const ASSIGNMENT_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_STALE_MS = 90_000;
-const PRESENCE_MS = 45_000;
 const ROUND_SCORE_PAUSE_MS = 10_000;
 const ROOM_EVENT_CHANNEL = 'brasta:room-events';
 const QUEUE_KEY = 'brasta:ranked:queue:1v1';
@@ -399,7 +399,7 @@ function bothPlayersConnected(room: RankedRoom): boolean {
   const now = Date.now();
   return ['1','2'].every((seat) => {
     const p = room.seats[seat];
-    return Boolean(p?.connectionId && now - p.lastSeen < PRESENCE_MS);
+    return Boolean(p?.connectionId && roomPresenceLeaseIsFresh(p.lastSeen, now));
   });
 }
 

@@ -25,6 +25,30 @@ async function send(server: ServerApi, conn: any, message: object): Promise<void
   await server.handleMessage(conn, JSON.stringify(message));
 }
 
+async function assertHeartbeatDoesNotPersist(server: ServerApi, conn: any, socket: FakeSocket, context: string): Promise<void> {
+  const before = await server.health();
+  const heartbeatBefore = conn.lastHeartbeatAt;
+  socket.messages = [];
+
+  await send(server, conn, { type: 'PING' });
+
+  const after = await server.health();
+  assert(socket.latest('PONG'), `${context}: heartbeat did not return PONG`);
+  assert(conn.lastHeartbeatAt >= heartbeatBefore, `${context}: heartbeat was not recorded in memory`);
+  assert(after.heartbeatPongs === before.heartbeatPongs + 1, `${context}: heartbeat metric did not advance`);
+  assert(after.roomWrites === before.roomWrites, `${context}: heartbeat unexpectedly persisted the room`);
+  assert(after.presenceLeaseRoomWrites === before.presenceLeaseRoomWrites, `${context}: heartbeat unexpectedly refreshed the safety lease`);
+}
+
+async function assertSafetyLeasePersistsOncePerRoom(server: ServerApi, context: string): Promise<void> {
+  const before = await server.health();
+  const writes = await server.refreshRoomPresenceLeases(true);
+  const after = await server.health();
+  assert(writes === 1, `${context}: safety lease should write once for the active room`);
+  assert(after.roomWrites === before.roomWrites + 1, `${context}: safety lease did not persist the room exactly once`);
+  assert(after.presenceLeaseRoomWrites === before.presenceLeaseRoomWrites + 1, `${context}: safety lease metric did not advance`);
+}
+
 function publicState(update: any) {
   const state = update?.state;
   assert(state, 'ROOM_STATE did not include game state');
@@ -64,6 +88,9 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   await send(server, guest, { type: 'JOIN_ROOM', code: hostSession.code, name: `Guest-${choice}` });
   const guestSession = guestSocket.latest('SESSION')?.session;
   assert(guestSession?.token, 'Guest session was not created');
+
+  await assertHeartbeatDoesNotPersist(server, guest, guestSocket, choice);
+  await assertSafetyLeasePersistsOncePerRoom(server, choice);
 
   await send(server, host, { type: 'START_GAME' });
   assertSynced(hostSocket, guestSocket, 'openingChoice');
@@ -108,6 +135,9 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const guestHandBeforeReconnect = [...guestAfterPlay.update.state.players.find((p: any) => p.seat === 2).hand];
 
   await server.unregisterSocket(guest);
+  const disconnectedRoom = hostSocket.latest('ROOM_STATE');
+  const disconnectedGuest = disconnectedRoom?.update?.room?.players?.find((player: any) => player.seat === 2);
+  assert(disconnectedGuest?.connected === false, `${choice}: disconnect did not mark the guest offline immediately`);
 
   const reconnectSocket = new FakeSocket();
   const reconnect = await server.registerSocket(reconnectSocket);
@@ -124,6 +154,8 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(reconnectedRoom, `${choice}: reconnect did not receive ROOM_STATE`);
   assert(reconnectedRoom.update.room.revision === revisionAfterPlay, `${choice}: reconnect changed or rewound game revision`);
   assert(reconnectedRoom.update.state?.phase === 'play', `${choice}: reconnect did not restore play phase`);
+  const reconnectedGuest = reconnectedRoom.update.room.players.find((player: any) => player.seat === 2);
+  assert(reconnectedGuest?.connected === true, `${choice}: reconnect did not mark the guest online immediately`);
   assert(JSON.stringify(publicState(reconnectedRoom.update)) === authoritativeAfterPlay, `${choice}: reconnect did not restore the latest progressed hand`);
   const guestHandAfterReconnect = [...reconnectedRoom.update.state.players.find((p: any) => p.seat === 2).hand];
   assert(JSON.stringify(guestHandAfterReconnect) === JSON.stringify(guestHandBeforeReconnect), `${choice}: reconnect did not restore the same private hand`);

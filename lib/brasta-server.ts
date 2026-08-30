@@ -3,10 +3,10 @@ import * as Brasta from './game-engine';
 import { redis, duplicateRedis } from './redis';
 import { verifyBrastaAccessToken } from './supabase-auth';
 import { clearActiveMatch, getActiveMatch, setActiveMatch } from './account-active-match';
+import { ROOM_PRESENCE_LEASE_REFRESH_MS, roomPresenceLeaseIsFresh } from './room-presence';
 
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
-const PRESENCE_MS = 45_000;
 const EVENT_CHANNEL = 'brasta:room-events';
 const EMOTE_CHANNEL = 'brasta:room-emotes';
 const EMOTE_RATE_MS = 2_000;
@@ -17,6 +17,13 @@ const RANKED_ROUND_PAUSE_MS = 10_000;
 const memoryRooms = new Map<string, StoredRoom>();
 const localConnections = new Set<Connection>();
 let subscriberStarted = false;
+let presenceLeaseTimer: ReturnType<typeof setInterval> | null = null;
+let presenceLeaseRefreshInFlight: Promise<number> | null = null;
+const runtimeMetrics = {
+  heartbeatPongs: 0,
+  roomWrites: 0,
+  presenceLeaseRoomWrites: 0,
+};
 
 export type WireSocket = {
   send(data: string): void;
@@ -63,11 +70,13 @@ export type Connection = {
   id: string;
   ws: WireSocket;
   closed: boolean;
+  cleanupStarted: boolean;
   roomCode: string | null;
   seat: Brasta.Seat | null;
   token: string | null;
   role: ConnectionRole;
   lastEmoteAt: number;
+  lastHeartbeatAt: number;
 };
 
 const cleanName = (v: unknown) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
@@ -124,6 +133,37 @@ function spectatorForToken(room: StoredRoom, token: string): Spectator | null {
   return room.spectators?.[token] || null;
 }
 function hostParticipant(room: StoredRoom): Participant | null { return participantForToken(room, room.hostToken); }
+function hasAttachedPlayerSocket(room: StoredRoom, participant: Participant): boolean {
+  for (const conn of localConnections) {
+    if (
+      !conn.closed
+      && conn.role === 'player'
+      && conn.roomCode === room.code
+      && conn.seat === participant.seat
+      && conn.token === participant.token
+      && conn.id === participant.connectionId
+    ) return true;
+  }
+  return false;
+}
+function hasAttachedSpectatorSocket(room: StoredRoom, spectator: Spectator): boolean {
+  for (const conn of localConnections) {
+    if (
+      !conn.closed
+      && conn.role === 'spectator'
+      && conn.roomCode === room.code
+      && conn.token === spectator.token
+      && conn.id === spectator.connectionId
+    ) return true;
+  }
+  return false;
+}
+function participantIsConnected(room: StoredRoom, participant: Participant, now = Date.now()): boolean {
+  return hasAttachedPlayerSocket(room, participant) || roomPresenceLeaseIsFresh(participant.lastSeen, now);
+}
+function spectatorIsConnected(room: StoredRoom, spectator: Spectator, now = Date.now()): boolean {
+  return hasAttachedSpectatorSocket(room, spectator) || roomPresenceLeaseIsFresh(spectator.lastSeen, now);
+}
 function visibleStateForSeat(gameState: Brasta.GameState, seat: Brasta.Seat): Brasta.GameState {
   const view = clone(gameState);
   view.deck = gameState.deck.map((_, i) => `hidden-deck-${i}`);
@@ -144,11 +184,11 @@ function roomSnapshot(room: StoredRoom) {
   const players = seats.map((seat) => {
     const p = room.seats[String(seat)];
     return p
-      ? { seat, name: p.name, connected: now - p.lastSeen < PRESENCE_MS, occupied: true, rankName: p.rankName || null }
+      ? { seat, name: p.name, connected: participantIsConnected(room, p, now), occupied: true, rankName: p.rankName || null }
       : { seat, name: '', connected: false, occupied: false, rankName: null };
   });
   const spectators = Object.values(room.spectators)
-    .map((s) => ({ name: s.name, connected: now - s.lastSeen < PRESENCE_MS }))
+    .map((s) => ({ name: s.name, connected: spectatorIsConnected(room, s, now) }))
     .filter((s) => s.connected);
   return {
     code: room.code,
@@ -403,8 +443,9 @@ async function loadRoom(code: string): Promise<StoredRoom | null> {
 async function saveRoom(room: StoredRoom): Promise<void> {
   normalizeRoom(room);
   room.lastActivity = Date.now();
-  if (!redis) { memoryRooms.set(room.code, clone(room)); return; }
-  await redis.set(roomKey(room.code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
+  if (!redis) memoryRooms.set(room.code, clone(room));
+  else await redis.set(roomKey(room.code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
+  runtimeMetrics.roomWrites++;
 }
 async function createRoomIfAbsent(room: StoredRoom): Promise<boolean> {
   normalizeRoom(room);
@@ -529,7 +570,7 @@ export async function getActiveMatchForAccount(userId: string) {
     mode: room.mode,
     seat: p.seat,
     started: room.started,
-    connected: Date.now() - p.lastSeen < PRESENCE_MS,
+    connected: participantIsConnected(room, p),
     updatedAt: ref.updatedAt,
   };
 }
@@ -559,6 +600,98 @@ async function mutateRoom<T>(code: string, fn: (room: StoredRoom) => Promise<T> 
     if (publish) await publishRoom(code);
     return { room, result };
   } finally { await releaseLock(code, token); }
+}
+
+function liveConnectionsByRoom(): Map<string, Connection[]> {
+  const byRoom = new Map<string, Connection[]>();
+  for (const conn of localConnections) {
+    if (conn.closed || !conn.roomCode || !conn.token || !conn.role) continue;
+    const roomConnections = byRoom.get(conn.roomCode) || [];
+    roomConnections.push(conn);
+    byRoom.set(conn.roomCode, roomConnections);
+  }
+  return byRoom;
+}
+
+async function refreshPresenceLeaseForRoom(code: string, connections: Connection[], now: number, force: boolean): Promise<boolean> {
+  const lockToken = await acquireLock(code);
+  if (!lockToken) throw new Error('Room is busy. Try again.');
+  try {
+    const room = await loadRoom(code);
+    if (!room) return false;
+    let changed = false;
+
+    for (const conn of connections) {
+      if (conn.closed || conn.roomCode !== code || !conn.token || !conn.role) continue;
+      if (conn.role === 'spectator') {
+        const spectator = spectatorForToken(room, conn.token);
+        if (
+          spectator
+          && spectator.connectionId === conn.id
+          && (force || now - spectator.lastSeen >= ROOM_PRESENCE_LEASE_REFRESH_MS / 2)
+        ) {
+          spectator.lastSeen = now;
+          changed = true;
+        }
+        continue;
+      }
+
+      if (!conn.seat) continue;
+      const participant = room.seats[String(conn.seat)];
+      if (
+        participant
+        && participant.token === conn.token
+        && participant.connectionId === conn.id
+        && (force || now - participant.lastSeen >= ROOM_PRESENCE_LEASE_REFRESH_MS / 2)
+      ) {
+        participant.lastSeen = now;
+        changed = true;
+      }
+    }
+
+    if (!changed) return false;
+    await saveRoom(room);
+    runtimeMetrics.presenceLeaseRoomWrites++;
+    return true;
+  } finally {
+    await releaseLock(code, lockToken);
+  }
+}
+
+export async function refreshRoomPresenceLeases(force = false): Promise<number> {
+  if (presenceLeaseRefreshInFlight) return presenceLeaseRefreshInFlight;
+  presenceLeaseRefreshInFlight = (async () => {
+    const byRoom = liveConnectionsByRoom();
+    const now = Date.now();
+    let writes = 0;
+    for (const [code, connections] of byRoom) {
+      try {
+        if (await refreshPresenceLeaseForRoom(code, connections, now, force)) writes++;
+      } catch (error) {
+        console.error('[brasta presence lease]', code, error);
+      }
+    }
+    return writes;
+  })();
+  try {
+    return await presenceLeaseRefreshInFlight;
+  } finally {
+    presenceLeaseRefreshInFlight = null;
+  }
+}
+
+function ensurePresenceLeaseTimer(): void {
+  if (presenceLeaseTimer) return;
+  presenceLeaseTimer = setInterval(() => {
+    void refreshRoomPresenceLeases();
+  }, ROOM_PRESENCE_LEASE_REFRESH_MS);
+  presenceLeaseTimer.unref?.();
+}
+
+function stopPresenceLeaseTimerIfIdle(): void {
+  if (!presenceLeaseTimer || [...localConnections].some((conn) => !conn.closed)) return;
+  clearInterval(presenceLeaseTimer);
+  presenceLeaseTimer = null;
 }
 
 function sendJson(conn: Connection, msg: unknown) {
@@ -760,19 +893,8 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
   if (!msg || typeof msg.type !== 'string') { sendError(conn, 'Message type is required.'); return; }
   try {
     if (msg.type === 'PING') {
-      if (conn.roomCode && conn.token && conn.role) {
-        const updated = await mutateRoom(conn.roomCode, (room) => {
-          if (conn.role === 'spectator') {
-            const s = spectatorForToken(room, conn.token!);
-            if (s && s.connectionId === conn.id) s.lastSeen = Date.now();
-          } else if (conn.seat) {
-            const p = room.seats[String(conn.seat)];
-            if (p && p.token === conn.token && p.connectionId === conn.id) p.lastSeen = Date.now();
-          }
-          return syncRankedTurnClock(room);
-        }, false);
-        if (updated?.result) await publishRoom(updated.room.code);
-      }
+      conn.lastHeartbeatAt = Date.now();
+      runtimeMetrics.heartbeatPongs++;
       sendJson(conn, { type: 'PONG' });
       return;
     }
@@ -1152,15 +1274,29 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
 
 export async function registerSocket(ws: WireSocket): Promise<Connection> {
   await ensureSubscriber();
-  const conn: Connection = { id: crypto.randomUUID(), ws, closed: false, roomCode: null, seat: null, token: null, role: null, lastEmoteAt: 0 };
+  const conn: Connection = {
+    id: crypto.randomUUID(),
+    ws,
+    closed: false,
+    cleanupStarted: false,
+    roomCode: null,
+    seat: null,
+    token: null,
+    role: null,
+    lastEmoteAt: 0,
+    lastHeartbeatAt: Date.now(),
+  };
   localConnections.add(conn);
+  ensurePresenceLeaseTimer();
   sendJson(conn, { type: 'NOTICE', message: redis ? 'Connected to Brasta.' : 'Connected to Brasta (local memory mode).' });
   return conn;
 }
 export async function unregisterSocket(conn: Connection): Promise<void> {
-  if (conn.closed) return;
+  if (conn.cleanupStarted) return;
+  conn.cleanupStarted = true;
   conn.closed = true;
   localConnections.delete(conn);
+  stopPresenceLeaseTimerIfIdle();
   await detach(conn, false);
 }
 
@@ -1169,5 +1305,13 @@ export async function health() {
   if (redis) {
     try { redisOk = (await redis.ping()) === 'PONG'; } catch { redisOk = false; }
   }
-  return { ok: true, redisConfigured: !!redis, redisOk, localConnections: [...localConnections].filter((c) => !c.closed).length };
+  return {
+    ok: true,
+    redisConfigured: !!redis,
+    redisOk,
+    localConnections: [...localConnections].filter((c) => !c.closed).length,
+    heartbeatPongs: runtimeMetrics.heartbeatPongs,
+    roomWrites: runtimeMetrics.roomWrites,
+    presenceLeaseRoomWrites: runtimeMetrics.presenceLeaseRoomWrites,
+  };
 }
