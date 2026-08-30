@@ -61,7 +61,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/account-ui.css?v=0.6.2" />
         <link rel="stylesheet" href="/account-nav.css?v=0.7.5" />
         <link rel="stylesheet" href="/friends-ui.css?v=0.1.5" />
-        <link rel="stylesheet" href="/tournament-ui.css?v=0.1.0" />
+        <link rel="stylesheet" href="/tournament-ui.css?v=0.1.1" />
         <link rel="stylesheet" href="/experience-ui.css?v=0.9.0" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.1" />
         <link rel="stylesheet" href="/ranked-timers.css?v=0.1.0" />

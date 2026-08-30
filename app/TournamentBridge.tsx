@@ -370,7 +370,12 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
     <>
       {tournament && (myTeam || unread > 0) && (
         <button className="tournament-dock" type="button" onClick={openTournament} aria-label="Open Brasta tournament">
-          <span aria-hidden="true">♜</span>
+          <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+              <path d="M7 6H4v1a4 4 0 0 0 4 4M17 6h3v1a4 4 0 0 1-4 4" />
+            </svg>
+          </span>
           <b>Tournament</b>
           {unread > 0 && <i>{unread > 9 ? '9+' : unread}</i>}
         </button>
