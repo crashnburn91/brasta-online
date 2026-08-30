@@ -13,6 +13,11 @@ namespace BrastaNet {
     spectators: RoomSpectator[];
     spectatorCount: number;
     full: boolean;
+    ranked?: {
+      turnSeat: Brasta.Seat | null;
+      turnDeadlineAt: number | null;
+      roundAdvanceAt: number | null;
+    } | null;
   }
   export interface SessionInfo {
     code: string;
@@ -417,6 +422,7 @@ namespace BrastaNet {
       if (token) this.send({ type: 'CLAIM_ACCOUNT', accessToken: token });
     }
     command(command: Brasta.Command): void { this.send({ type: 'COMMAND', command }); }
+    rankedTurnTimeout(): void { this.send({ type: 'RANKED_TURN_TIMEOUT' }); }
     nextRound(): void { this.send({ type: 'NEXT_ROUND' }); }
     endMatch(): void { this.send({ type: 'END_MATCH' }); }
     leaveRoom(): void { this.resume = null; this.send({ type: 'LEAVE_ROOM' }); }
