@@ -104,6 +104,7 @@ type RankedRoom = {
     finalized: boolean;
     finalizing: boolean;
     result: RankedFinalizeResult | null;
+    roundEndedAt?: number;
   };
 };
 
@@ -885,11 +886,19 @@ export async function monitorRanked2v2Room(request: Request, roomCode: string) {
     }
 
     if (room.gameState.phase === 'roundEnd') {
-      const remaining = ROUND_SCORE_PAUSE_MS - (Date.now() - room.lastActivity);
+      // lastActivity is also touched by heartbeats/account claims, so it cannot
+      // represent when the round actually ended. Persist a dedicated timestamp
+      // that remains stable while players are sitting on the score screen.
+      if (!room.ranked.roundEndedAt) {
+        room.ranked.roundEndedAt = Date.now();
+        await saveRankedRoom(room, false);
+      }
+      const remaining = ROUND_SCORE_PAUSE_MS - (Date.now() - room.ranked.roundEndedAt);
       if (remaining <= 0) {
         const next = Brasta.nextRound(room.gameState);
         if (!next.ok) throw new Error(next.error || 'Could not advance the ranked round.');
         room.gameState = next.state;
+        delete room.ranked.roundEndedAt;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
