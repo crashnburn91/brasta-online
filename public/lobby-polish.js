@@ -6,7 +6,7 @@
   let audioUnlocked = false;
   let wasYourTurn = false;
   let eventAudioPrimed = false;
-  let lastEventSoundSeq = null;
+  const playedEventSoundKeys = new Set();
   let turnToastTimer = null;
   let polishScheduled = false;
   let rankedTabMode = '1v1';
@@ -120,7 +120,6 @@
   function updateEventAudio(eventBanner, hasMatch) {
     if (!hasMatch) {
       eventAudioPrimed = false;
-      lastEventSoundSeq = null;
       return;
     }
 
@@ -132,15 +131,26 @@
     const seq = eventBanner.dataset.eventSeq || '';
     if (!seq) return;
 
+    const text = String(eventBanner.textContent || '').replace(/\s+/g, ' ').trim();
+    const key = `${seq}|${text}`;
+
+    // The app can re-render the same event banner many times while waiting for
+    // the next player. Remember every event sound we have handled instead of
+    // only the most recent sequence. This prevents Jack Sweep, Brasta, Big 2/10,
+    // Last Pickup and Last Hand audio from replaying on DOM refreshes.
+    if (playedEventSoundKeys.has(key)) return;
+
+    playedEventSoundKeys.add(key);
+    while (playedEventSoundKeys.size > 80) {
+      playedEventSoundKeys.delete(playedEventSoundKeys.values().next().value);
+    }
+
     if (!eventAudioPrimed) {
       eventAudioPrimed = true;
-      lastEventSoundSeq = seq;
       return;
     }
 
-    if (seq === lastEventSoundSeq) return;
-    lastEventSoundSeq = seq;
-    playSpecialEventSounds(eventBanner.textContent || '');
+    playSpecialEventSounds(text);
   }
 
   function turnBanner() {
