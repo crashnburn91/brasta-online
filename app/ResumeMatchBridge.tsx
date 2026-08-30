@@ -32,7 +32,10 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
     let timer = 0;
 
     const currentRenderedRoomCode = () => {
-      if (!document.querySelector('.lobby, .table')) return '';
+      // Round-end screens do not render .table, but they are still the current
+      // live room. Treat any in-match shell as current so Resume Match never
+      // appears on top of the match the player is already in.
+      if (!document.querySelector('.lobby, .table, .round-end, .players')) return '';
       try {
         return String(new URLSearchParams(location.search).get('room') || '')
           .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -56,11 +59,19 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
       }
     };
 
+    let claimedSessionKey = '';
+
     const claimCurrentSeat = async () => {
       const current = currentPlayerSession();
       if (!current) return;
+
+      // Claiming the exact same seat every five seconds needlessly rewrites the
+      // room in Redis. Claim once per browser session/token; reconnects that
+      // rotate the player token naturally produce a new key and claim again.
+      const key = `${current.roomCode}:${current.playerToken}`;
+      if (key === claimedSessionKey) return;
       try {
-        await fetch('/api/active-match', {
+        const response = await fetch('/api/active-match', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -69,6 +80,7 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
           body: JSON.stringify({ action: 'claim', ...current }),
           cache: 'no-store',
         });
+        if (response.ok) claimedSessionKey = key;
       } catch {}
     };
 
@@ -85,7 +97,8 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
         if (!alive) return;
         if (response.ok) {
           const nextMatch = (data.match || null) as ActiveMatch | null;
-          const currentCode = currentRenderedRoomCode();
+          const currentSession = currentPlayerSession();
+          const currentCode = currentSession?.roomCode || currentRenderedRoomCode();
           setMatch(nextMatch && currentCode && currentCode === nextMatch.roomCode ? null : nextMatch);
         }
       } catch {}
