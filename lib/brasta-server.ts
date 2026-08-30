@@ -12,6 +12,8 @@ const EMOTE_CHANNEL = 'brasta:room-emotes';
 const EMOTE_RATE_MS = 2_000;
 const ALLOWED_EMOTES = new Set(['wink','nod','thumbs_up','thumbs_down','eyebrow','laugh','wow','thinking']);
 const BURN_CLAIM_MS = 30_000;
+const RANKED_TURN_MS = 30_000;
+const RANKED_ROUND_PAUSE_MS = 10_000;
 const memoryRooms = new Map<string, StoredRoom>();
 const localConnections = new Set<Connection>();
 let subscriberStarted = false;
@@ -81,9 +83,35 @@ function normalizeRoom(room: StoredRoom): StoredRoom {
   if (room.callableBurn === undefined) room.callableBurn = null;
   return room;
 }
-function rankedMeta(room: StoredRoom): { roundEndedAt?: number } | null {
-  const ranked = (room as StoredRoom & { ranked?: { roundEndedAt?: number } }).ranked;
+type RankedRuntimeMeta = {
+  roundEndedAt?: number;
+  turnStartedAt?: number;
+  turnSeat?: Brasta.Seat;
+};
+
+function rankedMeta(room: StoredRoom): RankedRuntimeMeta | null {
+  const ranked = (room as StoredRoom & { ranked?: RankedRuntimeMeta }).ranked;
   return ranked && typeof ranked === 'object' ? ranked : null;
+}
+
+function syncRankedTurnClock(room: StoredRoom): boolean {
+  const ranked = rankedMeta(room);
+  if (!ranked) return false;
+
+  const state = room.gameState;
+  if (!state || state.phase !== 'play') {
+    const changed = ranked.turnStartedAt != null || ranked.turnSeat != null;
+    delete ranked.turnStartedAt;
+    delete ranked.turnSeat;
+    return changed;
+  }
+
+  if (!ranked.turnStartedAt || ranked.turnSeat !== state.currentSeat) {
+    ranked.turnStartedAt = Date.now();
+    ranked.turnSeat = state.currentSeat;
+    return true;
+  }
+  return false;
 }
 function activeSeats(room: StoredRoom): Brasta.Seat[] { return Brasta.activeSeats(room.mode); }
 function participantForToken(room: StoredRoom, token: string): Participant | null {
@@ -133,6 +161,15 @@ function roomSnapshot(room: StoredRoom) {
     spectators,
     spectatorCount: spectators.length,
     full: seats.every((s) => !!room.seats[String(s)]),
+    ranked: (() => {
+      const ranked = rankedMeta(room);
+      if (!ranked) return null;
+      return {
+        turnSeat: room.gameState?.phase === 'play' ? room.gameState.currentSeat : null,
+        turnDeadlineAt: ranked.turnStartedAt ? ranked.turnStartedAt + RANKED_TURN_MS : null,
+        roundAdvanceAt: ranked.roundEndedAt ? ranked.roundEndedAt + RANKED_ROUND_PAUSE_MS : null,
+      };
+    })(),
   };
 }
 function applyNames(room: StoredRoom) {
@@ -724,17 +761,17 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
   try {
     if (msg.type === 'PING') {
       if (conn.roomCode && conn.token && conn.role) {
-        await mutateRoom(conn.roomCode, (room) => {
+        const updated = await mutateRoom(conn.roomCode, (room) => {
           if (conn.role === 'spectator') {
             const s = spectatorForToken(room, conn.token!);
             if (s && s.connectionId === conn.id) s.lastSeen = Date.now();
-            return;
-          }
-          if (conn.seat) {
+          } else if (conn.seat) {
             const p = room.seats[String(conn.seat)];
             if (p && p.token === conn.token && p.connectionId === conn.id) p.lastSeen = Date.now();
           }
+          return syncRankedTurnClock(room);
         }, false);
+        if (updated?.result) await publishRoom(updated.room.code);
       }
       sendJson(conn, { type: 'PONG' });
       return;
@@ -969,8 +1006,73 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         const result = Brasta.resolveOpening(room.gameState, msg.choice);
         if (!result.ok) throw new Error(result.error || 'Opening choice rejected.');
         room.callableBurn = null;
-        room.gameState = result.state; applyNames(room); room.revision++; return null;
+        room.gameState = result.state;
+        syncRankedTurnClock(room);
+        applyNames(room); room.revision++; return null;
       }
+      if (msg.type === 'RANKED_TURN_TIMEOUT') {
+        const ranked = rankedMeta(room);
+        if (!ranked || room.gameState.phase !== 'play') return null;
+
+        // A client may request timeout resolution, but the server owns the
+        // deadline and decides whether the turn has actually expired.
+        syncRankedTurnClock(room);
+        if (!ranked.turnStartedAt || Date.now() - ranked.turnStartedAt < RANKED_TURN_MS) return null;
+
+        const timedOutSeat = room.gameState.currentSeat;
+        const timedOutPlayer = room.gameState.players.find((player) => player.seat === timedOutSeat);
+        const hand = timedOutPlayer?.hand || [];
+        if (!hand.length) return null;
+
+        // "Loose play" is the timeout penalty. Jacks cannot legally be played
+        // loose, so prefer any non-Jack in hand. If the hand is all Jacks, the
+        // only legal fallback is the normal Jack action.
+        const loosePlayable = hand.filter((cardId) => room.gameState!.cards[cardId]?.rank !== 'J');
+        const pool = loosePlayable.length ? loosePlayable : hand;
+        const cardId = pool[crypto.randomInt(pool.length)];
+        const card = room.gameState.cards[cardId];
+        const safe: Brasta.Command = card.rank === 'J'
+          ? { type: 'JACK_ACTION', seat: timedOutSeat, cardId }
+          : { type: 'PLAY_LOOSE', seat: timedOutSeat, cardId };
+
+        const before = clone(room.gameState);
+        const result = Brasta.applyCommand(room.gameState, safe);
+        if (!result.ok) throw new Error(result.error || 'Could not auto-play the timed-out turn.');
+
+        room.callableBurn = null;
+        if (safe.type === 'PLAY_LOOSE' && result.state.phase === 'play') {
+          const options = burnPickupOptions(before, timedOutSeat, safe.cardId);
+          if (options.length) {
+            room.callableBurn = {
+              id: crypto.randomUUID(),
+              offenderSeat: timedOutSeat,
+              cardId: safe.cardId,
+              options,
+              includePlayedCard: true,
+              claimedBySeat: null,
+              claimedAt: null,
+            };
+          }
+        }
+
+        const timedOutName = timedOutPlayer?.name || `Seat ${timedOutSeat}`;
+        result.state.lastMove = card.rank === 'J'
+          ? `${timedOutName} timed out — ${result.state.lastMove || 'a Jack was auto-played.'}`
+          : `${timedOutName} timed out — ${Brasta.cardLabel(card)} was played loose.`;
+
+        const previousPhase = room.gameState.phase;
+        room.gameState = result.state;
+        if (room.gameState.phase === 'roundEnd' && previousPhase !== 'roundEnd') {
+          ranked.roundEndedAt = Date.now();
+        } else if (room.gameState.phase !== 'roundEnd') {
+          delete ranked.roundEndedAt;
+        }
+        syncRankedTurnClock(room);
+        applyNames(room);
+        room.revision++;
+        return null;
+      }
+
       if (msg.type === 'COMMAND') {
         if (!msg.command || typeof msg.command.type !== 'string') throw new Error('A game command is required.');
         if (room.callableBurn?.claimedBySeat && room.callableBurn.claimedAt && Date.now() - room.callableBurn.claimedAt < BURN_CLAIM_MS) {
@@ -1015,6 +1117,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
           if (result.state.phase === 'roundEnd' && previousPhase !== 'roundEnd') ranked.roundEndedAt = Date.now();
           else if (result.state.phase !== 'roundEnd') delete ranked.roundEndedAt;
         }
+        syncRankedTurnClock(room);
         applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'NEXT_ROUND') {
@@ -1024,7 +1127,11 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         room.callableBurn = null;
         room.gameState = result.state;
         const ranked = rankedMeta(room);
-        if (ranked) delete ranked.roundEndedAt;
+        if (ranked) {
+          delete ranked.roundEndedAt;
+          delete ranked.turnStartedAt;
+          delete ranked.turnSeat;
+        }
         applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'END_MATCH') {
