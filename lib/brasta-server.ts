@@ -81,6 +81,10 @@ function normalizeRoom(room: StoredRoom): StoredRoom {
   if (room.callableBurn === undefined) room.callableBurn = null;
   return room;
 }
+function rankedMeta(room: StoredRoom): { roundEndedAt?: number } | null {
+  const ranked = (room as StoredRoom & { ranked?: { roundEndedAt?: number } }).ranked;
+  return ranked && typeof ranked === 'object' ? ranked : null;
+}
 function activeSeats(room: StoredRoom): Brasta.Seat[] { return Brasta.activeSeats(room.mode); }
 function participantForToken(room: StoredRoom, token: string): Participant | null {
   return Object.values(room.seats).find((p) => p.token === token) || null;
@@ -1004,14 +1008,24 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
             };
           }
         }
-        room.gameState = result.state; applyNames(room); room.revision++; return null;
+        const previousPhase = room.gameState.phase;
+        room.gameState = result.state;
+        const ranked = rankedMeta(room);
+        if (ranked) {
+          if (result.state.phase === 'roundEnd' && previousPhase !== 'roundEnd') ranked.roundEndedAt = Date.now();
+          else if (result.state.phase !== 'roundEnd') delete ranked.roundEndedAt;
+        }
+        applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'NEXT_ROUND') {
         requireHost();
         const result = Brasta.nextRound(room.gameState);
         if (!result.ok) throw new Error(result.error || 'Unable to start next round.');
         room.callableBurn = null;
-        room.gameState = result.state; applyNames(room); room.revision++; return null;
+        room.gameState = result.state;
+        const ranked = rankedMeta(room);
+        if (ranked) delete ranked.roundEndedAt;
+        applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'END_MATCH') {
         requireHost(); room.callableBurn = null; room.gameState = Brasta.endMatch(room.gameState); room.revision++; return null;
