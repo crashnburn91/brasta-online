@@ -1063,7 +1063,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         room.gameState = result.state;
         if (room.gameState.phase === 'roundEnd') {
           ranked.roundEndedAt = Date.now();
-        } else if (room.gameState.phase !== 'roundEnd') {
+        } else {
           delete ranked.roundEndedAt;
         }
         syncRankedTurnClock(room);
