@@ -18,7 +18,7 @@ const QUEUE_TTL_SECONDS = 120;
 const ASSIGNMENT_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_STALE_MS = 90_000;
 const PRESENCE_MS = 45_000;
-const ROUND_SCORE_PAUSE_MS = 4_000;
+const ROUND_SCORE_PAUSE_MS = 10_000;
 const ROOM_EVENT_CHANNEL = 'brasta:room-events';
 const QUEUE_KEY = 'brasta:ranked:queue:1v1';
 const QUEUE_LOCK_KEY = 'brasta:ranked:queue:1v1:lock';
@@ -74,6 +74,8 @@ type RankedRoom = {
     finalizing: boolean;
     result: RankedFinalizeResult | null;
     roundEndedAt?: number;
+    turnStartedAt?: number;
+    turnSeat?: Brasta.Seat;
   };
 };
 
@@ -429,6 +431,8 @@ export async function monitorRankedRoom(request: Request, roomCode: string) {
     if (!room.gameState) {
       if (bothPlayersConnected(room)) {
         room.gameState = Brasta.startMatch('1v1', crypto.randomInt(1, 0x7fffffff), 110);
+        delete room.ranked.turnStartedAt;
+        delete room.ranked.turnSeat;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
@@ -451,6 +455,8 @@ export async function monitorRankedRoom(request: Request, roomCode: string) {
         if (!next.ok) throw new Error(next.error || 'Could not advance the ranked round.');
         room.gameState = next.state;
         delete room.ranked.roundEndedAt;
+        delete room.ranked.turnStartedAt;
+        delete room.ranked.turnSeat;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
