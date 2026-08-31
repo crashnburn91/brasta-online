@@ -99,7 +99,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.7" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.6" strategy="afterInteractive" />
-        <Script src="/ranked-timers.js?v=0.1.0" strategy="afterInteractive" />
+        <Script src="/ranked-timers.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/competitive-account.js?v=0.8.1" strategy="afterInteractive" />
         <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
