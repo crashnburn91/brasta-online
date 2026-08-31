@@ -79,6 +79,7 @@
     const target = Number(latestState.targetScore || 110);
 
     const rankedTurnTimer = topbar.querySelector('.scoreline [data-ranked-turn-timer]');
+    topbar.classList.toggle('ranked-turn-clock-visible', rankedTurnTimer instanceof HTMLElement);
 
     strip.innerHTML = `
       <div class="live-score-group match-score-live" title="Blue Team vs Red Team match total from completed rounds">
