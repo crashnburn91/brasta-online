@@ -78,6 +78,8 @@
     const roundB = liveRound.B;
     const target = Number(latestState.targetScore || 110);
 
+    const rankedTurnTimer = topbar.querySelector('.scoreline [data-ranked-turn-timer]');
+
     strip.innerHTML = `
       <div class="live-score-group match-score-live" title="Blue Team vs Red Team match total from completed rounds">
         <small>MATCH</small>
@@ -93,6 +95,15 @@
         <span class="live-team team-b-live" aria-label="Red Team ${roundB}"><b>${roundB}</b></span>
       </div>
       <span class="live-score-target">First to ${target}</span>`;
+
+    // The core scoreline is hidden once the enhanced live-score strip is active.
+    // Move the ranked turn clock into the visible strip so it remains prominent
+    // on desktop and mobile without maintaining a second timer instance.
+    if (rankedTurnTimer instanceof HTMLElement) {
+      const targetNode = strip.querySelector('.live-score-target');
+      if (targetNode) strip.insertBefore(rankedTurnTimer, targetNode);
+      else strip.appendChild(rankedTurnTimer);
+    }
   }
 
   function captureServerMessage(event) {
