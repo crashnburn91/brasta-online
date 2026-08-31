@@ -828,10 +828,10 @@ async function publishRoom(code: string, room?: StoredRoom): Promise<void> {
   await broadcastLocalRoom(code, room);
   if (redis) {
     runtimeMetrics.roomEventPublishes++;
-    // Keep the legacy plain-code payload during the first rollout. Once every
-    // realtime instance understands sourced events, the publisher can attach
-    // REALTIME_INSTANCE_ID and safely ignore its own pub/sub echo.
-    await redis.publish(EVENT_CHANNEL, code);
+    await redis.publish(EVENT_CHANNEL, JSON.stringify({
+      code,
+      source: REALTIME_INSTANCE_ID,
+    }));
   }
 }
 
