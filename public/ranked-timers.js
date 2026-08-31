@@ -24,7 +24,8 @@
 
     const seconds = secondsLeft(deadline);
     const value = timer.querySelector('b');
-    if (value) value.textContent = String(seconds);
+    const nextText = String(seconds);
+    if (value && value.textContent !== nextText) value.textContent = nextText;
 
     timer.classList.toggle('warning', seconds <= 10 && seconds > 5);
     timer.classList.toggle('danger', seconds <= 5);
@@ -46,7 +47,8 @@
     if (!(timer instanceof HTMLElement)) return;
     const deadline = Number(timer.dataset.deadline || 0);
     if (!deadline) return;
-    timer.textContent = String(secondsLeft(deadline));
+    const nextText = String(secondsLeft(deadline));
+    if (timer.textContent !== nextText) timer.textContent = nextText;
   }
 
   function update() {
@@ -54,9 +56,10 @@
     updateRoundTimer();
   }
 
-  const observer = new MutationObserver(update);
   const boot = () => {
-    observer.observe(document.body, { childList: true, subtree: true });
+    // The legacy Brasta app redraws ranked UI frequently. Polling is deliberate
+    // here: observing the same DOM nodes that this timer updates caused a
+    // MutationObserver feedback loop and could freeze the browser at match start.
     update();
     window.setInterval(update, 200);
   };
