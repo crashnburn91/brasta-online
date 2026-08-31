@@ -24,6 +24,7 @@ type Snapshot = {
     id: string;
     title: string;
     description: string;
+    mode: '1v1' | '2v2';
     startsAt: string;
     registrationOpensAt: string;
     registrationClosesAt: string;
@@ -85,6 +86,13 @@ function countdown(value: string, now: number): string {
 function teamLabel(team: Team | undefined): string {
   if (!team) return 'TBD';
   return team.seed ? `${team.seed}. ${team.name}` : team.name;
+}
+
+function entrantLabel(team: Team | undefined, individual: boolean): string {
+  if (!team) return 'TBD';
+  if (!individual) return teamLabel(team);
+  const username = team.members[0]?.username || team.name;
+  return `${team.seed ? `${team.seed}. ` : ''}@${username}`;
 }
 
 function avatar(member: Team['members'][number]) {
@@ -204,11 +212,14 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
   async function register(event: FormEvent) {
     event.preventDefault();
     if (!tournament) return;
-    await mutate('register', {
+    const individual = tournament.mode === '1v1';
+    await mutate('register', individual ? {
+      tournamentId: tournament.id,
+    } : {
       tournamentId: tournament.id,
       teamName,
       partnerUsername: partnerUsername.replace(/^@/, ''),
-    }, `Invitation sent to @${partnerUsername.replace(/^@/, '')}.`);
+    }, individual ? 'You are registered for the tournament.' : `Invitation sent to @${partnerUsername.replace(/^@/, '')}.`);
     setTeamName('');
     setPartnerUsername('');
   }
@@ -233,7 +244,7 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
     <section className="tournament-home-banner" aria-label="Upcoming Brasta tournament">
       <div className="tournament-banner-mark" aria-hidden="true">
         <TournamentTrophyIcon className="tournament-banner-trophy" />
-        <b>2V2</b>
+        <b>{tournament.mode.toUpperCase()}</b>
         <span className="tournament-banner-suits">
           <i className="tournament-banner-spade">♠</i>
           <i className="tournament-banner-heart">♥</i>
@@ -242,14 +253,14 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
       <div className="tournament-banner-copy">
         <span className="tournament-kicker">UPCOMING TOURNAMENT</span>
         <h2>{tournament.title}</h2>
-        <p>{formatDate(tournament.startsAt)} · {tournament.confirmedTeams}/{tournament.maxTeams} teams registered</p>
+        <p>{formatDate(tournament.startsAt)} · {tournament.confirmedTeams}/{tournament.maxTeams} {tournament.mode === '1v1' ? 'players' : 'teams'} registered</p>
       </div>
       <div className="tournament-banner-countdown">
         <small>{tournament.status === 'active' ? 'LIVE NOW' : 'STARTS IN'}</small>
         <strong>{tournament.status === 'active' ? 'LIVE' : countdown(tournament.startsAt, now)}</strong>
       </div>
       <button type="button" onClick={openTournament}>
-        {myTeam ? 'View My Team' : tournament.spotsRemaining > 0 && tournament.status === 'registration' ? 'Register Team' : 'View Bracket'}
+        {myTeam ? (tournament.mode === '1v1' ? 'View My Entry' : 'View My Team') : tournament.spotsRemaining > 0 && tournament.status === 'registration' ? 'Register' : 'View Bracket'}
       </button>
     </section>,
     homeTarget,
@@ -262,13 +273,13 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
       <section className="tournament-modal" role="dialog" aria-modal="true" aria-label={tournament.title}>
         <button className="tournament-close" type="button" onClick={() => setOpen(false)} aria-label="Close">×</button>
         <header className="tournament-modal-header">
-          <span className="tournament-kicker">BRASTA 2v2 TOURNAMENT</span>
+          <span className="tournament-kicker">BRASTA {tournament.mode.toUpperCase()} TOURNAMENT</span>
           <h2>{tournament.title}</h2>
           {tournament.description && <p>{tournament.description}</p>}
           <div className="tournament-schedule">
             <span><small>START TIME</small><b>{formatDate(tournament.startsAt)}</b></span>
             <span><small>COUNTDOWN</small><b>{tournament.status === 'active' ? 'Live now' : countdown(tournament.startsAt, now)}</b></span>
-            <span><small>TEAMS</small><b>{tournament.confirmedTeams} / {tournament.maxTeams}</b></span>
+            <span><small>{tournament.mode === '1v1' ? 'PLAYERS' : 'TEAMS'}</small><b>{tournament.confirmedTeams} / {tournament.maxTeams}</b></span>
           </div>
         </header>
 
@@ -277,14 +288,14 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
         {myTeam ? (
           <section className={`tournament-my-team ${myTeam.status}`}>
             <div>
-              <span className="tournament-kicker">YOUR TEAM</span>
-              <h3>{myTeam.name}</h3>
+              <span className="tournament-kicker">{tournament.mode === '1v1' ? 'YOUR REGISTRATION' : 'YOUR TEAM'}</span>
+              <h3>{tournament.mode === '1v1' ? `@${myTeam.members[0]?.username || myTeam.name}` : myTeam.name}</h3>
             </div>
             <div className="tournament-member-list">
               {myTeam.members.map((member) => (
                 <div key={member.id}>
                   <i>{avatar(member)}</i>
-                  <span><b>@{member.username}</b><small>{member.role} · {member.accepted ? 'confirmed' : 'awaiting response'}</small></span>
+                  <span><b>@{member.username}</b><small>{tournament.mode === '1v1' ? 'confirmed player' : `${member.role} · ${member.accepted ? 'confirmed' : 'awaiting response'}`}</small></span>
                 </div>
               ))}
             </div>
@@ -302,20 +313,26 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
             )}
           </section>
         ) : tournament.status === 'registration' && tournament.spotsRemaining > 0 ? (
-          <form className="tournament-registration" onSubmit={register}>
+          <form className={`tournament-registration${tournament.mode === '1v1' ? ' individual' : ''}`} onSubmit={register}>
             <div>
-              <span className="tournament-kicker">TEAM REGISTRATION</span>
-              <h3>Register your 2v2 team</h3>
-              <p>Your teammate must have a Brasta account and accept the invitation before your team takes a bracket slot.</p>
+              <span className="tournament-kicker">{tournament.mode === '1v1' ? 'PLAYER REGISTRATION' : 'TEAM REGISTRATION'}</span>
+              <h3>{tournament.mode === '1v1' ? 'Register for 1v1' : 'Register your 2v2 team'}</h3>
+              <p>{tournament.mode === '1v1'
+                ? 'Register yourself directly. Your Brasta username will appear in the bracket.'
+                : 'Your teammate must have a Brasta account and accept the invitation before your team takes a bracket slot.'}</p>
             </div>
             {!accessToken ? (
               <div className="tournament-signin-note">Sign in to Brasta, then reopen tournament registration.</div>
             ) : (
-              <>
-                <label>Team name<input value={teamName} minLength={2} maxLength={32} required onChange={(event) => setTeamName(event.target.value)} placeholder="The Sweepers" /></label>
-                <label>Teammate username<input value={partnerUsername} minLength={3} maxLength={21} required onChange={(event) => setPartnerUsername(event.target.value)} placeholder="@username" autoCapitalize="none" /></label>
-                <button className="primary" type="submit" disabled={busy}>{busy ? 'Sending invitation…' : 'Invite Teammate'}</button>
-              </>
+              tournament.mode === '1v1' ? (
+                <button className="primary" type="submit" disabled={busy}>{busy ? 'Registering…' : 'Register for 1v1'}</button>
+              ) : (
+                <>
+                  <label>Team name<input value={teamName} minLength={2} maxLength={32} required onChange={(event) => setTeamName(event.target.value)} placeholder="The Sweepers" /></label>
+                  <label>Teammate username<input value={partnerUsername} minLength={3} maxLength={21} required onChange={(event) => setPartnerUsername(event.target.value)} placeholder="@username" autoCapitalize="none" /></label>
+                  <button className="primary" type="submit" disabled={busy}>{busy ? 'Sending invitation…' : 'Invite Teammate'}</button>
+                </>
+              )
             )}
           </form>
         ) : (
@@ -352,8 +369,8 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
                       return (
                         <article className={`tournament-match ${match.status}`} key={match.id}>
                           <small>Match {match.matchNumber}{match.roomCode ? ` · ${match.roomCode}` : ''}</small>
-                          <div className={match.winnerTeamId === match.team1Id ? 'winner' : ''}><span>{teamLabel(team1)}</span>{match.winnerTeamId === match.team1Id && <b>WIN</b>}</div>
-                          <div className={match.winnerTeamId === match.team2Id ? 'winner' : ''}><span>{teamLabel(team2)}</span>{match.winnerTeamId === match.team2Id && <b>WIN</b>}</div>
+                          <div className={match.winnerTeamId === match.team1Id ? 'winner' : ''}><span>{entrantLabel(team1, tournament.mode === '1v1')}</span>{match.winnerTeamId === match.team1Id && <b>WIN</b>}</div>
+                          <div className={match.winnerTeamId === match.team2Id ? 'winner' : ''}><span>{entrantLabel(team2, tournament.mode === '1v1')}</span>{match.winnerTeamId === match.team2Id && <b>WIN</b>}</div>
                         </article>
                       );
                     })}
@@ -363,18 +380,18 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
             </div>
           ) : (
             <div className="tournament-bracket-placeholder">
-              <b>{tournament.confirmedTeams} confirmed teams</b>
-              <span>Up to {tournament.maxTeams} teams · top seeds receive first-round byes when needed</span>
+              <b>{tournament.confirmedTeams} confirmed {tournament.mode === '1v1' ? 'players' : 'teams'}</b>
+              <span>Up to {tournament.maxTeams} {tournament.mode === '1v1' ? 'players' : 'teams'} · top seeds receive first-round byes when needed</span>
             </div>
           )}
         </section>
 
         {snapshot.teams.length > 0 && (
           <section className="tournament-team-roster">
-            <h3>Registered Teams</h3>
+            <h3>Registered {tournament.mode === '1v1' ? 'Players' : 'Teams'}</h3>
             <div>
               {snapshot.teams.map((team) => (
-                <article key={team.id}><b>{team.seed ? `#${team.seed} ` : ''}{team.name}</b><span>{team.members.map((member) => `@${member.username}`).join(' + ')}</span></article>
+                <article key={team.id}><b>{entrantLabel(team, tournament.mode === '1v1')}</b>{tournament.mode === '2v2' && <span>{team.members.map((member) => `@${member.username}`).join(' + ')}</span>}</article>
               ))}
             </div>
           </section>

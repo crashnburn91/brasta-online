@@ -16,6 +16,7 @@ type AdminTournament = {
     id: string;
     title: string;
     description: string;
+    mode: '1v1' | '2v2';
     startsAt: string;
     registrationClosesAt: string;
     maxTeams: number;
@@ -45,6 +46,11 @@ function inputDate(value: string | Date): string {
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
+function entrantName(team: Team | undefined, individual: boolean): string {
+  if (!team) return 'TBD';
+  return individual ? `@${team.members[0]?.username || team.name}` : team.name;
 }
 
 function initialStart() {
@@ -82,7 +88,7 @@ function TournamentScheduleEditor({
         <label className="wide">Description<textarea name="description" defaultValue={tournament.description} maxLength={500} /></label>
         <label>Start date & time<input name="startsAt" type="datetime-local" defaultValue={inputDate(tournament.startsAt)} required /></label>
         <label>Registration closes<input name="registrationClosesAt" type="datetime-local" defaultValue={inputDate(tournament.registrationClosesAt)} required /></label>
-        <label>Team limit<input name="maxTeams" type="number" min={Math.max(2, tournament.confirmedTeams)} max={12} defaultValue={tournament.maxTeams} required /></label>
+        <label>{tournament.mode === '1v1' ? 'Player' : 'Team'} limit<input name="maxTeams" type="number" min={Math.max(2, tournament.confirmedTeams)} max={12} defaultValue={tournament.maxTeams} required /></label>
         <button type="submit" disabled={busy}>Save Changes</button>
       </form>
     </details>
@@ -96,6 +102,7 @@ export default function TournamentAdminClient() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [mode, setMode] = useState<'1v1' | '2v2'>('2v2');
   const [title, setTitle] = useState('Brasta 2v2 Tournament');
   const [description, setDescription] = useState('Team up, register in advance, and battle through a single-elimination Brasta bracket.');
   const [startsAt, setStartsAt] = useState(initialStart);
@@ -174,6 +181,7 @@ export default function TournamentAdminClient() {
   async function create(event: FormEvent) {
     event.preventDefault();
     await mutate('create', {
+      mode,
       title,
       description,
       startsAt: new Date(startsAt).toISOString(),
@@ -185,15 +193,23 @@ export default function TournamentAdminClient() {
   return (
     <main className="tournament-admin-shell">
       <header className="tournament-admin-header">
-        <div><span>BRASTA ADMIN</span><h1>Tournaments</h1><p>Schedule 2v2 events, manage registration, publish brackets, and advance winners.</p></div>
+        <div><span>BRASTA ADMIN</span><h1>Tournaments</h1><p>Schedule 1v1 or 2v2 events, manage registration, publish brackets, and advance winners.</p></div>
         <nav><a href="/admin/live">Live Traffic</a><a href="/">Back to Brasta</a></nav>
       </header>
 
       {message && <div className="tournament-admin-message">{message}</div>}
 
       <section className="tournament-admin-card">
-        <div className="tournament-admin-card-head"><div><span>NEW EVENT</span><h2>Schedule a Tournament</h2></div><b>12 teams maximum</b></div>
+        <div className="tournament-admin-card-head"><div><span>NEW EVENT</span><h2>Schedule a Tournament</h2></div><b>12 {mode === '1v1' ? 'players' : 'teams'} maximum</b></div>
         <form className="tournament-admin-form" onSubmit={create}>
+          <label>Mode<select value={mode} onChange={(event) => {
+            const nextMode = event.target.value as '1v1' | '2v2';
+            setMode(nextMode);
+            setTitle(`Brasta ${nextMode} Tournament`);
+            setDescription(nextMode === '1v1'
+              ? 'Register in advance and battle through a single-elimination Brasta bracket.'
+              : 'Team up, register in advance, and battle through a single-elimination Brasta bracket.');
+          }}><option value="1v1">1v1 · Individual</option><option value="2v2">2v2 · Teams</option></select></label>
           <label>Title<input value={title} minLength={3} maxLength={80} required onChange={(event) => setTitle(event.target.value)} /></label>
           <label className="wide">Description<textarea value={description} maxLength={500} onChange={(event) => setDescription(event.target.value)} /></label>
           <label>Start date & time<input type="datetime-local" value={startsAt} required onChange={(event) => {
@@ -201,7 +217,7 @@ export default function TournamentAdminClient() {
             setRegistrationClosesAt(inputDate(new Date(new Date(event.target.value).getTime() - 15 * 60_000)));
           }} /></label>
           <label>Registration closes<input type="datetime-local" value={registrationClosesAt} required onChange={(event) => setRegistrationClosesAt(event.target.value)} /></label>
-          <label>Team limit<input type="number" min={2} max={12} value={maxTeams} required onChange={(event) => setMaxTeams(Number(event.target.value))} /></label>
+          <label>{mode === '1v1' ? 'Player' : 'Team'} limit<input type="number" min={2} max={12} value={maxTeams} required onChange={(event) => setMaxTeams(Number(event.target.value))} /></label>
           <button type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create & Open Registration'}</button>
         </form>
       </section>
@@ -210,12 +226,13 @@ export default function TournamentAdminClient() {
 
       {tournaments.map((entry) => {
         const tournament = entry.tournament;
+        const individual = tournament.mode === '1v1';
         const teamMap = new Map(entry.teams.map((team) => [team.id, team]));
         return (
           <section className="tournament-admin-card event" key={tournament.id}>
             <div className="tournament-admin-event-head">
-              <div><span>{tournament.status.toUpperCase()}</span><h2>{tournament.title}</h2><p>{formatDate(tournament.startsAt)} · registration closes {formatDate(tournament.registrationClosesAt)}</p></div>
-              <div><b>{tournament.confirmedTeams}/{tournament.maxTeams}</b><small>confirmed teams</small></div>
+              <div><span>{tournament.status.toUpperCase()} · {tournament.mode.toUpperCase()}</span><h2>{tournament.title}</h2><p>{formatDate(tournament.startsAt)} · registration closes {formatDate(tournament.registrationClosesAt)}</p></div>
+              <div><b>{tournament.confirmedTeams}/{tournament.maxTeams}</b><small>confirmed {individual ? 'players' : 'teams'}</small></div>
             </div>
 
             <div className="tournament-admin-actions">
@@ -236,11 +253,11 @@ export default function TournamentAdminClient() {
             )}
 
             <div className="tournament-admin-teams">
-              <h3>Teams</h3>
-              {entry.teams.length === 0 ? <p>No team invitations yet.</p> : entry.teams.map((team) => (
+              <h3>{individual ? 'Players' : 'Teams'}</h3>
+              {entry.teams.length === 0 ? <p>{individual ? 'No players registered yet.' : 'No team invitations yet.'}</p> : entry.teams.map((team) => (
                 <article key={team.id} className={team.status}>
-                  <b>{team.seed ? `#${team.seed} ` : ''}{team.name}</b>
-                  <span>{team.members.map((member) => `@${member.username}${member.accepted ? '' : ' (pending)'}`).join(' + ')}</span>
+                  <b>{team.seed ? `#${team.seed} ` : ''}{individual ? `@${team.members[0]?.username || team.name}` : team.name}</b>
+                  {!individual && <span>{team.members.map((member) => `@${member.username}${member.accepted ? '' : ' (pending)'}`).join(' + ')}</span>}
                   <small>{team.status}</small>
                 </article>
               ))}
@@ -254,14 +271,14 @@ export default function TournamentAdminClient() {
                   const team2 = teamMap.get(match.team2Id || '');
                   return (
                     <article key={match.id}>
-                      <div><small>{match.roundLabel} · Match {match.matchNumber}</small><b>{team1?.name || 'TBD'} vs {team2?.name || 'TBD'}</b><span>{match.status}{match.roomCode ? ` · Room ${match.roomCode}` : ''}</span></div>
+                      <div><small>{match.roundLabel} · Match {match.matchNumber}</small><b>{entrantName(team1, individual)} vs {entrantName(team2, individual)}</b><span>{match.status}{match.roomCode ? ` · Room ${match.roomCode}` : ''}</span></div>
                       {match.status !== 'completed' && team1 && team2 && (
                         <div className="winner-buttons">
-                          <button type="button" disabled={busy} onClick={() => void mutate('winner', { matchId: match.id, winnerTeamId: team1.id }, `${team1.name} advanced.`)}>{team1.name} won</button>
-                          <button type="button" disabled={busy} onClick={() => void mutate('winner', { matchId: match.id, winnerTeamId: team2.id }, `${team2.name} advanced.`)}>{team2.name} won</button>
+                          <button type="button" disabled={busy} onClick={() => void mutate('winner', { matchId: match.id, winnerTeamId: team1.id }, `${entrantName(team1, individual)} advanced.`)}>{entrantName(team1, individual)} won</button>
+                          <button type="button" disabled={busy} onClick={() => void mutate('winner', { matchId: match.id, winnerTeamId: team2.id }, `${entrantName(team2, individual)} advanced.`)}>{entrantName(team2, individual)} won</button>
                         </div>
                       )}
-                      {match.winnerTeamId && <strong>Winner: {teamMap.get(match.winnerTeamId)?.name || 'Team'}</strong>}
+                      {match.winnerTeamId && <strong>Winner: {entrantName(teamMap.get(match.winnerTeamId), individual)}</strong>}
                     </article>
                   );
                 })}

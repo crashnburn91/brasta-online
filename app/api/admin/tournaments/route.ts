@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     if (action === 'list') return json({ tournaments: await listAdminTournaments() });
     if (action === 'create') {
       const tournamentId = await createTournament({
+        mode: body.mode,
         title: body.title,
         description: body.description,
         startsAt: body.startsAt,

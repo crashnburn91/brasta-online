@@ -5,6 +5,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fhdrywazfmm
 const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 type TournamentStatus = 'draft' | 'registration' | 'bracket' | 'active' | 'completed' | 'canceled';
+export type TournamentMode = '1v1' | '2v2';
 type TeamStatus = 'pending' | 'confirmed' | 'withdrawn';
 type MatchStatus = 'pending' | 'ready' | 'active' | 'completed' | 'bye';
 
@@ -12,6 +13,7 @@ type TournamentRow = {
   id: string;
   title: string;
   description: string;
+  mode: TournamentMode;
   starts_at: string;
   registration_opens_at: string;
   registration_closes_at: string;
@@ -101,6 +103,7 @@ export type TournamentSnapshot = {
     id: string;
     title: string;
     description: string;
+    mode: TournamentMode;
     startsAt: string;
     registrationOpensAt: string;
     registrationClosesAt: string;
@@ -210,6 +213,7 @@ function tournamentPublic(row: TournamentRow, confirmedTeams: number) {
     id: row.id,
     title: row.title,
     description: row.description,
+    mode: row.mode,
     startsAt: row.starts_at,
     registrationOpensAt: row.registration_opens_at,
     registrationClosesAt: row.registration_closes_at,
@@ -427,6 +431,34 @@ export async function inviteTournamentPartner(args: {
   })]);
 }
 
+export async function registerTournamentPlayer(args: {
+  tournamentId: string;
+  playerId: string;
+}): Promise<void> {
+  const tournamentRows = await rest<TournamentRow[]>(
+    `tournaments?id=eq.${args.tournamentId}&select=*&limit=1`,
+    {},
+    'Could not load tournament schedule',
+  );
+  const tournament = tournamentRows[0];
+  if (!tournament) throw new Error('Tournament not found.');
+  if (tournament.mode !== '1v1') throw new Error('This tournament requires a 2v2 team.');
+
+  const entryId = await rpc<string>('brasta_register_tournament_player', {
+    p_tournament_id: args.tournamentId,
+    p_player_id: args.playerId,
+  }, 'Could not register for tournament');
+
+  await createNotifications([notificationPayload({
+    tournamentId: tournament.id,
+    userId: args.playerId,
+    type: 'registration_confirmed',
+    title: 'Tournament registration confirmed',
+    body: `${tournament.title} starts at ${new Date(tournament.starts_at).toISOString()}.`,
+    dedupeKey: `player-registered:${entryId}:${args.playerId}`,
+  })]);
+}
+
 async function teamWithMembers(teamId: string): Promise<{ team: TeamRow; members: MemberRow[]; tournament: TournamentRow } | null> {
   const teams = await rest<TeamRow[]>(`tournament_teams?id=eq.${teamId}&select=*&limit=1`, {}, 'Could not load tournament team');
   const team = teams[0];
@@ -459,7 +491,7 @@ export async function removeTournamentTeam(teamId: string, userId: string): Prom
   const data = await teamWithMembers(teamId);
   if (!data || !data.members.some((member) => member.player_id === userId)) return;
   if (!['draft', 'registration'].includes(data.tournament.status) || data.tournament.bracket_published_at) {
-    throw new Error('Teams cannot withdraw after the bracket is published.');
+    throw new Error('Registration cannot be withdrawn after the bracket is published.');
   }
   await rest<void>(
     `tournament_teams?id=eq.${teamId}&tournament_id=eq.${data.tournament.id}`,
@@ -511,6 +543,7 @@ export async function listAdminTournaments(): Promise<TournamentSnapshot[]> {
 }
 
 export async function createTournament(args: {
+  mode?: unknown;
   title: unknown;
   description: unknown;
   startsAt: unknown;
@@ -519,7 +552,8 @@ export async function createTournament(args: {
   maxTeams?: unknown;
   createdBy: string;
 }): Promise<string> {
-  const title = safeText(args.title, 80) || 'Brasta 2v2 Tournament';
+  const mode: TournamentMode = String(args.mode) === '1v1' ? '1v1' : '2v2';
+  const title = safeText(args.title, 80) || `Brasta ${mode} Tournament`;
   const description = safeText(args.description, 500);
   const startsAt = new Date(String(args.startsAt || ''));
   if (!Number.isFinite(startsAt.getTime()) || startsAt.getTime() <= Date.now()) throw new Error('Choose a tournament start time in the future.');
@@ -537,6 +571,7 @@ export async function createTournament(args: {
       method: 'POST',
       headers: { Prefer: 'return=representation' },
       body: JSON.stringify({
+        mode,
         title,
         description,
         starts_at: startsAt.toISOString(),
@@ -616,8 +651,9 @@ export async function publishTournamentBracket(tournamentId: string): Promise<vo
   const confirmed = teams.filter((team) => team.status === 'confirmed').sort((a, b) =>
     String(a.confirmed_at || a.created_at).localeCompare(String(b.confirmed_at || b.created_at)),
   );
-  if (confirmed.length < 2) throw new Error('At least two confirmed teams are required to publish a bracket.');
-  if (confirmed.length > tournament.max_teams) throw new Error('The confirmed team count exceeds the tournament limit.');
+  const entrantLabel = tournament.mode === '1v1' ? 'players' : 'teams';
+  if (confirmed.length < 2) throw new Error(`At least two confirmed ${entrantLabel} are required to publish a bracket.`);
+  if (confirmed.length > tournament.max_teams) throw new Error(`The confirmed ${entrantLabel} count exceeds the tournament limit.`);
 
   const seeded = confirmed.map((team, index) => ({ id: team.id, seed: index + 1 }));
   const { bracketSize, matches } = buildTournamentBracket(tournamentId, seeded);

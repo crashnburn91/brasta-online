@@ -50,3 +50,6 @@
   .tournament-bracket{display:grid;overflow:visible}.tournament-round{width:100%}.tournament-round-matches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tournament-round:last-child .tournament-round-matches{grid-template-columns:1fr}
 }
 @media(max-width:480px){.tournament-round-matches,.tournament-team-roster>div{grid-template-columns:1fr}.tournament-banner-countdown{display:none}.tournament-home-banner{grid-template-columns:auto minmax(0,1fr)}}
+
+.tournament-registration.individual{grid-template-columns:minmax(240px,1fr) auto}.tournament-registration.individual>button{min-width:175px}
+@media(max-width:800px){.tournament-registration.individual{grid-template-columns:1fr}.tournament-registration.individual>button{width:100%}}

@@ -6,6 +6,7 @@ import {
   getTournamentSnapshot,
   inviteTournamentPartner,
   markTournamentNotificationsRead,
+  registerTournamentPlayer,
   removeTournamentTeam,
 } from '../../../lib/tournaments';
 
@@ -53,8 +54,17 @@ export async function POST(request: Request) {
 
     if (action === 'status') return json(await getTournamentSnapshot(identity.userId));
     if (action === 'register') {
+      const tournamentId = String(body.tournamentId || '');
+      const snapshot = await getTournamentSnapshot(identity.userId);
+      if (!snapshot.tournament || snapshot.tournament.id !== tournamentId) {
+        return json({ error: 'Tournament registration is not available.' }, 400);
+      }
+      if (snapshot.tournament.mode === '1v1') {
+        await registerTournamentPlayer({ tournamentId, playerId: identity.userId });
+        return json({ state: 'confirmed', ...(await getTournamentSnapshot(identity.userId)) });
+      }
       await inviteTournamentPartner({
-        tournamentId: String(body.tournamentId || ''),
+        tournamentId,
         captainId: identity.userId,
         partnerUsername: body.partnerUsername,
         teamName: body.teamName,
