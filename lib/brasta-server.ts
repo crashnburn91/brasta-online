@@ -14,15 +14,23 @@ const ALLOWED_EMOTES = new Set(['wink','nod','thumbs_up','thumbs_down','eyebrow'
 const BURN_CLAIM_MS = 30_000;
 const RANKED_TURN_MS = 30_000;
 const RANKED_ROUND_PAUSE_MS = 10_000;
+const REDIS_HEALTH_CACHE_MS = 30_000;
+const REALTIME_INSTANCE_ID = crypto.randomUUID();
 const memoryRooms = new Map<string, StoredRoom>();
 const localConnections = new Set<Connection>();
 let subscriberStarted = false;
 let presenceLeaseTimer: ReturnType<typeof setInterval> | null = null;
 let presenceLeaseRefreshInFlight: Promise<number> | null = null;
+let redisHealthCheckedAt = 0;
+let cachedRedisHealth = false;
+let redisHealthCheckInFlight: Promise<boolean> | null = null;
 const runtimeMetrics = {
   heartbeatPongs: 0,
+  roomReads: 0,
   roomWrites: 0,
   presenceLeaseRoomWrites: 0,
+  roomEventPublishes: 0,
+  ignoredSelfRoomEvents: 0,
 };
 
 export type WireSocket = {
@@ -433,6 +441,7 @@ function resolveBurn(room: StoredRoom, burn: CallableBurn, callerSeat: Brasta.Se
 }
 
 async function loadRoom(code: string): Promise<StoredRoom | null> {
+  runtimeMetrics.roomReads++;
   if (!redis) {
     const room = memoryRooms.get(code) || null;
     return room ? normalizeRoom(room) : null;
@@ -493,6 +502,9 @@ async function bindVerifiedAccountToSeat(
   const accountId = await verifiedAccountId(accessToken);
   if (!accountId) return;
 
+  const existingRef = await getActiveMatch(accountId);
+  if (existingRef?.roomCode === roomCode && existingRef.seat === seat) return;
+
   const changed = await mutateRoom(roomCode, (room) => {
     const p = room.seats[String(seat)];
     if (!p || p.token !== seatToken) return null;
@@ -503,7 +515,7 @@ async function bindVerifiedAccountToSeat(
 
   if (changed?.result) {
     await bindParticipantActiveMatch(changed.room, changed.result);
-    await publishRoom(changed.room.code);
+    await publishRoom(changed.room.code, changed.room);
   }
 }
 
@@ -529,6 +541,20 @@ export async function claimActiveMatchForAccount(userId: string, roomCode: strin
   const code = cleanCode(roomCode);
   if (!userId || !code || !playerToken) return null;
 
+  const existingRef = await getActiveMatch(userId);
+  if (existingRef?.roomCode === code) {
+    const room = await loadRoom(code);
+    const participant = room?.seats[String(existingRef.seat)];
+    if (room && participant?.accountId === userId && participant.token === playerToken) {
+      return {
+        roomCode: room.code,
+        mode: room.mode,
+        seat: participant.seat,
+        started: room.started,
+      };
+    }
+  }
+
   const changed = await mutateRoom(code, (room) => {
     const p = participantForToken(room, playerToken);
     if (!p) return null;
@@ -539,7 +565,7 @@ export async function claimActiveMatchForAccount(userId: string, roomCode: strin
 
   if (!changed?.result) return null;
   await bindParticipantActiveMatch(changed.room, changed.result);
-  await publishRoom(changed.room.code);
+  await publishRoom(changed.room.code, changed.room);
 
   return {
     roomCode: changed.room.code,
@@ -598,7 +624,7 @@ async function mutateRoom<T>(code: string, fn: (room: StoredRoom) => Promise<T> 
     if (!room) return null;
     const result = await fn(room);
     await saveRoom(room);
-    if (publish) await publishRoom(code);
+    if (publish) await publishRoom(code, room);
     return { room, result };
   } finally { await releaseLock(code, token); }
 }
@@ -701,8 +727,8 @@ function sendJson(conn: Connection, msg: unknown) {
 }
 const sendError = (conn: Connection, message: string) => sendJson(conn, { type: 'ERROR', message });
 
-async function broadcastLocalRoom(code: string): Promise<void> {
-  const room = await loadRoom(code);
+async function broadcastLocalRoom(code: string, suppliedRoom?: StoredRoom): Promise<void> {
+  const room = suppliedRoom || await loadRoom(code);
   for (const conn of localConnections) {
     if (conn.closed || conn.roomCode !== code || !conn.token || !conn.role) continue;
     if (!room) { sendError(conn, 'That room no longer exists.'); continue; }
@@ -773,7 +799,19 @@ async function ensureSubscriber(): Promise<void> {
   if (!sub) return;
   sub.on('message', (channel: string, payload: string) => {
     if (channel === EVENT_CHANNEL) {
-      void broadcastLocalRoom(payload);
+      let code = payload;
+      let source = '';
+      try {
+        const event = JSON.parse(payload) as { code?: unknown; source?: unknown };
+        code = cleanCode(event?.code);
+        source = String(event?.source || '');
+      } catch {}
+      if (!code) return;
+      if (source && source === REALTIME_INSTANCE_ID) {
+        runtimeMetrics.ignoredSelfRoomEvents++;
+        return;
+      }
+      void broadcastLocalRoom(code);
       return;
     }
     if (channel === EMOTE_CHANNEL) {
@@ -786,9 +824,15 @@ async function ensureSubscriber(): Promise<void> {
   sub.on('error', (err: unknown) => console.error('[brasta redis subscriber]', err));
   await sub.subscribe(EVENT_CHANNEL, EMOTE_CHANNEL);
 }
-async function publishRoom(code: string): Promise<void> {
-  await broadcastLocalRoom(code);
-  if (redis) await redis.publish(EVENT_CHANNEL, code);
+async function publishRoom(code: string, room?: StoredRoom): Promise<void> {
+  await broadcastLocalRoom(code, room);
+  if (redis) {
+    runtimeMetrics.roomEventPublishes++;
+    // Keep the legacy plain-code payload during the first rollout. Once every
+    // realtime instance understands sourced events, the publisher can attach
+    // REALTIME_INSTANCE_ID and safely ignore its own pub/sub echo.
+    await redis.publish(EVENT_CHANNEL, code);
+  }
 }
 
 async function makeRoomCode(): Promise<string> {
@@ -888,6 +932,18 @@ async function requirePlayerSession(conn: Connection): Promise<{ room: StoredRoo
   return { room, p };
 }
 
+function requirePlayerRoomCode(conn: Connection): string | null {
+  if (conn.role === 'spectator') {
+    sendError(conn, 'Spectators can watch the game but cannot make moves.');
+    return null;
+  }
+  if (!conn.roomCode || !conn.seat || !conn.token || conn.role !== 'player') {
+    sendError(conn, 'Join or create a room first.');
+    return null;
+  }
+  return conn.roomCode;
+}
+
 export async function handleMessage(conn: Connection, raw: string): Promise<void> {
   let msg: any;
   try { msg = JSON.parse(raw); } catch { sendError(conn, 'Message must be valid JSON.'); return; }
@@ -950,7 +1006,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const p = room.seats['1'];
       await attachPlayer(conn, room, p);
       await saveRoom(room);
-      await publishRoom(room.code);
+      await publishRoom(room.code, room);
       // The lobby is already visible before this verification begins because
       // SESSION/ROOM_STATE were sent above. Await the binding here so the
       // cross-device resume registry is guaranteed to be durable.
@@ -994,7 +1050,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       await attachPlayer(conn, changed.room, changed.result);
       // Publish the join immediately, then finish the account binding before
       // this message handler returns so another device can discover the match.
-      await publishRoom(changed.room.code);
+      await publishRoom(changed.room.code, changed.room);
       try {
         await bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken);
       } catch (error) {
@@ -1028,7 +1084,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       await supersedeLocalSeat(conn, changed.room.code, changed.result.seat);
       await attachPlayer(conn, changed.room, changed.result);
       await bindParticipantActiveMatch(changed.room, changed.result);
-      await publishRoom(changed.room.code);
+      await publishRoom(changed.room.code, changed.room);
       return;
     }
 
@@ -1056,7 +1112,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       }, false);
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
       await attachSpectator(conn, changed.room, changed.result);
-      await publishRoom(changed.room.code);
+      await publishRoom(changed.room.code, changed.room);
       return;
     }
 
@@ -1066,9 +1122,11 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       return;
     }
 
-    const current = await requirePlayerSession(conn);
-    if (!current) return;
-    const code = current.room.code;
+    // Validate the authoritative seat inside the locked mutation below. Loading
+    // the room here first only to load it again under the lock doubled reads for
+    // every play, capture, build, burn, and round transition.
+    const code = requirePlayerRoomCode(conn);
+    if (!code) return;
     const changed = await mutateRoom(code, (room) => {
       const p = room.seats[String(conn.seat!)];
       if (!p || p.token !== conn.token || p.connectionId !== conn.id) throw new Error('Your room session is no longer valid.');
@@ -1302,9 +1360,21 @@ export async function unregisterSocket(conn: Connection): Promise<void> {
 }
 
 export async function health() {
-  let redisOk = false;
-  if (redis) {
-    try { redisOk = (await redis.ping()) === 'PONG'; } catch { redisOk = false; }
+  let redisOk = cachedRedisHealth;
+  const now = Date.now();
+  if (redis && now - redisHealthCheckedAt >= REDIS_HEALTH_CACHE_MS) {
+    if (!redisHealthCheckInFlight) {
+      redisHealthCheckInFlight = (async () => {
+        try { return (await redis.ping()) === 'PONG'; } catch { return false; }
+      })();
+    }
+    try {
+      redisOk = await redisHealthCheckInFlight;
+      cachedRedisHealth = redisOk;
+      redisHealthCheckedAt = Date.now();
+    } finally {
+      redisHealthCheckInFlight = null;
+    }
   }
   return {
     ok: true,
@@ -1312,7 +1382,10 @@ export async function health() {
     redisOk,
     localConnections: [...localConnections].filter((c) => !c.closed).length,
     heartbeatPongs: runtimeMetrics.heartbeatPongs,
+    roomReads: runtimeMetrics.roomReads,
     roomWrites: runtimeMetrics.roomWrites,
     presenceLeaseRoomWrites: runtimeMetrics.presenceLeaseRoomWrites,
+    roomEventPublishes: runtimeMetrics.roomEventPublishes,
+    ignoredSelfRoomEvents: runtimeMetrics.ignoredSelfRoomEvents,
   };
 }

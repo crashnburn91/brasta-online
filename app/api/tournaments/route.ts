@@ -26,7 +26,6 @@ export async function GET(request: Request) {
     const token = tokenFrom(request);
     const identity = token ? await verifyBrastaAccessToken(token) : null;
     if (token && !identity) return json({ error: 'Your Brasta session has expired.' }, 401);
-    if (identity) await friendRateLimit(identity.userId, 'tournament-read', 120);
     return json(await getTournamentSnapshot(identity?.userId || null));
   } catch (error) {
     console.error('[brasta tournament status]', error);

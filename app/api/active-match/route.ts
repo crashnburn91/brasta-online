@@ -1,4 +1,5 @@
 import { claimActiveMatchForAccount, getActiveMatchForAccount } from '../../../lib/brasta-server';
+import { hasAnyActiveMatchReference } from '../../../lib/account-active-match';
 import { getRanked1v1ActiveAssignment } from '../../../lib/ranked-matchmaking';
 import { getRanked2v2ActiveAssignment } from '../../../lib/ranked-matchmaking-2v2';
 import { verifyBrastaAccessToken } from '../../../lib/supabase-auth';
@@ -28,6 +29,13 @@ export async function POST(request: Request) {
       { state: claimed ? 'claimed' : 'not_claimed', match: claimed },
       { status: claimed ? 200 : 409, headers: { 'Cache-Control': 'no-store' } },
     );
+  }
+
+  // Most signed-in players do not have a resumable match. Collapse the three
+  // otherwise-independent assignment lookups into one MGET before doing any
+  // room validation work.
+  if (!(await hasAnyActiveMatchReference(identity.userId))) {
+    return Response.json({ state: 'ok', match: null }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   const [ranked1v1, ranked2v2, privateMatch] = await Promise.all([

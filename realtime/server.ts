@@ -58,8 +58,11 @@ const server = http.createServer(async (req, res) => {
         redisOk: status.redisOk,
         connections: status.localConnections,
         heartbeatPongs: status.heartbeatPongs,
+        roomReads: status.roomReads,
         roomWrites: status.roomWrites,
         presenceLeaseRoomWrites: status.presenceLeaseRoomWrites,
+        roomEventPublishes: status.roomEventPublishes,
+        ignoredSelfRoomEvents: status.ignoredSelfRoomEvents,
         uptimeSeconds: Math.round(process.uptime()),
       });
     } catch (error) {

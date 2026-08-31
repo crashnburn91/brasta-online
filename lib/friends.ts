@@ -2,6 +2,11 @@ import { redis } from './redis';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fhdrywazfmmvgswkdpdb.supabase.co';
 const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const RATE_LIMIT_INCREMENT = `
+local count = redis.call('incr', KEYS[1])
+if count == 1 then redis.call('expire', KEYS[1], ARGV[1]) end
+return count
+`;
 
 export type FriendProfile = {
   id: string;
@@ -223,8 +228,7 @@ export async function friendRateLimit(userId: string, bucket = 'write', limit = 
   const minute = Math.floor(Date.now() / 60000);
   const key = `brasta:friends:rate:${bucket}:${userId}:${minute}`;
   try {
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, 75);
+    const count = Number(await redis.eval(RATE_LIMIT_INCREMENT, 1, key, '75'));
     if (count > limit) throw new Error('Too many friend actions. Try again in a minute.');
   } catch (error) {
     if (error instanceof Error && /Too many friend actions/.test(error.message)) throw error;

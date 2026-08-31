@@ -118,12 +118,18 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const playCard = nonJack || hostPlayer.hand[0];
   const playRank = hostAfterOpening.update.state.cards[playCard]?.rank;
   const revisionBeforePlay = hostAfterOpening.update.room.revision;
+  const metricsBeforePlay = await server.health();
   await send(server, host, {
     type: 'COMMAND',
     command: playRank === 'J'
       ? { type: 'JACK_ACTION', seat: 1, cardId: playCard }
       : { type: 'PLAY_LOOSE', seat: 1, cardId: playCard },
   });
+  const metricsAfterPlay = await server.health();
+  assert(
+    metricsAfterPlay.roomReads === metricsBeforePlay.roomReads + 1,
+    `${choice}: one gameplay action should load the room exactly once`,
+  );
   assertSynced(hostSocket, guestSocket, 'play');
 
   const hostAfterPlay = hostSocket.latest('ROOM_STATE');
