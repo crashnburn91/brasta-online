@@ -14,6 +14,7 @@ namespace BrastaNet {
     spectatorCount: number;
     full: boolean;
     ranked?: {
+      serverNow: number;
       turnSeat: Brasta.Seat | null;
       turnDeadlineAt: number | null;
       roundAdvanceAt: number | null;
