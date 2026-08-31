@@ -214,9 +214,10 @@ namespace BrastaApp {
     const nav = context === 'online'
       ? `${!isSpectator() ? '<button data-copy-invite>Copy Invite</button>' : ''}<button data-copy-spectate>Copy Spectate Link</button><button data-online-home>${isSpectator() ? 'Stop Spectating' : 'Home'}</button>`
       : `<button data-nav="game">Game</button><button data-nav="lab">Rules Lab</button><button data-action="new">New Match</button>`;
+    const rankedServerNow = Number(onlineRoom?.ranked?.serverNow || 0);
     const turnDeadline = Number(onlineRoom?.ranked?.turnDeadlineAt || 0);
     const rankedTurnTimer = state?.phase === 'play' && turnDeadline
-      ? `<span class="pill ranked-turn-timer" data-ranked-turn-timer data-deadline="${turnDeadline}" data-turn-seat="${onlineRoom?.ranked?.turnSeat || state.currentSeat}">TURN <b>30</b>s</span>`
+      ? `<span class="pill ranked-turn-timer" data-ranked-turn-timer data-deadline="${turnDeadline}" data-server-now="${rankedServerNow}" data-turn-seat="${onlineRoom?.ranked?.turnSeat || state.currentSeat}">TURN <b>30</b>s</span>`
       : '';
     return `<header class="topbar"><div><strong>Brasta</strong>${round ? `<span class="pill">Round ${round}</span>` : ''}${roomPill}</div><div class="scoreline"><span>Team A <b>${scores.A}</b></span><span>Team B <b>${scores.B}</b></span>${rankedTurnTimer}${state ? `<span class="target-score">First to ${state.targetScore}</span>` : ''}</div><nav>${nav}</nav></header>`;
   }
@@ -393,9 +394,10 @@ namespace BrastaApp {
     const a = state.roundScore.A, b = state.roundScore.B;
     const row = (label: string, av: number, bv: number) => `<tr><td>${label}</td><td>${av}</td><td>${bv}</td></tr>`;
     const rankedRound = currentRoomIsRanked();
-    const roundAdvanceAt = Number(onlineRoom?.ranked?.roundAdvanceAt || (Date.now() + 10_000));
+    const rankedServerNow = Number(onlineRoom?.ranked?.serverNow || 0);
+    const roundAdvanceAt = Number(onlineRoom?.ranked?.roundAdvanceAt || 0);
     let controls = rankedRound
-      ? `<span class="empty-note ranked-round-countdown-copy">Next ranked round in <b data-ranked-round-countdown data-deadline="${roundAdvanceAt}">10</b>s…</span>`
+      ? `<span class="empty-note ranked-round-countdown-copy">Next ranked round in <b data-ranked-round-countdown data-deadline="${roundAdvanceAt}" data-server-now="${rankedServerNow}">10</b>s…</span>`
       : `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
     if (!rankedRound && context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
     return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderEventBanner(state.event, 'round')}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
