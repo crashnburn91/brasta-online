@@ -205,6 +205,7 @@ function roomSnapshot(room: StoredRoom) {
       const ranked = rankedMeta(room);
       if (!ranked) return null;
       return {
+        serverNow: now,
         turnSeat: room.gameState?.phase === 'play' ? room.gameState.currentSeat : null,
         turnDeadlineAt: ranked.turnStartedAt ? ranked.turnStartedAt + RANKED_TURN_MS : null,
         roundAdvanceAt: ranked.roundEndedAt ? ranked.roundEndedAt + RANKED_ROUND_PAUSE_MS : null,
