@@ -28,6 +28,13 @@
     return ownedMatching.every((build) => hand.some((id) => id !== cardId && cardMatchesBuild(state, id, build)));
   }
 
+  function retainsEveryOwnedBuild(state: Brasta.GameState, seat: Brasta.Seat): boolean {
+    const hand = state.players.find((player) => player.seat === seat)?.hand || [];
+    return (state.builds as AnyBuild[])
+      .filter((build) => build.ownerSeat === seat)
+      .every((build) => hand.some((id) => cardMatchesBuild(state, id, build)));
+  }
+
   const originalDeclarations = Brasta.getBuildDeclarationOptions.bind(Brasta);
   engine.getBuildDeclarationOptions = function(state: Brasta.GameState, seat: Brasta.Seat, cardId: string): Brasta.BuildDeclarationOption[] {
     return originalDeclarations(state, seat, cardId).filter((option) => {
@@ -40,7 +47,7 @@
   engine.legalActionsForCard = function(state: Brasta.GameState, seat: Brasta.Seat, cardId: string): Brasta.LegalAction[] {
     let actions = originalLegalActions(state, seat, cardId);
     if (!canSpendAwayFromOwnedBuild(state, seat, cardId)) {
-      actions = actions.filter((action) => action.type !== 'PLAY_LOOSE' && action.type !== 'CAPTURE_LOOSE');
+      actions = actions.filter((action) => action.type === 'CAPTURE_BUILD');
     }
     if (!engine.getBuildDeclarationOptions(state, seat, cardId).length) {
       actions = actions.filter((action) => action.type !== 'MAKE_BUILD');
@@ -105,6 +112,10 @@
     if (command.type === 'RAISE_BUILD') {
       const target = nextBuilds.find((build) => build.id === command.buildId);
       if (target) target.ownerSeat = command.seat;
+    }
+
+    if (!retainsEveryOwnedBuild(result.state, command.seat)) {
+      return { ok: false, state, error: 'You must keep a matching card in your hand for every build you own.' };
     }
 
     return result;
