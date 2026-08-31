@@ -75,11 +75,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/learn-brasta-polish.css?v=0.19.1" />
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.0" />
         <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
-        <link rel="stylesheet" href="/player-cards.css?v=0.1.5" />
+        <link rel="stylesheet" href="/player-cards.css?v=0.1.6" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
-        <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.10" />
+        <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.11" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
         <link rel="stylesheet" href="/emote-ui.css?v=0.1.3" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.4" />

@@ -4,6 +4,7 @@ import { redis } from './redis';
 import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
+import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
 import {
   competitiveBackendReady,
   getCompetitiveStatus,
@@ -82,6 +83,7 @@ type RankedParticipant = {
   lastSeen: number;
   authUserId: string;
   rankName: string;
+  experience: PlayerExperienceSummary;
 };
 
 type RankedRoom = {
@@ -554,6 +556,7 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
   ];
   const now = Date.now();
   const tokens = new Map(seated.map(({ entry }) => [entry.userId, makeToken()]));
+  const experience = await getExperienceSummariesForPlayers(entries.map((entry) => entry.userId));
 
   const room: RankedRoom = {
     code,
@@ -572,6 +575,7 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
       lastSeen: 0,
       authUserId: entry.userId,
       rankName: entry.rankName,
+      experience: experience[entry.userId],
     }])) as Record<string, RankedParticipant>,
     spectators: {},
     gameState: null,

@@ -4,6 +4,7 @@ import { redis } from './redis';
 import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
+import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
 import {
   competitiveBackendReady,
   createRankedMatchRecord,
@@ -52,6 +53,7 @@ type RankedParticipant = {
   lastSeen: number;
   authUserId: string;
   rankName: string;
+  experience: PlayerExperienceSummary;
 };
 
 type RankedRoom = {
@@ -195,6 +197,7 @@ async function createMatch(entry1: QueueEntry, entry2: QueueEntry): Promise<Reco
   const seat1Token = makeToken();
   const seat2Token = makeToken();
   const now = Date.now();
+  const experience = await getExperienceSummariesForPlayers([entry1.userId, entry2.userId]);
 
   // Mark the room started so ordinary room-leave logic cannot remove ranked seats.
   // gameState remains null until both assigned players have connected.
@@ -208,8 +211,8 @@ async function createMatch(entry1: QueueEntry, entry2: QueueEntry): Promise<Reco
     revision: 0,
     hostToken: `ranked-system-${makeToken()}`,
     seats: {
-      '1': { seat: 1, name: seat1Entry.username, token: seat1Token, connectionId: '', lastSeen: 0, authUserId: seat1Entry.userId, rankName: seat1Entry.rankName },
-      '2': { seat: 2, name: seat2Entry.username, token: seat2Token, connectionId: '', lastSeen: 0, authUserId: seat2Entry.userId, rankName: seat2Entry.rankName },
+      '1': { seat: 1, name: seat1Entry.username, token: seat1Token, connectionId: '', lastSeen: 0, authUserId: seat1Entry.userId, rankName: seat1Entry.rankName, experience: experience[seat1Entry.userId] },
+      '2': { seat: 2, name: seat2Entry.username, token: seat2Token, connectionId: '', lastSeen: 0, authUserId: seat2Entry.userId, rankName: seat2Entry.rankName, experience: experience[seat2Entry.userId] },
     },
     spectators: {},
     gameState: null,

@@ -75,13 +75,50 @@ namespace BrastaApp {
   }
   function currentPlayerName(seat: Brasta.Seat): string { return state?.players.find((p) => p.seat === seat)?.name || `Seat ${seat}`; }
 
-  function playerRankBadge(rankName: string | null | undefined): string {
+  function playerRankBadge(rankName: string | null | undefined, seat: Brasta.Seat): string {
     if (!rankName) return '';
     const renderer = (window as any).BrastaRankBadge?.render;
     if (typeof renderer === 'function') {
-      return `<span class="player-rank-badge">${renderer(rankName, { size: 'small', className: 'player-card-rank' })}</span>`;
+      return `<button type="button" class="player-rank-badge" data-player-rank="${seat}" aria-label="View ${escapeAttr(rankName)} rank and player experience">${renderer(rankName, { size: 'small', className: 'player-card-rank' })}</button>`;
     }
-    return `<span class="player-rank-fallback">${escapeHtml(rankName)}</span>`;
+    return `<button type="button" class="player-rank-badge player-rank-fallback" data-player-rank="${seat}" aria-label="View ${escapeAttr(rankName)} rank and player experience">${escapeHtml(rankName)}</button>`;
+  }
+
+  function showPlayerRankDetails(player: BrastaNet.RoomPlayer): void {
+    document.querySelector('.player-rank-detail-backdrop')?.remove();
+    const renderer = (window as any).BrastaRankBadge?.render;
+    const rankName = player.rankName || 'Unranked';
+    const rankVisual = typeof renderer === 'function'
+      ? renderer(rankName, { size: 'large', className: 'player-rank-detail-visual' })
+      : `<span class="player-rank-fallback">${escapeHtml(rankName)}</span>`;
+    const experience = player.experience;
+    const progress = Math.max(0, Math.min(100, Number(experience?.progressPercent || 0)));
+    const backdrop = document.createElement('div');
+    backdrop.className = 'player-rank-detail-backdrop';
+    backdrop.innerHTML = `<section class="player-rank-detail" role="dialog" aria-modal="true" aria-labelledby="player-rank-detail-title">
+      <button type="button" class="player-rank-detail-close" data-rank-detail-close aria-label="Close player details">×</button>
+      <div class="player-rank-detail-badge">${rankVisual}</div>
+      <div class="player-rank-detail-eyebrow">PLAYER RANK</div>
+      <h2 id="player-rank-detail-title">${escapeHtml(player.name)}</h2>
+      <strong class="player-rank-detail-name">${escapeHtml(rankName)}</strong>
+      ${experience ? `<div class="player-experience-detail">
+        <div><span>Experience</span><b>${escapeHtml(experience.title)} · Level ${experience.level}</b></div>
+        <div class="player-experience-detail-track" aria-hidden="true"><i style="width:${progress}%"></i></div>
+        <small>${escapeHtml(experience.progressLabel)}</small>
+      </div>` : '<p class="player-experience-unavailable">Experience details will appear in newly created ranked matches.</p>'}
+    </section>`;
+    const close = () => {
+      document.removeEventListener('keydown', onKeyDown);
+      backdrop.remove();
+    };
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    backdrop.onclick = (event) => {
+      const target = event.target as HTMLElement;
+      if (target === backdrop || target.closest('[data-rank-detail-close]')) close();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.body.appendChild(backdrop);
+    backdrop.querySelector<HTMLElement>('[data-rank-detail-close]')?.focus();
   }
 
   function hasBoardSelection(): boolean {
@@ -234,7 +271,7 @@ namespace BrastaApp {
     if (!state) return '';
     const s = state;
     const lobbyBySeat = new Map((onlineRoom?.players || []).map((p) => [p.seat, p]));
-    return `<div class="players">${s.players.map((p) => {
+    return `<div class="players players-${s.mode}">${s.players.map((p) => {
       const active = s.phase === 'play' && p.seat === s.currentSeat;
       const starter = p.seat === s.starterSeat;
       const team = Brasta.teamForSeat(s.mode, p.seat);
@@ -243,15 +280,15 @@ namespace BrastaApp {
       const rank = lobby?.rankName || null;
       const you = Boolean(context === 'online' && onlineSession?.role === 'player' && onlineSession.seat === p.seat);
       const connection = context === 'online'
-        ? `<span class="player-status ${disconnected ? 'offline' : 'online'}"><i></i>${disconnected ? 'OFFLINE' : 'ONLINE'}</span>`
+        ? `<span class="player-status ${disconnected ? 'offline' : 'online'}" aria-label="${disconnected ? 'Offline' : 'Online'}"><i></i><span class="player-status-label">${disconnected ? 'OFFLINE' : 'ONLINE'}</span></span>`
         : '';
       return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${starter ? 'data-starter="1"' : ''} ${you ? 'data-you="1"' : ''}>
         <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
         ${connection ? `<div class="player-connection-corner" style="position:absolute;right:8px;bottom:8px;top:auto;left:auto;z-index:4;display:flex;align-items:center;justify-content:flex-end;">${connection}</div>` : ''}
         <div class="player-card-top">
           <div class="player-card-identity">
-            <b class="player-name">${escapeHtml(p.name || `Seat ${p.seat}`)}</b>
-            ${rank ? `<div class="player-rank-row">${playerRankBadge(rank)}</div>` : ''}
+            <div class="player-name-line"><b class="player-name">${escapeHtml(p.name || `Seat ${p.seat}`)}</b>${connection ? `<span class="player-connection-inline">${connection}</span>` : ''}</div>
+            ${rank ? `<div class="player-rank-row">${playerRankBadge(rank, p.seat)}</div>` : ''}
             <span class="team-${team}" aria-hidden="true">${teamName(team)}</span>
           </div>
         </div>
@@ -535,6 +572,11 @@ namespace BrastaApp {
 
   function bindGame(): void {
     bindCommonGameControls();
+    document.querySelectorAll<HTMLElement>('[data-player-rank]').forEach((el) => el.onclick = () => {
+      const seat = Number(el.dataset.playerRank);
+      const player = onlineRoom?.players.find((candidate) => candidate.seat === seat);
+      if (player?.rankName) showPlayerRankDetails(player);
+    });
     document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => el.onclick = () => { covered = false; render(); });
     document.querySelectorAll<HTMLElement>('[data-open]').forEach((el) => el.onclick = () => {
       if (!state) return; const choice = el.dataset.open as 'keep' | 'put';

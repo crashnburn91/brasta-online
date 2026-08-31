@@ -93,6 +93,13 @@
   font-weight:900;
   letter-spacing:-.015em;
 }
+.player-name-line{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+}
+.player-connection-inline{display:none}
 .player-chip.team-A-player .player-name{color:#5eb8ff!important}
 .player-chip.team-B-player .player-name{color:#ff6f67!important}
 
@@ -137,6 +144,16 @@
   align-items:center;
   margin:0;
   padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+}
+.player-rank-row .player-rank-badge:focus-visible{
+  outline:2px solid #f4db7b;
+  outline-offset:2px;
+  border-radius:8px;
 }
 .player-rank-row .player-card-rank{
   display:inline-flex;
@@ -309,4 +326,153 @@
   .player-rank-row .player-card-rank .rank-emblem{width:19px;height:22px}
   .player-rank-row .player-card-rank .rank-badge-copy{max-width:52px;font-size:6px}
   .player-card-back{width:21px;height:29px;margin-left:-6px}
+}
+
+/* Mobile 2v2 keeps the full hand fan while removing the empty rank/status row. */
+@media(max-width:600px){
+  .players.players-2v2{gap:4px;margin-bottom:5px}
+  .players.players-2v2 .player-chip.player-card{
+    min-height:78px;
+    padding:5px 6px 5px 7px;
+    border-radius:10px;
+  }
+  .players.players-2v2 .player-seat-corner{
+    width:25px;
+    height:23px;
+    font-size:12px;
+  }
+  .players.players-2v2 .player-card-top{
+    position:static;
+    min-height:24px;
+    padding:2px 26px 0 19px;
+  }
+  .players.players-2v2 .player-card-identity{padding-top:0}
+  .players.players-2v2 .player-name{font-size:12.5px;line-height:1.05}
+  .players.players-2v2 .player-card-identity > .team-A,
+  .players.players-2v2 .player-card-identity > .team-B{display:none!important}
+  .players.players-2v2 .player-connection-corner{display:none!important}
+  .players.players-2v2 .player-connection-inline{
+    display:inline-flex;
+    flex:0 0 auto;
+  }
+  .players.players-2v2 .player-connection-inline .player-status{
+    min-width:0;
+    min-height:0;
+    padding:0;
+    border:0;
+    background:transparent;
+  }
+  .players.players-2v2 .player-connection-inline .player-status-label{display:none}
+  .players.players-2v2 .player-connection-inline .player-status i{width:7px;height:7px}
+  .players.players-2v2 .player-card-divider{display:none}
+  .players.players-2v2 .player-card-hand{
+    height:36px;
+    padding:4px 39px 0 1px;
+    align-items:flex-end;
+  }
+  .players.players-2v2 .player-card-back-fan{height:31px;padding-left:1px}
+  .players.players-2v2 .player-card-back{width:22px;height:30px;margin-left:-6px}
+  .players.players-2v2 .player-card-back span{font-size:10px}
+  .players.players-2v2 .player-card-hand-empty{height:30px}
+  .players.players-2v2 .player-rank-row{
+    position:absolute;
+    right:4px;
+    bottom:3px;
+    z-index:5;
+    min-height:0;
+    margin:0;
+  }
+  .players.players-2v2 .player-rank-row .player-rank-badge{
+    width:35px;
+    height:35px;
+    display:grid;
+    place-items:center;
+    padding:4px;
+    border-radius:9px;
+  }
+  .players.players-2v2 .player-rank-row .rank-badge-copy{display:none!important}
+  .players.players-2v2 .player-rank-row .player-card-rank .rank-emblem{
+    width:23px;
+    height:26px;
+  }
+  .players.players-2v2 .player-chip.player-card .dealer-button{
+    top:4px;
+    right:4px;
+    width:22px;
+    height:22px;
+    font-size:10px;
+  }
+}
+
+.player-rank-detail-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:7600;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:#010806d9;
+  backdrop-filter:blur(8px);
+}
+.player-rank-detail{
+  position:relative;
+  width:min(390px,100%);
+  padding:25px 22px 22px;
+  border:1px solid #d4af3766;
+  border-radius:22px;
+  background:linear-gradient(180deg,#0c2c21,#061913);
+  color:#f7f2e8;
+  text-align:center;
+  box-shadow:0 28px 80px #000c,inset 0 1px 0 #ffffff12;
+}
+.player-rank-detail-close{
+  position:absolute;
+  right:10px;
+  top:10px;
+  width:34px;
+  height:34px;
+  padding:0;
+  border:1px solid #ffffff20;
+  border-radius:50%;
+  background:#ffffff08;
+  color:#f7f2e8;
+  font-size:23px;
+  line-height:1;
+  cursor:pointer;
+}
+.player-rank-detail-badge{display:flex;justify-content:center;margin:2px 0 7px}
+.player-rank-detail-badge .rank-visual{justify-content:center}
+.player-rank-detail-badge .rank-emblem{width:58px;height:64px}
+.player-rank-detail-eyebrow{
+  color:#d8b75e;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.15em;
+}
+.player-rank-detail h2{margin:4px 0 2px;font-size:24px}
+.player-rank-detail-name{display:block;color:#f3dc91;font-size:15px}
+.player-experience-detail{
+  margin-top:18px;
+  padding:13px 14px;
+  border:1px solid #ffffff16;
+  border-radius:13px;
+  background:#0003;
+  text-align:left;
+}
+.player-experience-detail>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.player-experience-detail span{color:#8fa59a;font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.player-experience-detail b{font-size:12px;text-align:right}
+.player-experience-detail-track{
+  height:5px;
+  margin:10px 0 6px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#020906;
+}
+.player-experience-detail-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#bc9631,#f0d46a)}
+.player-experience-detail small{color:#aebeb5;font-size:10px}
+.player-experience-unavailable{margin:17px 0 0;color:#9eb0a6;font-size:11px}
+@media(max-width:600px){
+  .player-rank-detail-backdrop{align-items:end;padding:10px}
+  .player-rank-detail{width:100%;padding-bottom:max(22px,env(safe-area-inset-bottom));border-radius:20px 20px 14px 14px}
 }

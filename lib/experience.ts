@@ -17,6 +17,10 @@ export type ExperienceStatus = ExperienceBand & {
   progressLabel: string;
 };
 
+export type PlayerExperienceSummary = Pick<ExperienceStatus,
+  'level' | 'title' | 'progressPercent' | 'progressLabel'
+>;
+
 const EXPERIENCE_BANDS: ExperienceBand[] = [
   { level: 1, title: 'Beginner', minGames: 0, nextTarget: 5 },
   { level: 2, title: 'Regular', minGames: 5, nextTarget: 15 },
@@ -67,6 +71,34 @@ export function experienceStatusFromGames(value: number): ExperienceStatus {
     progressPercent,
     progressLabel: `${gamesPlayed} / ${band.nextTarget} games`,
   };
+}
+
+export async function getExperienceSummariesForPlayers(
+  playerIds: string[],
+): Promise<Record<string, PlayerExperienceSummary>> {
+  const ids = [...new Set(playerIds.filter((id) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  ))];
+  const summaries = Object.fromEntries(ids.map((id) => [id, experienceStatusFromGames(0)]));
+  if (!ids.length || !secretKey) return summaries;
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/player_experience?player_id=in.(${ids.join(',')})&select=player_id,games_played`,
+      {
+        headers: serviceHeaders(),
+        cache: 'no-store',
+      },
+    );
+    const rows = await parseJson<Array<{ player_id: string; games_played: number }>>(
+      response,
+      'Could not load ranked player experience',
+    );
+    for (const row of rows) summaries[row.player_id] = experienceStatusFromGames(row.games_played);
+  } catch (error) {
+    console.error('[brasta ranked experience]', error);
+  }
+  return summaries;
 }
 
 export async function getExperienceStatus(accessToken: string): Promise<ExperienceStatus> {

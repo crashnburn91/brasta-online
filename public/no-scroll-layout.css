@@ -280,6 +280,10 @@ body.brasta-shell-locked.brasta-density-tight .seat-label{
   display:none;
 }
 
+body.brasta-shell-locked.brasta-density-tight .players.players-2v2 .player-chip > .player-card-hand{
+  display:flex!important;
+}
+
 body.brasta-shell-locked.brasta-density-tight .last-move-banner{
   margin:2px auto 3px;
   padding:3px 6px;

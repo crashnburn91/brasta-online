@@ -38,7 +38,8 @@ export type WireSocket = {
   close(code?: number, reason?: string): void;
 };
 
-type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; accountId?: string };
+type PlayerExperienceSummary = { level: number; title: string; progressPercent: number; progressLabel: string };
+type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; experience?: PlayerExperienceSummary; accountId?: string };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
 type BurnPickupOption = {
   id: string;
@@ -192,8 +193,8 @@ function roomSnapshot(room: StoredRoom) {
   const players = seats.map((seat) => {
     const p = room.seats[String(seat)];
     return p
-      ? { seat, name: p.name, connected: participantIsConnected(room, p, now), occupied: true, rankName: p.rankName || null }
-      : { seat, name: '', connected: false, occupied: false, rankName: null };
+      ? { seat, name: p.name, connected: participantIsConnected(room, p, now), occupied: true, rankName: p.rankName || null, experience: p.experience || null }
+      : { seat, name: '', connected: false, occupied: false, rankName: null, experience: null };
   });
   const spectators = Object.values(room.spectators)
     .map((s) => ({ name: s.name, connected: spectatorIsConnected(room, s, now) }))
