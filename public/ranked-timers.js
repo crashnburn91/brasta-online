@@ -3,6 +3,7 @@
   window.__BRASTA_RANKED_TIMERS__ = true;
 
   const firedTimeouts = new Set();
+  const snapshotSeenAt = new Map();
 
   function rememberTimeout(key) {
     firedTimeouts.add(key);
@@ -11,8 +12,24 @@
     }
   }
 
-  function secondsLeft(deadline) {
-    return Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+  function secondsLeft(deadline, serverNow = 0) {
+    if (!serverNow) return Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+
+    // Deadlines are generated from the server clock. Never compare them
+    // directly to the device clock: a phone/PC that is 30 seconds slow would
+    // otherwise show a 40-second "10 second" break. Anchor each server snapshot
+    // to the local instant when we first see it and count down relatively.
+    const key = `${serverNow}:${deadline}`;
+    let seenAt = snapshotSeenAt.get(key);
+    if (!seenAt) {
+      seenAt = Date.now();
+      snapshotSeenAt.set(key, seenAt);
+      while (snapshotSeenAt.size > 80) {
+        snapshotSeenAt.delete(snapshotSeenAt.keys().next().value);
+      }
+    }
+    const remainingAtSnapshot = Math.max(0, deadline - serverNow);
+    return Math.max(0, Math.ceil((remainingAtSnapshot - (Date.now() - seenAt)) / 1000));
   }
 
   function updateTurnTimer() {
@@ -22,7 +39,8 @@
     const deadline = Number(timer.dataset.deadline || 0);
     if (!deadline) return;
 
-    const seconds = secondsLeft(deadline);
+    const serverNow = Number(timer.dataset.serverNow || 0);
+    const seconds = secondsLeft(deadline, serverNow);
     const value = timer.querySelector('b');
     const nextText = String(seconds);
     if (value && value.textContent !== nextText) value.textContent = nextText;
@@ -47,7 +65,8 @@
     if (!(timer instanceof HTMLElement)) return;
     const deadline = Number(timer.dataset.deadline || 0);
     if (!deadline) return;
-    const nextText = String(secondsLeft(deadline));
+    const serverNow = Number(timer.dataset.serverNow || 0);
+    const nextText = String(secondsLeft(deadline, serverNow));
     if (timer.textContent !== nextText) timer.textContent = nextText;
   }
 
