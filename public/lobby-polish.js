@@ -203,6 +203,13 @@
 
     if (roomAction) {
       roomAction.classList.add('toolbar-exit');
+      if (!roomAction.querySelector('.toolbar-exit-label')) {
+        const label = String(roomAction.textContent || 'Leave Room').trim();
+        roomAction.setAttribute('aria-label', label);
+        roomAction.innerHTML = '<svg class="toolbar-exit-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4.75A2.75 2.75 0 0 1 13.25 2h5A2.75 2.75 0 0 1 21 4.75v14.5A2.75 2.75 0 0 1 18.25 22h-5a2.75 2.75 0 0 1-2.75-2.75V17.5h1.75v1.75c0 .55.45 1 1 1h5c.55 0 1-.45 1-1V4.75c0-.55-.45-1-1-1h-5c-.55 0-1 .45-1 1V6.5H10.5V4.75Zm-1.37 3.87 1.24 1.26-1.36 1.37H16v1.5H9.01l1.36 1.37-1.24 1.26L5.62 12l3.51-3.38Z"/></svg><span class="toolbar-exit-label"></span>';
+        const labelNode = roomAction.querySelector('.toolbar-exit-label');
+        if (labelNode) labelNode.textContent = label;
+      }
       nav.appendChild(roomAction);
     }
 
