@@ -50,7 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="brasta-realtime-url" content={process.env.NEXT_PUBLIC_BRASTA_REALTIME_URL || ''} />
         <link rel="stylesheet" href="/styles.css?v=0.4.10" />
         <link rel="stylesheet" href="/boot.css?v=0.4.10" />
-        <link rel="stylesheet" href="/lobby-polish.css?v=4" />
+        <link rel="stylesheet" href="/lobby-polish.css?v=5" />
         <link rel="stylesheet" href="/compact-gameplay.css?v=0.14.3" />
         <link rel="stylesheet" href="/connection-ui.css?v=0.5.17" />
         <link rel="stylesheet" href="/tutorial.css?v=0.5.14" />
@@ -104,7 +104,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/private-postmatch.js?v=0.16.1" strategy="afterInteractive" />
-        <Script src="/lobby-polish.js?v=7" strategy="afterInteractive" />
+        <Script src="/lobby-polish.js?v=8" strategy="afterInteractive" />
         <Script src="/hard-bot.js?v=0.18.1" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
