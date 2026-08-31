@@ -37,3 +37,29 @@
     padding-right:7px!important;
   }
 }
+.live-score-strip > .ranked-turn-timer{
+  flex:0 0 auto;
+  margin-left:2px;
+  margin-right:2px;
+}
+
+@media(max-width:700px){
+  body.brasta-mobile-merged-header .topbar.ranked-turn-clock-visible .live-score-target{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .live-score-strip > .ranked-turn-timer{
+    position:absolute;
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
+    min-width:58px;
+    min-height:24px;
+    margin:0;
+    padding:2px 7px!important;
+    z-index:3;
+    font-size:9px;
+  }
+  body.brasta-mobile-merged-header .topbar.ranked-turn-clock-visible .live-score-strip{
+    padding-right:72px!important;
+  }
+}
