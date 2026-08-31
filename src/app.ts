@@ -543,8 +543,8 @@ namespace BrastaApp {
     });
     document.querySelectorAll<HTMLElement>('[data-next-round]').forEach((el) => el.onclick = () => { if (!state) return; if (context === 'online') { if (onlineSession?.isHost) onlineClient?.nextRound(); } else { const result = Brasta.nextRound(state); if (result.ok) { state = result.state; resetInteraction(); covered = true; } else lastError = result.error || 'Unable to start next round.'; render(); } });
     document.querySelectorAll<HTMLElement>('[data-end-match]').forEach((el) => el.onclick = () => { if (!state) return; if (context === 'online') { if (onlineSession?.isHost) onlineClient?.endMatch(); } else { state = Brasta.endMatch(state); render(); } });
-    document.querySelectorAll<HTMLElement>('[data-copy-invite]').forEach((el) => el.onclick = copyInvite);
-    document.querySelectorAll<HTMLElement>('[data-copy-spectate]').forEach((el) => el.onclick = copySpectate);
+    document.querySelectorAll<HTMLElement>('[data-copy-invite]').forEach((el) => el.onclick = () => copyInvite(el));
+    document.querySelectorAll<HTMLElement>('[data-copy-spectate]').forEach((el) => el.onclick = () => copySpectate(el));
     document.querySelectorAll<HTMLElement>('[data-online-home]').forEach((el) => el.onclick = goHomeFromOnline);
     document.querySelectorAll<HTMLElement>('[data-nav="lab"]').forEach((el) => el.onclick = () => { context = 'lab'; location.hash = 'lab'; resetInteraction(); render(); });
     document.querySelectorAll<HTMLElement>('[data-nav="game"]').forEach((el) => el.onclick = () => { location.hash = ''; context = state ? 'local' : null; render(); });
@@ -562,9 +562,9 @@ namespace BrastaApp {
 
   function bindLobby(): void {
     document.querySelectorAll<HTMLElement>('[data-start-online]').forEach((el) => el.onclick = () => onlineClient?.startGame());
-    document.querySelectorAll<HTMLElement>('[data-copy-invite]').forEach((el) => el.onclick = copyInvite);
-    document.querySelectorAll<HTMLElement>('[data-copy-spectate]').forEach((el) => el.onclick = copySpectate);
-    document.querySelectorAll<HTMLElement>('[data-copy-code]').forEach((el) => el.onclick = () => onlineRoom && copyText(onlineRoom.code, 'Room code copied.'));
+    document.querySelectorAll<HTMLElement>('[data-copy-invite]').forEach((el) => el.onclick = () => copyInvite(el));
+    document.querySelectorAll<HTMLElement>('[data-copy-spectate]').forEach((el) => el.onclick = () => copySpectate(el));
+    document.querySelectorAll<HTMLElement>('[data-copy-code]').forEach((el) => el.onclick = () => onlineRoom && void copyText(onlineRoom.code, el));
     document.querySelectorAll<HTMLElement>('[data-online-home]').forEach((el) => el.onclick = goHomeFromOnline);
   }
 
@@ -620,9 +620,30 @@ namespace BrastaApp {
 
   function inviteUrl(code: string): string { if (location.protocol === 'file:') return `Room ${code}`; return `${location.origin}${location.pathname}?room=${encodeURIComponent(code)}`; }
   function spectateUrl(code: string): string { if (location.protocol === 'file:') return `Spectate ${code}`; return `${location.origin}${location.pathname}?spectate=${encodeURIComponent(code)}`; }
-  async function copyText(text: string, success: string): Promise<void> { try { await navigator.clipboard.writeText(text); notice = success; } catch { notice = `Copy this: ${text}`; } render(); }
-  function copyInvite(): void { if (!onlineRoom) return; void copyText(inviteUrl(onlineRoom.code), 'Player invite link copied.'); }
-  function copySpectate(): void { if (!onlineRoom) return; void copyText(spectateUrl(onlineRoom.code), 'Spectate link copied.'); }
+  function showCopiedState(button: HTMLElement | null): void {
+    if (!(button instanceof HTMLButtonElement)) return;
+    const original = button.innerHTML;
+    button.classList.add('copy-confirmed');
+    button.innerHTML = `<svg class="copy-confirm-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7.25A2.25 2.25 0 0 1 10.25 5h7.5A2.25 2.25 0 0 1 20 7.25v7.5A2.25 2.25 0 0 1 17.75 17h-7.5A2.25 2.25 0 0 1 8 14.75v-7.5Zm-4 2A2.25 2.25 0 0 1 6.25 7H7v7.75A3.25 3.25 0 0 0 10.25 18H18v.75A2.25 2.25 0 0 1 15.75 21h-9.5A2.25 2.25 0 0 1 4 18.75v-9.5Z"/></svg><span>Copied</span>`;
+    window.setTimeout(() => {
+      if (!button.isConnected) return;
+      button.innerHTML = original;
+      button.classList.remove('copy-confirmed');
+    }, 1600);
+  }
+
+  async function copyText(text: string, button: HTMLElement | null = null): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      notice = null;
+      showCopiedState(button);
+    } catch {
+      notice = `Copy this: ${text}`;
+      render();
+    }
+  }
+  function copyInvite(button: HTMLElement | null = null): void { if (!onlineRoom) return; void copyText(inviteUrl(onlineRoom.code), button); }
+  function copySpectate(button: HTMLElement | null = null): void { if (!onlineRoom) return; void copyText(spectateUrl(onlineRoom.code), button); }
   function goHomeFromOnline(): void {
     const code = onlineRoom?.code || onlineSession?.code || '';
     const role = onlineSession?.role || 'player';
