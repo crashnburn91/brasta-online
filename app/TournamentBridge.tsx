@@ -92,6 +92,17 @@ function avatar(member: Team['members'][number]) {
   return <span>{member.username.slice(0, 1).toUpperCase()}</span>;
 }
 
+function TournamentTrophyIcon({ className = '' }: { className?: string }) {
+  return (
+    <span className={className} aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+        <path d="M7 6H4v1a4 4 0 0 0 4 4M17 6h3v1a4 4 0 0 1-4 4" />
+      </svg>
+    </span>
+  );
+}
+
 export default function TournamentBridge({ accessToken, userId }: { accessToken: string; userId: string }) {
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY);
   const [homeTarget, setHomeTarget] = useState<Element | null>(null);
@@ -220,7 +231,14 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
 
   const homeBanner = tournament && homeTarget ? createPortal(
     <section className="tournament-home-banner" aria-label="Upcoming Brasta tournament">
-      <div className="tournament-banner-mark" aria-hidden="true">♠<b>2v2</b>♥</div>
+      <div className="tournament-banner-mark" aria-hidden="true">
+        <TournamentTrophyIcon className="tournament-banner-trophy" />
+        <b>2V2</b>
+        <span className="tournament-banner-suits">
+          <i className="tournament-banner-spade">♠</i>
+          <i className="tournament-banner-heart">♥</i>
+        </span>
+      </div>
       <div className="tournament-banner-copy">
         <span className="tournament-kicker">UPCOMING TOURNAMENT</span>
         <h2>{tournament.title}</h2>
@@ -370,12 +388,7 @@ export default function TournamentBridge({ accessToken, userId }: { accessToken:
     <>
       {tournament && (myTeam || unread > 0) && (
         <button className="tournament-dock" type="button" onClick={openTournament} aria-label="Open Brasta tournament">
-          <span aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false">
-              <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
-              <path d="M7 6H4v1a4 4 0 0 0 4 4M17 6h3v1a4 4 0 0 1-4 4" />
-            </svg>
-          </span>
+          <TournamentTrophyIcon />
           <b>Tournament</b>
           {unread > 0 && <i>{unread > 9 ? '9+' : unread}</i>}
         </button>
