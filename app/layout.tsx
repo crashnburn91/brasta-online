@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/tournament-ui.css?v=0.1.3" />
         <link rel="stylesheet" href="/experience-ui.css?v=0.9.0" />
         <link rel="stylesheet" href="/competitive-ui.css?v=0.7.1" />
-        <link rel="stylesheet" href="/ranked-timers.css?v=0.1.0" />
+        <link rel="stylesheet" href="/ranked-timers.css?v=0.1.1" />
         <link rel="stylesheet" href="/competitive-account.css?v=0.8.1" />
         <link rel="stylesheet" href="/product-surface.css?v=0.8.2" />
         <link rel="stylesheet" href="/rank-badges.css?v=0.1.2" />
@@ -90,7 +90,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
-        <Script src="/live-score-ui.js?v=0.15.0" strategy="beforeInteractive" />
+        <Script src="/live-score-ui.js?v=0.15.1" strategy="beforeInteractive" />
         <Script src="/match-menu.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
@@ -99,7 +99,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.7" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.6" strategy="afterInteractive" />
-        <Script src="/ranked-timers.js?v=0.1.1" strategy="afterInteractive" />
+        <Script src="/ranked-timers.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/competitive-account.js?v=0.8.1" strategy="afterInteractive" />
         <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
