@@ -809,23 +809,16 @@ body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.ti
 }
 
 /* A horizontally scrollable hand also clips vertical overflow in browsers.
-   Keep the existing mobile hand height, but move its spare padding above the
-   cards so a lifted selection and its gold outline remain fully visible. */
+   Keep the mobile selection entirely inside the card instead of lifting it or
+   drawing an outline beyond the scrollport. */
 @media(max-width:800px){
-  body.brasta-shell-locked .hand{
-    padding-top:7px;
-    padding-bottom:0;
-  }
-
   body.brasta-shell-locked .hand .card.selected,
   body.brasta-shell-locked .hand .card.compact-staged,
   body.brasta-shell-locked .hand .card.selection-v2-selected{
-    outline-offset:-1px!important;
-  }
-
-  body.brasta-shell-locked.brasta-density-tight .hand-area{
-    padding-top:1px;
-    padding-bottom:1px;
+    transform:none!important;
+    outline:0!important;
+    border-color:#e8c85f!important;
+    box-shadow:0 4px 10px #0005,inset 0 0 0 3px #f3d878!important;
   }
 }
 
