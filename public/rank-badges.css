@@ -36,43 +36,48 @@
   filter:drop-shadow(0 4px 7px #0007);
 }
 .rank-shield{
-  fill:color-mix(in srgb,var(--rank-deep) 88%,#08100d 12%);
-  stroke:var(--rank-metal,var(--rank-color));
+  fill:var(--rank-deep);
+  stroke:var(--rank-color);
   stroke-width:2.35;
   stroke-linejoin:round;
 }
 .rank-shield-inner{
   fill:none;
-  stroke:color-mix(in srgb,var(--rank-color) 58%,transparent);
+  stroke:var(--rank-dark);
   stroke-width:1.2;
   stroke-linejoin:round;
+  opacity:.78;
 }
-.rank-emblem-symbol{
-  fill:var(--rank-metal,var(--rank-color));
+.rank-emblem-symbol,.rank-division-symbol{
+  fill:var(--rank-light);
   font-family:Georgia,"Times New Roman",serif;
   font-size:25.5px;
   font-weight:700;
 }
+.rank-division-symbol{
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:23px;
+  font-weight:900;
+  letter-spacing:1px;
+}
 .rank-emblem-gem,.rank-emblem-crown{
   fill:none;
-  stroke:var(--rank-metal,var(--rank-color));
+  stroke:var(--rank-light);
   stroke-width:2.5;
   stroke-linejoin:round;
   stroke-linecap:round;
 }
 .rank-emblem-gem path:first-child{
-  fill:color-mix(in srgb,var(--rank-color) 23%,transparent);
+  fill:var(--rank-color);
+  fill-opacity:.23;
 }
 .rank-emblem-crown path:first-child{
-  fill:color-mix(in srgb,var(--rank-color) 16%,transparent);
+  fill:var(--rank-color);
+  fill-opacity:.16;
 }
 .rank-emblem-crown-grand path:last-child{
   fill:var(--rank-color);
   stroke-width:1.5;
-}
-.rank-division-mark{
-  fill:var(--rank-color);
-  opacity:.92;
 }
 .rank-badge-copy{color:var(--rank-color);line-height:1}
 
@@ -82,7 +87,6 @@
 .rank-size-medium .rank-emblem{width:44px;height:48px}
 .rank-size-small{gap:5px;font-size:10px;letter-spacing:.02em}
 .rank-size-small .rank-emblem{width:27px;height:30px}
-.rank-size-small .rank-division-mark{display:none}
 
 .queue-modal .rank-badge.rank-visual{margin:5px auto 4px;justify-content:center}
 .result-rank.rank-visual{margin:12px auto 5px;justify-content:center}
