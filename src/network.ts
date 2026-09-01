@@ -243,7 +243,7 @@ namespace BrastaNet {
               code: this.resume.code,
               name: this.resume.name,
               token: this.resume.token,
-              accessToken: this.resume.role === 'player' ? authAccessToken() || undefined : undefined,
+              accessToken: authAccessToken() || undefined,
             });
           }
           resolve();
@@ -404,6 +404,26 @@ namespace BrastaNet {
           }));
         }
       }
+      else if (message.type === 'CHAT_CAPABILITIES') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-capabilities', { detail: message.capabilities || {} }));
+        }
+      }
+      else if (message.type === 'CHAT_REPORT_RESULT') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-report-result', { detail: message }));
+        }
+      }
+      else if (message.type === 'CHAT_BLOCK_RESULT') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-block-result', { detail: message }));
+        }
+      }
+      else if (message.type === 'CHAT_MESSAGE_REMOVED') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-message-removed', { detail: message }));
+        }
+      }
       else if (message.type === 'ERROR') this.handler({ type: 'error', message: String(message.message || 'Server rejected the request.') });
       else if (message.type === 'NOTICE') this.handler({ type: 'notice', message: String(message.message || '') });
     }
@@ -436,12 +456,15 @@ namespace BrastaNet {
       const normalized = normalizeCode(code);
       this.resume = token ? { code: normalized, name: name.trim(), token, role: 'spectator' } : null;
       await this.connect();
-      this.send({ type: 'SPECTATE_ROOM', code: normalized, name: name.trim(), token: token || undefined });
+      this.send({ type: 'SPECTATE_ROOM', code: normalized, name: name.trim(), token: token || undefined, accessToken: authAccessToken() || undefined });
     }
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
     emote(emote: string): void { this.send({ type: 'EMOTE', emote }); }
     chat(text: string): void { this.send({ type: 'CHAT_SEND', text }); }
+    acceptChatPolicy(): void { this.send({ type: 'CHAT_ACCEPT_POLICY' }); }
+    reportChat(messageId: string, reason: string, details = ''): void { this.send({ type: 'CHAT_REPORT', messageId, reason, details }); }
+    blockChatUser(messageId: string): void { this.send({ type: 'CHAT_BLOCK', messageId }); }
     claimAccount(accessToken?: string): void {
       const token = accessToken || authAccessToken();
       if (token) this.send({ type: 'CLAIM_ACCOUNT', accessToken: token });

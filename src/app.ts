@@ -811,6 +811,23 @@ namespace BrastaApp {
     }
     client().chat(text);
   });
+  window.addEventListener('brasta-accept-chat-policy', () => {
+    if (context !== 'online' || !onlineSession) return;
+    client().acceptChatPolicy();
+  });
+  window.addEventListener('brasta-report-chat', (rawEvent) => {
+    const event = rawEvent as CustomEvent<{ messageId?: string; reason?: string; details?: string }>;
+    const messageId = String(event.detail?.messageId || '').trim();
+    const reason = String(event.detail?.reason || '').trim();
+    if (!messageId || !reason || context !== 'online' || !onlineSession) return;
+    client().reportChat(messageId, reason, String(event.detail?.details || ''));
+  });
+  window.addEventListener('brasta-block-chat-user', (rawEvent) => {
+    const event = rawEvent as CustomEvent<{ messageId?: string }>;
+    const messageId = String(event.detail?.messageId || '').trim();
+    if (!messageId || context !== 'online' || !onlineSession) return;
+    client().blockChatUser(messageId);
+  });
   window.addEventListener('brasta-ranked-turn-timeout', () => {
     if (
       context !== 'online'

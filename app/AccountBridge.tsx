@@ -35,6 +35,7 @@ type OAuthProvider = 'google' | 'apple' | 'discord';
 
 const PROVIDERS: Array<{ id: OAuthProvider; label: string; mark: string }> = [
   { id: 'google', label: 'Google', mark: 'G' },
+  { id: 'apple', label: 'Apple', mark: 'A' },
   { id: 'discord', label: 'Discord', mark: 'D' },
 ];
 
@@ -70,6 +71,8 @@ export default function AccountBridge() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
   const [linkedProviders, setLinkedProviders] = useState<Set<OAuthProvider>>(new Set());
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const privateClaimInFlight = useRef<Set<string>>(new Set());
 
   const refreshIdentities = useCallback(async () => {
@@ -429,6 +432,31 @@ export default function AccountBridge() {
     setOpen(false);
   }
 
+  async function deleteAccount(event: FormEvent) {
+    event.preventDefault();
+    if (!session?.access_token || deleteConfirmation !== 'DELETE' || deleting) return;
+    setDeleting(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ confirmation: deleteConfirmation }),
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok || data.error) throw new Error(data.error || 'Could not delete your Brasta account.');
+      await supabase!.auth.signOut({ scope: 'local' });
+      try { localStorage.removeItem(BRASTA_AUTH_TOKEN_KEY); } catch {}
+      setOpen(false);
+      setDeleteConfirmation('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not delete your Brasta account.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
       <ResumeMatchBridge accessToken={session?.access_token || ''} />
@@ -461,9 +489,10 @@ export default function AccountBridge() {
               <>
                 <div className="account-eyebrow">BRASTA ACCOUNT</div>
                 <h2>Sign in to Brasta</h2>
-                <p>Accounts are optional for private games. Ranked play, matchmaking, leaderboards, and persistent stats will use your Brasta account.</p>
+                <p>Accounts are optional for private games. An account is required for ranked play, persistent stats, and posting or reporting in match chat.</p>
                 <div className="account-provider-grid">
                   <button type="button" disabled={busy} onClick={() => void signIn('google')}><span>G</span>Continue with Google</button>
+                  <button type="button" disabled={busy} onClick={() => void signIn('apple')}><span>A</span>Continue with Apple</button>
                   <button type="button" disabled={busy} onClick={() => void signIn('discord')}><span>D</span>Continue with Discord</button>
                 </div>
                 <div className="account-divider"><span>or</span></div>
@@ -552,10 +581,19 @@ export default function AccountBridge() {
                   })}
                 </div>
                 <button className="account-secondary" disabled={busy} type="button" onClick={() => void signOut()}>Sign Out</button>
+                <details className="account-delete-panel">
+                  <summary>Delete Brasta account</summary>
+                  <p>This permanently deletes your account, profile, game relationships, competitive data, and chat content. This cannot be undone.</p>
+                  <form onSubmit={deleteAccount}>
+                    <label>Type DELETE to confirm<input autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value.toUpperCase().slice(0, 6))} /></label>
+                    <button type="submit" disabled={deleting || deleteConfirmation !== 'DELETE'}>{deleting ? 'Deleting…' : 'Permanently Delete Account'}</button>
+                  </form>
+                </details>
               </>
             )}
 
             {message && <div className="account-message" aria-live="polite">{message}</div>}
+            <nav className="account-policy-links" aria-label="Brasta policies"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/community-guidelines">Community Guidelines</a><a href="/support">Support</a></nav>
           </section>
         </div>
       )}

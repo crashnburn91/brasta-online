@@ -25,6 +25,33 @@ function assert(condition: unknown, message: string): asserts condition {
 
 type ServerApi = typeof import('../lib/brasta-server');
 
+function chatAuthToken(userId: string): string {
+  return `test-access-token-${userId}-1234567890`;
+}
+
+function installChatAuthFetch(): void {
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const authorization = new Headers(init?.headers).get('authorization') || '';
+    const match = /test-access-token-([0-9a-f-]{36})-/i.exec(authorization);
+    const userId = match?.[1] || '00000000-0000-4000-8000-000000000099';
+    const url = String(_input);
+    if (url.includes('/auth/v1/user')) {
+      return new Response(JSON.stringify({ id: userId, email: `${userId.slice(-4)}@example.com` }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/rest/v1/profiles')) {
+      return new Response(JSON.stringify([{
+        username: `player_${userId.slice(-4)}`,
+        display_name: `Player ${userId.slice(-4)}`,
+        avatar_url: `https://example.com/${userId}.png`,
+      }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
+  }) as typeof fetch;
+}
+
 async function send(server: ServerApi, conn: any, message: object): Promise<void> {
   await server.handleMessage(conn, JSON.stringify(message));
 }
@@ -85,13 +112,18 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const host = await server.registerSocket(hostSocket);
   const guest = await server.registerSocket(guestSocket);
 
-  await send(server, host, { type: 'CREATE_ROOM', name: `Host-${choice}`, mode: '1v1', targetScore: 110 });
+  const hostId = choice === 'keep' ? '00000000-0000-4000-8000-000000000001' : '00000000-0000-4000-8000-000000000003';
+  const guestId = choice === 'keep' ? '00000000-0000-4000-8000-000000000002' : '00000000-0000-4000-8000-000000000004';
+  await send(server, host, { type: 'CREATE_ROOM', name: `Host-${choice}`, mode: '1v1', targetScore: 110, accessToken: chatAuthToken(hostId) });
   const hostSession = hostSocket.latest('SESSION')?.session;
   assert(hostSession?.code && hostSession?.token, 'Host session was not created');
 
-  await send(server, guest, { type: 'JOIN_ROOM', code: hostSession.code, name: `Guest-${choice}` });
+  await send(server, guest, { type: 'JOIN_ROOM', code: hostSession.code, name: `Guest-${choice}`, accessToken: chatAuthToken(guestId) });
   const guestSession = guestSocket.latest('SESSION')?.session;
   assert(guestSession?.token, 'Guest session was not created');
+
+  await send(server, host, { type: 'CHAT_ACCEPT_POLICY' });
+  await send(server, guest, { type: 'CHAT_ACCEPT_POLICY' });
 
   await send(server, guest, { type: 'CHAT_SEND', text: 'Too early' });
   assert(
@@ -127,14 +159,22 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const metricsAfterChat = await server.health();
   assert(hostChat?.event?.id && hostChat.event.id === guestChat?.event?.id, `${choice}: players did not receive the same chat event`);
   assert(hostChat.event.roomCode === hostSession.code, `${choice}: chat event escaped its room`);
-  assert(hostChat.event.seat === 1 && hostChat.event.name === `Host-${choice}`, `${choice}: chat sender identity was not authoritative`);
+  assert(hostChat.event.seat === 1 && hostChat.event.senderId === hostId && hostChat.event.name === `Player ${hostId.slice(-4)}`, `${choice}: chat sender identity was not authoritative`);
+  assert(hostChat.event.avatarUrl === `https://example.com/${hostId}.png`, `${choice}: profile avatar was not included in chat`);
   assert(hostChat.event.text === 'Good move <b>', `${choice}: chat whitespace was not normalized`);
   assert(hostSocket.latest('ROOM_STATE').update.room.revision === revisionBeforeChat, `${choice}: chat changed the gameplay revision`);
   assert(metricsAfterChat.roomWrites === metricsBeforeChat.roomWrites, `${choice}: chat unexpectedly rewrote room state`);
   assert(metricsAfterChat.chatMessages === metricsBeforeChat.chatMessages + 1, `${choice}: chat message metric did not advance`);
   assert(metricsAfterChat.chatHistoryWrites === metricsBeforeChat.chatHistoryWrites + 1, `${choice}: chat history was not stored exactly once`);
 
+  host.lastChatAt = 0;
+  const guestMessagesBeforeFilter = guestSocket.count('CHAT_MESSAGE');
+  await send(server, host, { type: 'CHAT_SEND', text: 'you are a fucking loser' });
+  assert(/not allowed/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: profanity filter did not reject the message`);
+  assert(guestSocket.count('CHAT_MESSAGE') === guestMessagesBeforeFilter, `${choice}: filtered chat leaked to the room`);
+
   const guestChatCount = guestSocket.count('CHAT_MESSAGE');
+  host.lastChatAt = Date.now();
   await send(server, host, { type: 'CHAT_SEND', text: 'Sent too quickly' });
   assert(/wait a moment/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: chat rate limit was not enforced`);
   assert(guestSocket.count('CHAT_MESSAGE') === guestChatCount, `${choice}: rate-limited chat leaked to the room`);
@@ -230,11 +270,15 @@ async function runChatHistoryLimitScenario(server: ServerApi): Promise<void> {
   const guest = await server.registerSocket(guestSocket);
   const outsider = await server.registerSocket(outsiderSocket);
 
-  await send(server, host, { type: 'CREATE_ROOM', name: 'ChatHost', mode: '1v1', targetScore: 110 });
+  const hostId = '00000000-0000-4000-8000-000000000011';
+  const guestId = '00000000-0000-4000-8000-000000000012';
+  await send(server, host, { type: 'CREATE_ROOM', name: 'ChatHost', mode: '1v1', targetScore: 110, accessToken: chatAuthToken(hostId) });
   const session = hostSocket.latest('SESSION')?.session;
   assert(session?.code, 'Chat history room was not created');
-  await send(server, guest, { type: 'JOIN_ROOM', code: session.code, name: 'ChatGuest' });
+  await send(server, guest, { type: 'JOIN_ROOM', code: session.code, name: 'ChatGuest', accessToken: chatAuthToken(guestId) });
   await send(server, outsider, { type: 'CREATE_ROOM', name: 'OtherRoom', mode: '1v1', targetScore: 110 });
+  await send(server, host, { type: 'CHAT_ACCEPT_POLICY' });
+  await send(server, guest, { type: 'CHAT_ACCEPT_POLICY' });
   await send(server, host, { type: 'START_GAME' });
 
   for (let index = 1; index <= 51; index++) {
@@ -359,6 +403,8 @@ async function runLateAccountClaimScenario(server: ServerApi): Promise<void> {
 
 async function main(): Promise<void> {
   delete process.env.REDIS_URL;
+  process.env.BRASTA_CHAT_MODERATION_MEMORY = 'true';
+  installChatAuthFetch();
   const server = await import('../lib/brasta-server');
   await runOpeningScenario(server, 'keep');
   await runOpeningScenario(server, 'put');

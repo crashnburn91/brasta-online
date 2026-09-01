@@ -194,7 +194,7 @@ export default function TournamentAdminClient() {
     <main className="tournament-admin-shell">
       <header className="tournament-admin-header">
         <div><span>BRASTA ADMIN</span><h1>Tournaments</h1><p>Schedule 1v1 or 2v2 events, manage registration, publish brackets, and advance winners.</p></div>
-        <nav><a href="/admin/live">Live Traffic</a><a href="/">Back to Brasta</a></nav>
+        <nav><a href="/admin/moderation">Moderation</a><a href="/admin/live">Live Traffic</a><a href="/">Back to Brasta</a></nav>
       </header>
 
       {message && <div className="tournament-admin-message">{message}</div>}
