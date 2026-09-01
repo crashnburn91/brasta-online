@@ -808,6 +808,27 @@ body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.ti
   font-size:15px;
 }
 
+/* A horizontally scrollable hand also clips vertical overflow in browsers.
+   Keep the existing mobile hand height, but move its spare padding above the
+   cards so a lifted selection and its gold outline remain fully visible. */
+@media(max-width:800px){
+  body.brasta-shell-locked .hand{
+    padding-top:7px;
+    padding-bottom:0;
+  }
+
+  body.brasta-shell-locked .hand .card.selected,
+  body.brasta-shell-locked .hand .card.compact-staged,
+  body.brasta-shell-locked .hand .card.selection-v2-selected{
+    outline-offset:-1px!important;
+  }
+
+  body.brasta-shell-locked.brasta-density-tight .hand-area{
+    padding-top:1px;
+    padding-bottom:1px;
+  }
+}
+
 /* Pull-to-refresh feedback for the viewport-locked shell. The browser's native
    gesture is unavailable with overflow:hidden, so the shell provides an
    equivalent gesture without re-enabling page scrolling. */
