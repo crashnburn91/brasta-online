@@ -613,7 +613,7 @@ namespace BrastaApp {
   function client(): BrastaNet.Client {
     if (onlineClient) return onlineClient;
     onlineClient = new BrastaNet.Client((event) => {
-      if (event.type === 'status') { connectionStatus = event.status; if (context === 'online') render(); }
+      if (event.type === 'status') { connectionStatus = event.status; emitChatContext(); if (context === 'online') render(); }
       else if (event.type === 'session') {
         onlineSession = event.session;
         inviteRoomCode = event.session.role === 'player' ? event.session.code : '';
@@ -639,9 +639,10 @@ namespace BrastaApp {
             detail: { code: event.session.code, seat: event.session.seat },
           }));
         }
+        emitChatContext();
         render();
       }
-      else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; render(); }
+      else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; emitChatContext(); render(); }
       else if (event.type === 'error') {
         commandPending = false;
         lastError = event.message;
@@ -658,6 +659,20 @@ namespace BrastaApp {
       else if (event.type === 'notice') { if (event.message && event.message !== 'Connected to Brasta.') notice = event.message; render(); }
     });
     return onlineClient;
+  }
+
+  function emitChatContext(): void {
+    const detail = {
+      active: Boolean(context === 'online' && onlineRoom?.started && state && onlineSession),
+      roomCode: onlineRoom?.code || onlineSession?.code || '',
+      mode: onlineRoom?.mode || null,
+      role: onlineSession?.role || null,
+      seat: onlineSession?.seat || null,
+      name: onlineSession?.name || '',
+      status: connectionStatus,
+    };
+    (window as any).__BRASTA_CHAT_CONTEXT__ = detail;
+    window.dispatchEvent(new CustomEvent('brasta-chat-context', { detail }));
   }
 
   function inviteUrl(code: string): string { if (location.protocol === 'file:') return `Room ${code}`; return `${location.origin}${location.pathname}?room=${encodeURIComponent(code)}`; }
@@ -692,7 +707,7 @@ namespace BrastaApp {
     const wasPregame = !!onlineRoom && !onlineRoom.started;
     const shouldLeave = role === 'spectator' || wasPregame;
     if (shouldLeave) onlineClient?.leaveRoom();
-    onlineClient?.close(); onlineClient = null; onlineRoom = null; onlineSession = null; state = null; inviteRoomCode = ''; connectionStatus = 'disconnected'; lastOnlineRevision = -1; context = null; resetInteraction(); if (code && shouldLeave) BrastaNet.clearSession(code, role); history.replaceState({}, '', location.pathname); render();
+    onlineClient?.close(); onlineClient = null; onlineRoom = null; onlineSession = null; state = null; inviteRoomCode = ''; connectionStatus = 'disconnected'; lastOnlineRevision = -1; context = null; resetInteraction(); emitChatContext(); if (code && shouldLeave) BrastaNet.clearSession(code, role); history.replaceState({}, '', location.pathname); render();
   }
 
   function renderLab(): void {
@@ -781,6 +796,20 @@ namespace BrastaApp {
     const emote = String(event.detail?.emote || '').trim();
     if (!emote || context !== 'online' || !onlineRoom?.started || onlineSession?.role !== 'player') return;
     client().emote(emote);
+  });
+  window.addEventListener('brasta-send-chat', (rawEvent) => {
+    const event = rawEvent as CustomEvent<{ text?: string }>;
+    const text = String(event.detail?.text || '').trim();
+    if (!text) return;
+    if (context !== 'online' || !onlineRoom?.started || !state || !onlineSession) {
+      window.dispatchEvent(new CustomEvent('brasta-chat-error', { detail: { message: 'Match chat is not available here.' } }));
+      return;
+    }
+    if (onlineSession.role !== 'player') {
+      window.dispatchEvent(new CustomEvent('brasta-chat-error', { detail: { message: 'Spectators can read match chat but cannot send messages.' } }));
+      return;
+    }
+    client().chat(text);
   });
   window.addEventListener('brasta-ranked-turn-timeout', () => {
     if (

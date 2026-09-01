@@ -13,6 +13,10 @@ class FakeSocket {
   latest(type: string): any {
     return [...this.messages].reverse().find((message) => message?.type === type);
   }
+
+  count(type: string): number {
+    return this.messages.filter((message) => message?.type === type).length;
+  }
 }
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -89,6 +93,12 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const guestSession = guestSocket.latest('SESSION')?.session;
   assert(guestSession?.token, 'Guest session was not created');
 
+  await send(server, guest, { type: 'CHAT_SEND', text: 'Too early' });
+  assert(
+    /opens when the game starts/i.test(guestSocket.latest('CHAT_ERROR')?.message || ''),
+    `${choice}: pre-match chat was not rejected`,
+  );
+
   await assertHeartbeatDoesNotPersist(server, guest, guestSocket, choice);
   await assertSafetyLeasePersistsOncePerRoom(server, choice);
 
@@ -108,6 +118,39 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(hostAfterOpening.update.state.players.find((p: any) => p.seat === 1)?.hand.length === 4, `${choice}: host must have four cards after opening`);
   assert(guestAfterOpening.update.state.players.find((p: any) => p.seat === 2)?.hand.length === 4, `${choice}: guest must have four cards after opening`);
   assert(hostAfterOpening.update.state.loose.every((id: string) => hostAfterOpening.update.state.cards[id]?.rank !== 'J'), `${choice}: opening board contains a Jack`);
+
+  const revisionBeforeChat = hostAfterOpening.update.room.revision;
+  const metricsBeforeChat = await server.health();
+  await send(server, host, { type: 'CHAT_SEND', text: '  Good\nmove <b>  ' });
+  const hostChat = hostSocket.latest('CHAT_MESSAGE');
+  const guestChat = guestSocket.latest('CHAT_MESSAGE');
+  const metricsAfterChat = await server.health();
+  assert(hostChat?.event?.id && hostChat.event.id === guestChat?.event?.id, `${choice}: players did not receive the same chat event`);
+  assert(hostChat.event.roomCode === hostSession.code, `${choice}: chat event escaped its room`);
+  assert(hostChat.event.seat === 1 && hostChat.event.name === `Host-${choice}`, `${choice}: chat sender identity was not authoritative`);
+  assert(hostChat.event.text === 'Good move <b>', `${choice}: chat whitespace was not normalized`);
+  assert(hostSocket.latest('ROOM_STATE').update.room.revision === revisionBeforeChat, `${choice}: chat changed the gameplay revision`);
+  assert(metricsAfterChat.roomWrites === metricsBeforeChat.roomWrites, `${choice}: chat unexpectedly rewrote room state`);
+  assert(metricsAfterChat.chatMessages === metricsBeforeChat.chatMessages + 1, `${choice}: chat message metric did not advance`);
+  assert(metricsAfterChat.chatHistoryWrites === metricsBeforeChat.chatHistoryWrites + 1, `${choice}: chat history was not stored exactly once`);
+
+  const guestChatCount = guestSocket.count('CHAT_MESSAGE');
+  await send(server, host, { type: 'CHAT_SEND', text: 'Sent too quickly' });
+  assert(/wait a moment/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: chat rate limit was not enforced`);
+  assert(guestSocket.count('CHAT_MESSAGE') === guestChatCount, `${choice}: rate-limited chat leaked to the room`);
+  await send(server, host, { type: 'CHAT_SEND', text: 'x'.repeat(181) });
+  assert(/up to 180 characters/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: oversized chat was not rejected`);
+
+  const spectatorSocket = new FakeSocket();
+  const spectator = await server.registerSocket(spectatorSocket);
+  await send(server, spectator, { type: 'SPECTATE_ROOM', code: hostSession.code, name: `Watcher-${choice}` });
+  const spectatorHistory = spectatorSocket.latest('CHAT_HISTORY');
+  assert(spectatorHistory?.roomCode === hostSession.code, `${choice}: late spectator did not receive chat history`);
+  assert(spectatorHistory.messages?.some((message: any) => message.id === hostChat.event.id), `${choice}: late spectator history missed the existing message`);
+  await send(server, spectator, { type: 'CHAT_SEND', text: 'Spectator message' });
+  assert(/spectators can read/i.test(spectatorSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: spectator chat was not read-only`);
+  assert(hostSocket.count('CHAT_MESSAGE') === 1, `${choice}: spectator message reached players`);
+  await server.unregisterSocket(spectator);
 
   // Progress the live hand before disconnecting. This makes the reconnect test
   // prove that we restore the current authoritative hand, not just the initial
@@ -165,6 +208,9 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(JSON.stringify(publicState(reconnectedRoom.update)) === authoritativeAfterPlay, `${choice}: reconnect did not restore the latest progressed hand`);
   const guestHandAfterReconnect = [...reconnectedRoom.update.state.players.find((p: any) => p.seat === 2).hand];
   assert(JSON.stringify(guestHandAfterReconnect) === JSON.stringify(guestHandBeforeReconnect), `${choice}: reconnect did not restore the same private hand`);
+  const reconnectHistory = reconnectSocket.latest('CHAT_HISTORY');
+  assert(reconnectHistory?.roomCode === hostSession.code, `${choice}: reconnect did not receive room chat history`);
+  assert(reconnectHistory.messages?.some((message: any) => message.id === hostChat.event.id), `${choice}: reconnect history missed the match chat message`);
 
   // The still-connected opponent must remain on the exact same revision/state;
   // reconnecting one player must never require the other player to refresh.
@@ -173,6 +219,42 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(JSON.stringify(publicState(hostAfterReconnect.update)) === authoritativeAfterPlay, `${choice}: opponent state changed during reconnect`);
 
   await server.unregisterSocket(reconnect);
+  await server.unregisterSocket(host);
+}
+
+async function runChatHistoryLimitScenario(server: ServerApi): Promise<void> {
+  const hostSocket = new FakeSocket();
+  const guestSocket = new FakeSocket();
+  const outsiderSocket = new FakeSocket();
+  const host = await server.registerSocket(hostSocket);
+  const guest = await server.registerSocket(guestSocket);
+  const outsider = await server.registerSocket(outsiderSocket);
+
+  await send(server, host, { type: 'CREATE_ROOM', name: 'ChatHost', mode: '1v1', targetScore: 110 });
+  const session = hostSocket.latest('SESSION')?.session;
+  assert(session?.code, 'Chat history room was not created');
+  await send(server, guest, { type: 'JOIN_ROOM', code: session.code, name: 'ChatGuest' });
+  await send(server, outsider, { type: 'CREATE_ROOM', name: 'OtherRoom', mode: '1v1', targetScore: 110 });
+  await send(server, host, { type: 'START_GAME' });
+
+  for (let index = 1; index <= 51; index++) {
+    host.lastChatAt = 0;
+    await send(server, host, { type: 'CHAT_SEND', text: `Message ${index}` });
+  }
+
+  const spectatorSocket = new FakeSocket();
+  const spectator = await server.registerSocket(spectatorSocket);
+  await send(server, spectator, { type: 'SPECTATE_ROOM', code: session.code, name: 'ChatWatcher' });
+  const history = spectatorSocket.latest('CHAT_HISTORY')?.messages;
+  assert(Array.isArray(history) && history.length === 50, `Chat history should retain exactly 50 messages, got ${history?.length}`);
+  assert(history[0]?.text === 'Message 2', 'Chat history did not discard the oldest message');
+  assert(history[49]?.text === 'Message 51', 'Chat history did not retain the newest message');
+  assert(outsiderSocket.count('CHAT_MESSAGE') === 0, 'Match chat leaked into another room');
+
+  await server.unregisterSocket(spectator);
+  await send(server, outsider, { type: 'LEAVE_ROOM' });
+  await server.unregisterSocket(outsider);
+  await server.unregisterSocket(guest);
   await server.unregisterSocket(host);
 }
 
@@ -280,9 +362,10 @@ async function main(): Promise<void> {
   const server = await import('../lib/brasta-server');
   await runOpeningScenario(server, 'keep');
   await runOpeningScenario(server, 'put');
+  await runChatHistoryLimitScenario(server);
   await runSignedHostBotStartScenario(server);
   await runLateAccountClaimScenario(server);
-  console.log('4 online reconnect/start/account-claim integration scenarios passed');
+  console.log('5 online reconnect/chat/start/account-claim integration scenarios passed');
 }
 
 main()

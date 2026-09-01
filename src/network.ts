@@ -382,6 +382,28 @@ namespace BrastaNet {
           window.dispatchEvent(new CustomEvent('brasta-emote-received', { detail: message.event }));
         }
       }
+      else if (message.type === 'CHAT_HISTORY') {
+        if (typeof window !== 'undefined') {
+          const detail = {
+            roomCode: normalizeCode(String(message.roomCode || '')),
+            messages: Array.isArray(message.messages) ? message.messages : [],
+          };
+          (window as any).__BRASTA_CHAT_HISTORY__ = detail;
+          window.dispatchEvent(new CustomEvent('brasta-chat-history', { detail }));
+        }
+      }
+      else if (message.type === 'CHAT_MESSAGE') {
+        if (typeof window !== 'undefined' && message.event) {
+          window.dispatchEvent(new CustomEvent('brasta-chat-message', { detail: message.event }));
+        }
+      }
+      else if (message.type === 'CHAT_ERROR') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-error', {
+            detail: { message: String(message.message || 'Could not send that message.') },
+          }));
+        }
+      }
       else if (message.type === 'ERROR') this.handler({ type: 'error', message: String(message.message || 'Server rejected the request.') });
       else if (message.type === 'NOTICE') this.handler({ type: 'notice', message: String(message.message || '') });
     }
@@ -419,6 +441,7 @@ namespace BrastaNet {
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
     emote(emote: string): void { this.send({ type: 'EMOTE', emote }); }
+    chat(text: string): void { this.send({ type: 'CHAT_SEND', text }); }
     claimAccount(accessToken?: string): void {
       const token = accessToken || authAccessToken();
       if (token) this.send({ type: 'CLAIM_ACCOUNT', accessToken: token });

@@ -63,6 +63,11 @@ const server = http.createServer(async (req, res) => {
         presenceLeaseRoomWrites: status.presenceLeaseRoomWrites,
         roomEventPublishes: status.roomEventPublishes,
         ignoredSelfRoomEvents: status.ignoredSelfRoomEvents,
+        chatMessages: status.chatMessages,
+        chatHistoryReads: status.chatHistoryReads,
+        chatHistoryWrites: status.chatHistoryWrites,
+        chatEventPublishes: status.chatEventPublishes,
+        ignoredSelfChatEvents: status.ignoredSelfChatEvents,
         uptimeSeconds: Math.round(process.uptime()),
       });
     } catch (error) {

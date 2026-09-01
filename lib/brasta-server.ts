@@ -11,12 +11,17 @@ const EVENT_CHANNEL = 'brasta:room-events';
 const EMOTE_CHANNEL = 'brasta:room-emotes';
 const EMOTE_RATE_MS = 2_000;
 const ALLOWED_EMOTES = new Set(['wink','nod','thumbs_up','thumbs_down','eyebrow','laugh','wow','thinking']);
+const CHAT_CHANNEL = 'brasta:room-chat';
+const CHAT_RATE_MS = 1_000;
+const CHAT_MESSAGE_MAX_CHARS = 180;
+const CHAT_HISTORY_LIMIT = 50;
 const BURN_CLAIM_MS = 30_000;
 const RANKED_TURN_MS = 30_000;
 const RANKED_ROUND_PAUSE_MS = 10_000;
 const REDIS_HEALTH_CACHE_MS = 30_000;
 const REALTIME_INSTANCE_ID = crypto.randomUUID();
 const memoryRooms = new Map<string, StoredRoom>();
+const memoryChatHistory = new Map<string, ChatMessage[]>();
 const localConnections = new Set<Connection>();
 let subscriberStarted = false;
 let presenceLeaseTimer: ReturnType<typeof setInterval> | null = null;
@@ -31,6 +36,11 @@ const runtimeMetrics = {
   presenceLeaseRoomWrites: 0,
   roomEventPublishes: 0,
   ignoredSelfRoomEvents: 0,
+  chatMessages: 0,
+  chatHistoryReads: 0,
+  chatHistoryWrites: 0,
+  chatEventPublishes: 0,
+  ignoredSelfChatEvents: 0,
 };
 
 export type WireSocket = {
@@ -41,6 +51,14 @@ export type WireSocket = {
 type PlayerExperienceSummary = { level: number; title: string; progressPercent: number; progressLabel: string };
 type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; experience?: PlayerExperienceSummary; accountId?: string };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
+type ChatMessage = {
+  id: string;
+  roomCode: string;
+  seat: Brasta.Seat;
+  name: string;
+  text: string;
+  at: number;
+};
 type BurnPickupOption = {
   id: string;
   label: string;
@@ -84,17 +102,64 @@ export type Connection = {
   seat: Brasta.Seat | null;
   token: string | null;
   role: ConnectionRole;
+  name: string | null;
   lastEmoteAt: number;
+  lastChatAt: number;
   lastHeartbeatAt: number;
 };
 
 const cleanName = (v: unknown) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
+const cleanChatText = (v: unknown) => Array.from(String(v || '')
+  .replace(/[\u0000-\u001f\u007f]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim())
+  .slice(0, CHAT_MESSAGE_MAX_CHARS)
+  .join('');
 const cleanCode = (v: unknown) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const makeToken = () => crypto.randomBytes(24).toString('hex');
 const roomKey = (code: string) => `brasta:room:${code}`;
+const chatHistoryKey = (code: string) => `brasta:room-chat-history:${code}`;
+const chatRateKey = (code: string, seat: Brasta.Seat) => `brasta:room-chat-rate:${code}:${seat}`;
 const lockKey = (code: string) => `brasta:lock:${code}`;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+
+// Validate the authoritative room session, enforce the per-seat rate limit,
+// and append bounded history in one Redis command. Chat therefore never locks
+// or rewrites the much larger gameplay room document.
+const APPEND_CHAT_MESSAGE_SCRIPT = `
+local room_raw = redis.call('get', KEYS[1])
+if not room_raw then return {-1} end
+
+local room_ok, room = pcall(cjson.decode, room_raw)
+if not room_ok or type(room) ~= 'table' then return {-1} end
+if room['started'] ~= true or room['gameState'] == nil or room['gameState'] == cjson.null then return {-3} end
+
+local seats = room['seats']
+local participant = seats and seats[ARGV[1]]
+if not participant then return {-2} end
+if tostring(participant['token'] or '') ~= ARGV[2] then return {-2} end
+if tostring(participant['connectionId'] or '') ~= ARGV[3] then return {-2} end
+
+local message_ok, message = pcall(cjson.decode, ARGV[4])
+if not message_ok or type(message) ~= 'table' then return {-5} end
+
+local rate_ok = redis.call('set', KEYS[3], message['id'], 'PX', ARGV[6], 'NX')
+if not rate_ok then return {-4} end
+
+local history = {}
+local history_raw = redis.call('get', KEYS[2])
+if history_raw then
+  local history_ok, decoded = pcall(cjson.decode, history_raw)
+  if history_ok and type(decoded) == 'table' then history = decoded end
+end
+
+history[#history + 1] = message
+local limit = tonumber(ARGV[5]) or 50
+while #history > limit do table.remove(history, 1) end
+redis.call('set', KEYS[2], cjson.encode(history), 'EX', ARGV[7])
+return {1}
+`;
 
 function normalizeRoom(room: StoredRoom): StoredRoom {
   if (!room.spectators) room.spectators = {};
@@ -469,8 +534,12 @@ async function createRoomIfAbsent(room: StoredRoom): Promise<boolean> {
   return ok === 'OK';
 }
 async function deleteRoom(code: string): Promise<void> {
-  if (!redis) { memoryRooms.delete(code); return; }
-  await redis.del(roomKey(code));
+  if (!redis) {
+    memoryRooms.delete(code);
+    memoryChatHistory.delete(code);
+    return;
+  }
+  await redis.del(roomKey(code), chatHistoryKey(code));
 }
 
 async function bindParticipantActiveMatch(room: StoredRoom, p: Participant): Promise<void> {
@@ -727,6 +796,7 @@ function sendJson(conn: Connection, msg: unknown) {
   try { conn.ws.send(JSON.stringify(msg)); } catch { conn.closed = true; }
 }
 const sendError = (conn: Connection, message: string) => sendJson(conn, { type: 'ERROR', message });
+const sendChatError = (conn: Connection, message: string) => sendJson(conn, { type: 'CHAT_ERROR', message });
 
 async function broadcastLocalRoom(code: string, suppliedRoom?: StoredRoom): Promise<void> {
   const room = suppliedRoom || await loadRoom(code);
@@ -778,6 +848,117 @@ type EmoteEvent = {
   at: number;
 };
 
+function normalizedChatMessage(value: unknown, code: string): ChatMessage | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<ChatMessage>;
+  const roomCode = cleanCode(candidate.roomCode);
+  const seat = Number(candidate.seat) as Brasta.Seat;
+  const text = cleanChatText(candidate.text);
+  const name = cleanName(candidate.name);
+  const at = Number(candidate.at);
+  const id = String(candidate.id || '').slice(0, 80);
+  if (!id || roomCode !== code || ![1, 2, 3, 4].includes(seat) || !name || !text || !Number.isFinite(at) || at < 0 || at > 8_640_000_000_000_000) return null;
+  return { id, roomCode, seat, name, text, at };
+}
+
+async function loadChatHistory(code: string): Promise<ChatMessage[]> {
+  runtimeMetrics.chatHistoryReads++;
+  if (!redis) return clone(memoryChatHistory.get(code) || []);
+  const raw = await redis.get(chatHistoryKey(code));
+  if (!raw) return [];
+  try {
+    const decoded = JSON.parse(raw) as unknown;
+    if (!Array.isArray(decoded)) return [];
+    return decoded
+      .map((message) => normalizedChatMessage(message, code))
+      .filter((message): message is ChatMessage => !!message)
+      .slice(-CHAT_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+type ChatAppendResult = 'ok' | 'missing-room' | 'invalid-session' | 'not-started' | 'rate-limited';
+
+async function appendChatMessage(conn: Connection, event: ChatMessage): Promise<ChatAppendResult> {
+  if (event.at - conn.lastChatAt < CHAT_RATE_MS) return 'rate-limited';
+
+  if (!redis) {
+    const room = memoryRooms.get(event.roomCode);
+    if (!room) return 'missing-room';
+    if (!room.started || !room.gameState) return 'not-started';
+    const participant = room.seats[String(event.seat)];
+    if (!participant || participant.token !== conn.token || participant.connectionId !== conn.id) return 'invalid-session';
+    const history = [...(memoryChatHistory.get(event.roomCode) || []), clone(event)].slice(-CHAT_HISTORY_LIMIT);
+    memoryChatHistory.set(event.roomCode, history);
+    conn.lastChatAt = event.at;
+    runtimeMetrics.chatHistoryWrites++;
+    return 'ok';
+  }
+
+  const result = await redis.eval(
+    APPEND_CHAT_MESSAGE_SCRIPT,
+    3,
+    roomKey(event.roomCode),
+    chatHistoryKey(event.roomCode),
+    chatRateKey(event.roomCode, event.seat),
+    String(event.seat),
+    String(conn.token || ''),
+    conn.id,
+    JSON.stringify(event),
+    String(CHAT_HISTORY_LIMIT),
+    String(CHAT_RATE_MS),
+    String(ROOM_TTL_SECONDS),
+  );
+  const code = Number(Array.isArray(result) ? result[0] : result);
+  if (code === 1) {
+    conn.lastChatAt = event.at;
+    runtimeMetrics.chatHistoryWrites++;
+    return 'ok';
+  }
+  if (code === -1) return 'missing-room';
+  if (code === -2) return 'invalid-session';
+  if (code === -3) return 'not-started';
+  if (code === -4) return 'rate-limited';
+  throw new Error('Could not save the chat message.');
+}
+
+function broadcastLocalChat(event: ChatMessage): void {
+  for (const conn of localConnections) {
+    if (conn.closed || conn.roomCode !== event.roomCode || !conn.role) continue;
+    sendJson(conn, { type: 'CHAT_MESSAGE', event });
+  }
+}
+
+async function publishChat(event: ChatMessage): Promise<void> {
+  broadcastLocalChat(event);
+  if (!redis) return;
+  runtimeMetrics.chatEventPublishes++;
+  try {
+    await redis.publish(CHAT_CHANNEL, JSON.stringify({
+      source: REALTIME_INSTANCE_ID,
+      event,
+    }));
+  } catch (error) {
+    // The sender and all users on this instance already received the message.
+    // Keep gameplay isolated from a transient cross-instance chat failure.
+    console.error('[brasta room chat publish]', error);
+  }
+}
+
+async function sendChatHistory(conn: Connection, room: StoredRoom): Promise<void> {
+  if (!room.started || !room.gameState) return;
+  try {
+    const messages = await loadChatHistory(room.code);
+    sendJson(conn, { type: 'CHAT_HISTORY', roomCode: room.code, messages });
+  } catch (error) {
+    // History is optional reconnect context; never let it block joining the
+    // authoritative gameplay session when the chat store has a transient fault.
+    console.error('[brasta room chat history]', error);
+    sendJson(conn, { type: 'CHAT_HISTORY', roomCode: room.code, messages: [] });
+  }
+}
+
 function broadcastLocalEmote(event: EmoteEvent): void {
   for (const conn of localConnections) {
     if (conn.closed || conn.roomCode !== event.roomCode || !conn.role) continue;
@@ -820,10 +1001,24 @@ async function ensureSubscriber(): Promise<void> {
         const event = JSON.parse(payload) as EmoteEvent;
         if (event?.roomCode && event?.seat && event?.emote) broadcastLocalEmote(event);
       } catch {}
+      return;
+    }
+    if (channel === CHAT_CHANNEL) {
+      try {
+        const envelope = JSON.parse(payload) as { source?: unknown; event?: unknown };
+        if (String(envelope?.source || '') === REALTIME_INSTANCE_ID) {
+          runtimeMetrics.ignoredSelfChatEvents++;
+          return;
+        }
+        const code = cleanCode((envelope?.event as Partial<ChatMessage> | undefined)?.roomCode);
+        if (!code) return;
+        const event = normalizedChatMessage(envelope.event, code);
+        if (event) broadcastLocalChat(event);
+      } catch {}
     }
   });
   sub.on('error', (err: unknown) => console.error('[brasta redis subscriber]', err));
-  await sub.subscribe(EVENT_CHANNEL, EMOTE_CHANNEL);
+  await sub.subscribe(EVENT_CHANNEL, EMOTE_CHANNEL, CHAT_CHANNEL);
 }
 async function publishRoom(code: string, room?: StoredRoom): Promise<void> {
   await broadcastLocalRoom(code, room);
@@ -871,7 +1066,9 @@ async function attachPlayer(conn: Connection, room: StoredRoom, p: Participant):
   conn.seat = p.seat;
   conn.token = p.token;
   conn.role = 'player';
+  conn.name = p.name;
   sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: p.seat, token: p.token, name: p.name, isHost: p.token === room.hostToken, role: 'player' } });
+  await sendChatHistory(conn, room);
 }
 async function attachSpectator(conn: Connection, room: StoredRoom, spectator: Spectator): Promise<void> {
   await supersedeLocalSocket(conn, room.code, spectator.token, 'spectator');
@@ -881,7 +1078,9 @@ async function attachSpectator(conn: Connection, room: StoredRoom, spectator: Sp
   conn.seat = null;
   conn.token = spectator.token;
   conn.role = 'spectator';
+  conn.name = spectator.name;
   sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: null, token: spectator.token, name: spectator.name, isHost: false, role: 'spectator' } });
+  await sendChatHistory(conn, room);
 }
 
 async function detach(conn: Connection, intentional = false): Promise<void> {
@@ -890,7 +1089,7 @@ async function detach(conn: Connection, intentional = false): Promise<void> {
   const token = conn.token;
   const role = conn.role;
   let removedAccountId: string | null = null;
-  conn.roomCode = null; conn.seat = null; conn.token = null; conn.role = null;
+  conn.roomCode = null; conn.seat = null; conn.token = null; conn.role = null; conn.name = null;
   if (!code || !token || !role) return;
 
   const updated = await mutateRoom(code, (room) => {
@@ -985,6 +1184,47 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         emote,
         at: now,
       });
+      return;
+    }
+
+    if (msg.type === 'CHAT_SEND') {
+      if (conn.role === 'spectator') return sendChatError(conn, 'Spectators can read match chat but cannot send messages.');
+      if (!conn.roomCode || !conn.seat || !conn.token || conn.role !== 'player' || !conn.name) {
+        return sendChatError(conn, 'Join a room before using match chat.');
+      }
+
+      const normalizedInput = String(msg.text || '')
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!normalizedInput) return sendChatError(conn, 'Enter a message first.');
+      if (Array.from(normalizedInput).length > CHAT_MESSAGE_MAX_CHARS) {
+        return sendChatError(conn, `Messages can be up to ${CHAT_MESSAGE_MAX_CHARS} characters.`);
+      }
+
+      const now = Date.now();
+      const event: ChatMessage = {
+        id: crypto.randomUUID(),
+        roomCode: conn.roomCode,
+        seat: conn.seat,
+        name: conn.name,
+        text: cleanChatText(normalizedInput),
+        at: now,
+      };
+      let result: ChatAppendResult;
+      try {
+        result = await appendChatMessage(conn, event);
+      } catch (error) {
+        console.error('[brasta room chat append]', error);
+        return sendChatError(conn, 'Match chat is temporarily unavailable. Try again.');
+      }
+      if (result === 'rate-limited') return sendChatError(conn, 'Wait a moment before sending another message.');
+      if (result === 'not-started') return sendChatError(conn, 'Match chat opens when the game starts.');
+      if (result === 'missing-room') return sendChatError(conn, 'That room no longer exists.');
+      if (result === 'invalid-session') return sendChatError(conn, 'Your room session is no longer valid.');
+
+      runtimeMetrics.chatMessages++;
+      await publishChat(event);
       return;
     }
 
@@ -1343,7 +1583,9 @@ export async function registerSocket(ws: WireSocket): Promise<Connection> {
     seat: null,
     token: null,
     role: null,
+    name: null,
     lastEmoteAt: 0,
+    lastChatAt: 0,
     lastHeartbeatAt: Date.now(),
   };
   localConnections.add(conn);
@@ -1388,5 +1630,10 @@ export async function health() {
     presenceLeaseRoomWrites: runtimeMetrics.presenceLeaseRoomWrites,
     roomEventPublishes: runtimeMetrics.roomEventPublishes,
     ignoredSelfRoomEvents: runtimeMetrics.ignoredSelfRoomEvents,
+    chatMessages: runtimeMetrics.chatMessages,
+    chatHistoryReads: runtimeMetrics.chatHistoryReads,
+    chatHistoryWrites: runtimeMetrics.chatHistoryWrites,
+    chatEventPublishes: runtimeMetrics.chatEventPublishes,
+    ignoredSelfChatEvents: runtimeMetrics.ignoredSelfChatEvents,
   };
 }
