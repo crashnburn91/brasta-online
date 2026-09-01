@@ -75,14 +75,14 @@
   display:flex;
   align-items:flex-start;
   justify-content:flex-end;
-  padding:70px 12px 12px;
-  background:rgba(2,12,8,.44);
-  backdrop-filter:blur(2px);
+  padding:calc(var(--brasta-site-nav-base,58px) + var(--brasta-topbar-base,64px) + env(safe-area-inset-top) + 8px) 12px 12px;
+  background:rgba(2,12,8,.18);
+  backdrop-filter:none;
 }
 .match-chat-backdrop[hidden]{display:none!important}
 .match-chat-drawer{
   width:min(370px,calc(100vw - 24px));
-  height:min(620px,calc(100dvh - 82px));
+  height:min(620px,calc(100dvh - var(--brasta-site-nav-base,58px) - var(--brasta-topbar-base,64px) - env(safe-area-inset-top) - 20px));
   min-height:360px;
   display:grid;
   grid-template-rows:auto minmax(0,1fr) auto auto;
@@ -260,7 +260,7 @@ body.brasta-chat-open{overflow:hidden!important}
 @media(max-width:800px){
   .topbar .match-chat-trigger{width:36px;height:34px}
   .match-chat-trigger svg{width:18px;height:18px}
-  .match-chat-backdrop{align-items:flex-end;padding:0;background:rgba(2,12,8,.58)}
+  .match-chat-backdrop{align-items:flex-end;padding:0;background:rgba(2,12,8,.58);backdrop-filter:blur(2px)}
   .match-chat-drawer{
     width:100%;
     height:min(72dvh,640px);

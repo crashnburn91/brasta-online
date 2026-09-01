@@ -136,7 +136,7 @@
       sender.textContent = own ? 'You' : message.name;
       const seat = document.createElement('span');
       seat.className = 'match-chat-seat';
-      seat.textContent = `Seat ${message.seat} · Team ${team}`;
+      seat.textContent = `Seat ${message.seat}`;
       const time = document.createElement('time');
       time.dateTime = new Date(message.at).toISOString();
       time.textContent = formatTime(message.at);

@@ -82,7 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.14" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
         <link rel="stylesheet" href="/emote-ui.css?v=0.1.3" />
-        <link rel="stylesheet" href="/chat-ui.css?v=0.1.0" />
+        <link rel="stylesheet" href="/chat-ui.css?v=0.1.1" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.4" />
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
       </head>
@@ -120,7 +120,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/emote-ui.js?v=0.1.4" strategy="afterInteractive" />
-        <Script src="/chat-ui.js?v=0.1.0" strategy="afterInteractive" />
+        <Script src="/chat-ui.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/mobile-game-header.js?v=0.1.4" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
