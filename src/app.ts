@@ -322,12 +322,15 @@ namespace BrastaApp {
     </div>`;
   }
 
+  function renderLastMove(className: string): string {
+    if (!state?.lastMove) return '';
+    return `<div class="last-move-banner ${className}"><span>LAST MOVE</span><b>${escapeHtml(state.lastMove)}</b></div>`;
+  }
+
   function renderBoard(): string {
     if (!state) return '';
     const looseSelectable = state.phase === 'play' && canLocalPlayerAct();
-    const lastMove = state.lastMove
-      ? `<div class="last-move-banner board-last-move"><span>LAST MOVE</span><b>${escapeHtml(state.lastMove)}</b></div>`
-      : '';
+    const lastMove = renderLastMove('board-last-move');
     const eventOverlay = state.phase === 'play' ? renderEventBanner(state.event, 'board') : '';
     return `<section class="table">${lastMove}${eventOverlay}${renderDeckStack()}<div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
   }
@@ -453,12 +456,12 @@ namespace BrastaApp {
       ? `<span class="empty-note ranked-round-countdown-copy">Next ranked round in <b data-ranked-round-countdown data-deadline="${roundAdvanceAt}" data-server-now="${rankedServerNow}">10</b>s…</span>`
       : `<button class="primary" data-next-round>Next Round</button><button data-end-match>End Match</button>`;
     if (!rankedRound && context === 'online' && !onlineSession?.isHost) controls = '<span class="empty-note">Waiting for the host to start the next round.</span>';
-    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderEventBanner(state.event, 'round')}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
+    return `<section class="round-end"><h2>Round ${state.round} complete</h2><p>First to <b>${state.targetScore}</b>${state.message.includes('tied') ? ` · ${escapeHtml(state.message)}` : ''}</p>${renderLastMove('round-last-move')}${renderEventBanner(state.event, 'round')}<table><thead><tr><th></th><th>Team A</th><th>Team B</th></tr></thead><tbody>${row('Aces', a.aces, b.aces)}${row('Jacks', a.jacks, b.jacks)}${row('Big 2', a.big2, b.big2)}${row('Big 10', a.big10, b.big10)}${row('Clubs majority', a.clubsMajority, b.clubsMajority)}${row('Cards majority', a.cardsMajority, b.cardsMajority)}${row('Brastas', a.brastas, b.brastas)}${row('Burned Jacks', a.burnedJacks, b.burnedJacks)}${row('Last pickup', a.lastPickup, b.lastPickup)}${row('ROUND TOTAL', a.total, b.total)}</tbody></table><div class="button-row">${controls}</div></section>`;
   }
   function renderMatchEnd(): string {
     if (!state || state.phase !== 'matchEnd') return '';
     const winner = state.score.A === state.score.B ? 'Tie match' : state.score.A > state.score.B ? 'Team A wins' : 'Team B wins';
-    return `<section class="round-end"><h2>${winner}</h2><p>First to ${state.targetScore}</p><p class="match-score">Team A ${state.score.A} — Team B ${state.score.B}</p>${context === 'online' ? '<p>Return home or reconnect to the room from the same browser.</p>' : '<div class="button-row"><button data-action="new">New Match</button></div>'}</section>`;
+    return `<section class="round-end"><h2>${winner}</h2><p>First to ${state.targetScore}</p>${renderLastMove('round-last-move')}<p class="match-score">Team A ${state.score.A} — Team B ${state.score.B}</p>${context === 'online' ? '<p>Return home or reconnect to the room from the same browser.</p>' : '<div class="button-row"><button data-action="new">New Match</button></div>'}</section>`;
   }
   function renderCover(): string {
     if (context !== 'local' || !state || !covered || state.phase === 'roundEnd' || state.phase === 'matchEnd') return '';

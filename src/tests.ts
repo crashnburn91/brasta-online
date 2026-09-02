@@ -152,6 +152,7 @@ namespace BrastaTests {
     assert(r.ok, r.error || 'last move failed');
     assert(r.state.score.A >= 220, `expected Team A to reach at least 220, got ${r.state.score.A}`);
     assert(r.state.phase === 'matchEnd', `expected matchEnd, got ${r.state.phase}`);
+    assert((r.state.lastMove || '').includes('played 2♠ loose'), `final match move was not preserved: ${r.state.lastMove}`);
   });
 
   test('a tie at the target continues to another round', () => {
@@ -167,6 +168,7 @@ namespace BrastaTests {
     assert(r.ok, r.error || 'last move failed');
     assert(r.state.score.A === 110 && r.state.score.B === 110, 'scores did not tie at 110');
     assert(r.state.phase === 'roundEnd', `tie should continue, got ${r.state.phase}`);
+    assert((r.state.lastMove || '').includes('played 2♠ loose'), `final round move was not preserved: ${r.state.lastMove}`);
   });
 
   test('capturing Big 2 produces a special announcement and last-move note', () => {

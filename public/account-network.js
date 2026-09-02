@@ -11,6 +11,12 @@
   WebSocket.prototype.send = function brastaAccountSend(data) {
     if (typeof data !== 'string') return originalSend.call(this, data);
 
+    // Brasta Bot uses its own WebSocket in the signed-in player's browser.
+    // Only the primary human game socket may inherit the account token.
+    if (this !== window.__BRASTA_PRIMARY_GAME_SOCKET__) {
+      return originalSend.call(this, data);
+    }
+
     let path = '';
     try { path = new URL(this.url, location.href).pathname; } catch {}
     if (path !== '/api/ws') return originalSend.call(this, data);

@@ -83,7 +83,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.14" />
-        <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
+        <link rel="stylesheet" href="/game-overlays.css?v=0.1.1" />
         <link rel="stylesheet" href="/emote-ui.css?v=0.1.3" />
         <link rel="stylesheet" href="/chat-ui.css?v=0.2.1" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.4" />
@@ -100,7 +100,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/player-profile.js?v=0.1.0" strategy="afterInteractive" />
-        <Script src="/account-network.js?v=0.6.1" strategy="afterInteractive" />
+        <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.7" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.6" strategy="afterInteractive" />
