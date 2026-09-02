@@ -485,7 +485,7 @@ namespace BrastaBot {
     ws.onopen = () => {
       if (socket !== ws) return;
       startPing();
-      send({ type: 'JOIN_ROOM', code, name: BOT_NAME, token: saved?.token || undefined });
+      send({ type: 'JOIN_ROOM', code, name: BOT_NAME, token: saved?.token || undefined, bot: true });
     };
     ws.onmessage = (event) => {
       try { handleMessage(JSON.parse(String(event.data))); }

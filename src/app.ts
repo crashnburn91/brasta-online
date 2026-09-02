@@ -695,6 +695,8 @@ namespace BrastaApp {
       seat: onlineSession?.seat || null,
       name: onlineSession?.name || '',
       ranked: Boolean(onlineRoom?.ranked),
+      botMatch: Boolean(onlineRoom?.botMatch),
+      chatEnabled: !onlineRoom?.botMatch,
       status: connectionStatus,
     };
     (window as any).__BRASTA_CHAT_CONTEXT__ = detail;

@@ -122,6 +122,7 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const guestSession = guestSocket.latest('SESSION')?.session;
   assert(guestSession?.token, 'Guest session was not created');
   const privateLobby = hostSocket.latest('ROOM_STATE');
+  assert(privateLobby.update.room.botMatch === false, `${choice}: human private room was incorrectly marked as a bot match`);
   assert(privateLobby.update.room.players.find((player: any) => player.seat === 1)?.name === `player_${hostId.slice(-4)}`, `${choice}: private host card did not use the Brasta username`);
   assert(privateLobby.update.room.players.find((player: any) => player.seat === 2)?.name === `player_${guestId.slice(-4)}`, `${choice}: private guest card did not use the Brasta username`);
 
@@ -374,11 +375,17 @@ async function runSignedHostBotStartScenario(server: ServerApi): Promise<void> {
     const activeBeforeStart = await server.getActiveMatchForAccount('signed-host-user');
     assert(activeBeforeStart?.roomCode === hostSession.code, 'Signed host room was not registered for cross-device resume');
 
-    await send(server, bot, { type: 'JOIN_ROOM', code: hostSession.code, name: 'Brasta Bot' });
+    await send(server, bot, { type: 'JOIN_ROOM', code: hostSession.code, name: 'Brasta Bot', bot: true });
     assert(botSocket.latest('SESSION')?.session?.seat === 2, 'Bot did not join seat 2');
 
     await send(server, host, { type: 'START_GAME' });
     assertSynced(hostSocket, botSocket, 'openingChoice');
+    assert(hostSocket.latest('ROOM_STATE')?.update?.room?.botMatch === true, 'Bot match was not identified in the room snapshot');
+
+    const botChatMessagesBefore = botSocket.count('CHAT_MESSAGE');
+    await send(server, host, { type: 'CHAT_SEND', text: 'Bots should not have chat' });
+    assert(/disabled for bot matches/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), 'Bot-match chat was not rejected by the server');
+    assert(botSocket.count('CHAT_MESSAGE') === botChatMessagesBefore, 'Bot-match chat leaked to the bot connection');
 
     await send(server, host, { type: 'ABANDON_MATCH' });
     assert(hostSocket.latest('ROOM_CLOSED')?.code === hostSession.code, 'Bot-match host did not receive room closure');

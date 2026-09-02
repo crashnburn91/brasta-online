@@ -66,7 +66,7 @@ export type WireSocket = {
 };
 
 type PlayerExperienceSummary = { level: number; title: string; progressPercent: number; progressLabel: string };
-type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; experience?: PlayerExperienceSummary; accountId?: string };
+type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; experience?: PlayerExperienceSummary; accountId?: string; isBot?: boolean };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
 type ChatMessage = {
   id: string;
@@ -130,6 +130,7 @@ export type Connection = {
   chatRoomKind: 'private' | 'ranked' | null;
   chatMode: Brasta.Mode | null;
   chatActive: boolean;
+  chatBotMatch: boolean;
   chatConsented: boolean;
   chatBackendAvailable: boolean;
   blockedAccountIds: Set<string>;
@@ -200,6 +201,10 @@ function spectatorForToken(room: StoredRoom, token: string): Spectator | null {
   return room.spectators?.[token] || null;
 }
 function hostParticipant(room: StoredRoom): Participant | null { return participantForToken(room, room.hostToken); }
+function roomHasBot(room: StoredRoom): boolean {
+  return Object.values(room.seats).some((participant) => participant.isBot === true
+    || (participant.name === 'Brasta Bot' && !participant.accountId));
+}
 function hasAttachedPlayerSocket(room: StoredRoom, participant: Participant): boolean {
   for (const conn of localConnections) {
     if (
@@ -268,6 +273,7 @@ function roomSnapshot(room: StoredRoom) {
     spectators,
     spectatorCount: spectators.length,
     full: seats.every((s) => !!room.seats[String(s)]),
+    botMatch: roomHasBot(room),
     ranked: (() => {
       const ranked = rankedMeta(room);
       if (!ranked) return null;
@@ -564,7 +570,8 @@ function syncChatRoomContext(conn: Connection, room: StoredRoom): void {
   conn.chatRoomId = chatRoomId(room);
   conn.chatRoomKind = chatRoomKind(room);
   conn.chatMode = room.mode;
-  conn.chatActive = Boolean(room.started && room.gameState);
+  conn.chatBotMatch = roomHasBot(room);
+  conn.chatActive = Boolean(room.started && room.gameState && !conn.chatBotMatch);
 }
 
 function clearChatRoomContext(conn: Connection): void {
@@ -572,6 +579,7 @@ function clearChatRoomContext(conn: Connection): void {
   conn.chatRoomKind = null;
   conn.chatMode = null;
   conn.chatActive = false;
+  conn.chatBotMatch = false;
 }
 
 function chatRestrictionMessage(restriction: Awaited<ReturnType<typeof activeChatRestriction>>): string | null {
@@ -1410,6 +1418,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       if (!conn.roomCode || !conn.seat || !conn.token || conn.role !== 'player' || !conn.name) {
         return sendChatError(conn, 'Join a room before using match chat.');
       }
+      if (conn.chatBotMatch) return sendChatError(conn, 'Match chat is disabled for bot matches.');
       if (!conn.accountId) return sendChatError(conn, 'Sign in to send match-chat messages.');
       if (!conn.chatBackendAvailable) return sendChatError(conn, 'Match chat moderation is temporarily unavailable. Try again.');
       if (!conn.chatConsented) return sendChatError(conn, 'Accept the Community Guidelines before sending messages.');
@@ -1578,7 +1587,8 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (!name) throw new Error('Enter a display name.');
         const seat = activeSeats(room).find((s) => !room.seats[String(s)]);
         if (!seat) throw new Error('That room is full. You can still spectate it.');
-        const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now() };
+        const isBot = msg.bot === true && name === 'Brasta Bot';
+        const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now(), ...(isBot ? { isBot: true } : {}) };
         room.seats[String(seat)] = p;
         return p;
       }, false);
@@ -1946,6 +1956,7 @@ export async function registerSocket(ws: WireSocket): Promise<Connection> {
     chatRoomKind: null,
     chatMode: null,
     chatActive: false,
+    chatBotMatch: false,
     chatConsented: false,
     chatBackendAvailable: true,
     blockedAccountIds: new Set<string>(),

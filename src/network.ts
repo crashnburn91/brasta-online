@@ -14,6 +14,7 @@ namespace BrastaNet {
     spectators: RoomSpectator[];
     spectatorCount: number;
     full: boolean;
+    botMatch?: boolean;
     ranked?: {
       serverNow: number;
       turnSeat: Brasta.Seat | null;

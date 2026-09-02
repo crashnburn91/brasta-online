@@ -63,8 +63,35 @@
   body.brasta-mobile-merged-header .account-nav-controls{
     top:5px;
     right:max(96px,calc(env(safe-area-inset-right) + 96px));
+    width:40px;
     min-height:40px;
-    max-width:calc(100vw - 160px);
+    max-width:40px;
+    gap:0;
+  }
+
+  /* Social/tournament discovery belongs in the lobby. During a live match,
+     preserve the account entry point as an avatar-sized button and leave the
+     rest of the app bar to the match controls. */
+  body.brasta-mobile-merged-header .friends-dock,
+  body.brasta-mobile-merged-header .tournament-dock{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .account-dock{
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px;
+    min-height:40px;
+    padding:5px!important;
+    justify-content:center;
+  }
+  body.brasta-mobile-merged-header .account-dock-copy{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .account-dock img,
+  body.brasta-mobile-merged-header .account-dock .account-avatar-fallback{
+    width:30px;
+    height:30px;
   }
 
   body.brasta-mobile-merged-header .brasta-site-nav-account-space{

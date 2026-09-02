@@ -17,6 +17,7 @@
     role: null,
     seat: null,
     name: '',
+    chatEnabled: true,
     status: 'disconnected',
   };
   let capabilities = {
@@ -534,6 +535,7 @@
 
   function shouldShow() {
     return Boolean(context.active)
+      && context.chatEnabled !== false
       && Boolean(currentRoom)
       && Boolean(document.querySelector('.topbar .room-pill'))
       && Boolean(document.querySelector('.players'));
