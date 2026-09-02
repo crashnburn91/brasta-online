@@ -175,6 +175,12 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
     };
   }, [accessToken, open, refresh]);
 
+  useEffect(() => {
+    const onExternalUpdate = () => void refresh(true);
+    window.addEventListener('brasta-friends-updated', onExternalUpdate);
+    return () => window.removeEventListener('brasta-friends-updated', onExternalUpdate);
+  }, [refresh]);
+
   async function mutate(action: string, extra: Record<string, unknown>, success?: string) {
     if (busy) return;
     setBusy(true);
