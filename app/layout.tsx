@@ -76,6 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.1" />
         <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
         <link rel="stylesheet" href="/player-cards.css?v=0.1.6" />
+        <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
@@ -96,6 +97,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
+        <Script src="/player-profile.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.1" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.7" strategy="afterInteractive" />
