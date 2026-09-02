@@ -137,9 +137,6 @@
   body.brasta-mobile-merged-header .live-score-group{
     gap:3px;
   }
-  body.brasta-mobile-merged-header .live-score-divider{
-    height:18px;
-  }
   body.brasta-mobile-merged-header .mobile-score-round-pill{
     position:absolute;
     left:8px;

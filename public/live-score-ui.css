@@ -1,4 +1,4 @@
-/* Live match + current-round score strip. */
+/* Completed-round match score strip. */
 .topbar.live-score-enabled{
   gap:14px;
 }
@@ -40,11 +40,6 @@
 .team-a-live,.team-a-live b{color:#5eb8ff}
 .team-b-live,.team-b-live b{color:#ff6f67}
 .live-score-dash{color:#71877b}
-.live-score-divider{
-  width:1px;
-  height:24px;
-  background:#ffffff20;
-}
 .live-score-target{
   padding-left:2px;
   color:#d8b75e;
@@ -95,9 +90,6 @@
   }
   .live-team b{
     font-size:14px;
-  }
-  .live-score-divider{
-    height:20px;
   }
   .live-score-target{
     font-size:9px;
