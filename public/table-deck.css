@@ -1,0 +1,161 @@
+/* Remaining draw deck shown in the top-left of the game table. */
+.table-deck{
+  position:absolute;
+  top:13px;
+  left:15px;
+  z-index:5;
+  width:68px;
+  height:82px;
+  pointer-events:none;
+  user-select:none;
+  color:#d4af37;
+}
+.table-deck-label{
+  position:absolute;
+  top:0;
+  left:0;
+  color:#f1d77d99;
+  font-size:8px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:.16em;
+}
+.table-deck-stack{
+  position:absolute;
+  left:0;
+  top:14px;
+  width:49px;
+  height:64px;
+}
+.table-deck-card{
+  position:absolute;
+  left:calc(var(--deck-index) * 1.15px);
+  top:calc(var(--deck-index) * -1.15px);
+  width:43px;
+  height:60px;
+  border:1px solid #d9b855;
+  border-radius:5px;
+  background:
+    linear-gradient(135deg,#d4af3713 25%,transparent 25%) 0 0/7px 7px,
+    linear-gradient(315deg,#d4af370b 25%,transparent 25%) 0 0/7px 7px,
+    linear-gradient(180deg,#0c2a20,#071b15);
+  box-shadow:0 3px 7px #0008,inset 0 0 0 1px #0006;
+}
+.table-deck-card::before{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border:1px solid #d4af3750;
+  border-radius:3px;
+}
+.table-deck-card>span{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:#d4af37;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:18px;
+  font-weight:900;
+  text-shadow:0 1px 2px #000;
+}
+.table-deck-count{
+  position:absolute;
+  left:43px;
+  bottom:1px;
+  min-width:25px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  padding:0 6px;
+  border:1px solid #d4af3750;
+  border-radius:999px;
+  background:#061812e8;
+  color:#f1d77d;
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+  box-shadow:0 2px 6px #0006;
+}
+.table-deck.empty .table-deck-stack{
+  left:0;
+  top:14px;
+  width:43px;
+  height:60px;
+  border:1px dashed #d4af3745;
+  border-radius:5px;
+  background:#041a1338;
+}
+.table-deck.empty .table-deck-count{opacity:.65}
+
+@media(max-height:1080px), (max-width:900px){
+  .table-deck{
+    top:8px;
+    left:9px;
+    width:59px;
+    height:69px;
+  }
+  .table-deck-label{font-size:7px}
+  .table-deck-stack{
+    top:12px;
+    width:42px;
+    height:54px;
+  }
+  .table-deck-card{
+    left:calc(var(--deck-index) * .95px);
+    top:calc(var(--deck-index) * -.95px);
+    width:36px;
+    height:50px;
+    border-radius:4px;
+  }
+  .table-deck-card::before{inset:3px;border-radius:2px}
+  .table-deck-card>span{font-size:15px}
+  .table-deck-count{
+    left:36px;
+    bottom:0;
+    min-width:23px;
+    height:19px;
+    padding:0 5px;
+    font-size:9px;
+  }
+  .table-deck.empty .table-deck-stack{
+    top:12px;
+    width:36px;
+    height:50px;
+  }
+}
+
+@media(max-width:600px){
+  .table-deck{
+    top:6px;
+    left:6px;
+    width:51px;
+    height:59px;
+  }
+  .table-deck-label{display:none}
+  .table-deck-stack{
+    top:1px;
+    width:37px;
+    height:49px;
+  }
+  .table-deck-card{
+    left:calc(var(--deck-index) * .75px);
+    top:calc(var(--deck-index) * -.75px);
+    width:32px;
+    height:45px;
+  }
+  .table-deck-card>span{font-size:13px}
+  .table-deck-count{
+    left:31px;
+    bottom:0;
+    min-width:20px;
+    height:18px;
+    padding:0 4px;
+    font-size:8px;
+  }
+  .table-deck.empty .table-deck-stack{
+    top:1px;
+    width:32px;
+    height:45px;
+  }
+}
