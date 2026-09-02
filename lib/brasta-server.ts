@@ -935,6 +935,24 @@ async function broadcastLocalRoom(code: string, suppliedRoom?: StoredRoom): Prom
   }
 }
 
+function clearConnectionRoom(conn: Connection): void {
+  conn.roomCode = null;
+  conn.seat = null;
+  conn.token = null;
+  conn.role = null;
+  conn.name = null;
+  clearChatRoomContext(conn);
+  clearChatIdentity(conn);
+}
+
+function broadcastLocalRoomClosed(code: string, message: string): void {
+  for (const conn of localConnections) {
+    if (conn.closed || conn.roomCode !== code) continue;
+    sendJson(conn, { type: 'ROOM_CLOSED', code, message });
+    clearConnectionRoom(conn);
+  }
+}
+
 type EmoteEvent = {
   id: string;
   roomCode: string;
@@ -1077,14 +1095,26 @@ async function ensureSubscriber(): Promise<void> {
     if (channel === EVENT_CHANNEL) {
       let code = payload;
       let source = '';
+      let kind = '';
+      let message = '';
       try {
-        const event = JSON.parse(payload) as { code?: unknown; source?: unknown };
+        const event = JSON.parse(payload) as { code?: unknown; source?: unknown; kind?: unknown; message?: unknown };
         code = cleanCode(event?.code);
         source = String(event?.source || '');
+        kind = String(event?.kind || '');
+        message = String(event?.message || '')
+          .replace(/[\u0000-\u001f\u007f]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 160) || 'The private match was abandoned.';
       } catch {}
       if (!code) return;
       if (source && source === REALTIME_INSTANCE_ID) {
         runtimeMetrics.ignoredSelfRoomEvents++;
+        return;
+      }
+      if (kind === 'closed') {
+        broadcastLocalRoomClosed(code, message);
         return;
       }
       void broadcastLocalRoom(code);
@@ -1143,6 +1173,18 @@ async function publishRoom(code: string, room?: StoredRoom): Promise<void> {
       source: REALTIME_INSTANCE_ID,
     }));
   }
+}
+
+async function publishRoomClosed(code: string, message: string): Promise<void> {
+  broadcastLocalRoomClosed(code, message);
+  if (!redis) return;
+  runtimeMetrics.roomEventPublishes++;
+  await redis.publish(EVENT_CHANNEL, JSON.stringify({
+    code,
+    source: REALTIME_INSTANCE_ID,
+    kind: 'closed',
+    message,
+  }));
 }
 
 async function makeRoomCode(): Promise<string> {
@@ -1641,6 +1683,37 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
     if (msg.type === 'LEAVE_ROOM') {
       await detach(conn, true);
       sendJson(conn, { type: 'NOTICE', message: 'Left room.' });
+      return;
+    }
+
+    if (msg.type === 'ABANDON_MATCH') {
+      const code = conn.roomCode;
+      const seat = conn.seat;
+      const token = conn.token;
+      if (!code || !seat || !token || conn.role !== 'player') return sendError(conn, 'Join a private match before abandoning it.');
+
+      const lockToken = await acquireLock(code);
+      if (!lockToken) return sendError(conn, 'Room is busy. Try again.');
+      let closedMessage = '';
+      try {
+        const room = await loadRoom(code);
+        if (!room) return sendError(conn, 'That room no longer exists.');
+        const participant = room.seats[String(seat)];
+        if (!participant || participant.token !== token || participant.connectionId !== conn.id) {
+          return sendError(conn, 'Your room session is no longer valid.');
+        }
+        if (rankedMeta(room)) return sendError(conn, 'Ranked matches must use Forfeit Match.');
+        if (!room.started || !room.gameState || room.gameState.phase === 'matchEnd') {
+          return sendError(conn, 'There is no active private match to abandon.');
+        }
+
+        closedMessage = `${participant.name} abandoned the private match.`;
+        await clearRoomActiveMatches(room);
+        await deleteRoom(code);
+      } finally {
+        await releaseLock(code, lockToken);
+      }
+      if (closedMessage) await publishRoomClosed(code, closedMessage);
       return;
     }
 

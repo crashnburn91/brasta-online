@@ -73,20 +73,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
         <link rel="stylesheet" href="/learn-brasta-polish.css?v=0.19.1" />
-        <link rel="stylesheet" href="/live-score-ui.css?v=0.15.1" />
+        <link rel="stylesheet" href="/live-score-ui.css?v=0.15.3" />
         <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
         <link rel="stylesheet" href="/player-cards.css?v=0.1.6" />
         <link rel="stylesheet" href="/table-deck.css?v=0.1.1" />
         <link rel="stylesheet" href="/deal-animation.css?v=0.1.1" />
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
-        <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
+        <link rel="stylesheet" href="/match-menu.css?v=0.12.1" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.14" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.1" />
         <link rel="stylesheet" href="/emote-ui.css?v=0.1.3" />
-        <link rel="stylesheet" href="/chat-ui.css?v=0.2.1" />
-        <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.4" />
+        <link rel="stylesheet" href="/chat-ui.css?v=0.2.2" />
+        <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.5" />
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
       </head>
       <body>
@@ -94,8 +94,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
-        <Script src="/live-score-ui.js?v=0.15.2" strategy="beforeInteractive" />
-        <Script src="/match-menu.js?v=0.12.0" strategy="beforeInteractive" />
+        <Script src="/live-score-ui.js?v=0.15.3" strategy="beforeInteractive" />
+        <Script src="/match-menu.js?v=0.12.1" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
@@ -112,7 +112,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/lobby-polish.js?v=8" strategy="afterInteractive" />
         <Script src="/hard-bot.js?v=0.18.1" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
-        <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
+        <Script src="/dist/bot.js?v=0.5.4" strategy="afterInteractive" />
         <Script src="/team-branding.js?v=0.15.5" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
         <Script src="/network-stability-v2.js?v=0.5.18" strategy="afterInteractive" />
@@ -125,8 +125,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/emote-ui.js?v=0.1.4" strategy="afterInteractive" />
-        <Script src="/chat-ui.js?v=0.2.1" strategy="afterInteractive" />
-        <Script src="/mobile-game-header.js?v=0.1.4" strategy="afterInteractive" />
+        <Script src="/chat-ui.js?v=0.2.2" strategy="afterInteractive" />
+        <Script src="/mobile-game-header.js?v=0.1.5" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>
     </html>

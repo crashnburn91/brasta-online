@@ -324,6 +324,12 @@ async function runChatHistoryLimitScenario(server: ServerApi): Promise<void> {
   assert((await server.health()).roomReads === readsBeforeBlock, 'Blocking a chat sender unexpectedly read the Redis gameplay room');
 
   await server.unregisterSocket(spectator);
+  await send(server, guest, { type: 'ABANDON_MATCH' });
+  assert(hostSocket.latest('ROOM_CLOSED')?.code === session.code, 'Private match host was not told that the room closed');
+  assert(guestSocket.latest('ROOM_CLOSED')?.code === session.code, 'Abandoning player was not told that the room closed');
+  assert(outsiderSocket.count('ROOM_CLOSED') === 0, 'Private match closure leaked into another room');
+  assert(!(await server.getActiveMatchForAccount(hostId)), 'Abandoned private match remained resumable for the host');
+  assert(!(await server.getActiveMatchForAccount(guestId)), 'Abandoned private match remained resumable for the guest');
   await send(server, outsider, { type: 'LEAVE_ROOM' });
   await server.unregisterSocket(outsider);
   await server.unregisterSocket(guest);
@@ -373,6 +379,11 @@ async function runSignedHostBotStartScenario(server: ServerApi): Promise<void> {
 
     await send(server, host, { type: 'START_GAME' });
     assertSynced(hostSocket, botSocket, 'openingChoice');
+
+    await send(server, host, { type: 'ABANDON_MATCH' });
+    assert(hostSocket.latest('ROOM_CLOSED')?.code === hostSession.code, 'Bot-match host did not receive room closure');
+    assert(botSocket.latest('ROOM_CLOSED')?.code === hostSession.code, 'Local bot did not receive room closure');
+    assert(!(await server.getActiveMatchForAccount('signed-host-user')), 'Abandoned bot match remained available through Resume Match');
 
     await server.unregisterSocket(bot);
     await server.unregisterSocket(host);

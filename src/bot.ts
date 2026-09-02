@@ -449,6 +449,11 @@ namespace BrastaBot {
       return;
     }
 
+    if (message.type === 'ROOM_CLOSED') {
+      disconnectBot(true);
+      return;
+    }
+
     if (message.type === 'ERROR') {
       console.warn('[Brasta bot]', String(message.message || 'Bot request rejected.'));
       lastActionKey = '';

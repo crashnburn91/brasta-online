@@ -26,6 +26,7 @@ namespace BrastaApp {
   let inviteRoomCode = '';
   let pendingFriendRoomMode: Brasta.Mode | null = null;
   let pendingAccountResume = false;
+  let abandonPending = false;
 
   const $ = <T extends HTMLElement = HTMLElement>(selector: string): T => document.querySelector(selector)! as T;
 
@@ -244,7 +245,6 @@ namespace BrastaApp {
   function renderHeader(): string {
     if (!state && context !== 'online') return '';
     const round = state?.round ?? 0;
-    const scores = state?.score ?? { A: 0, B: 0 };
     const roomPill = context === 'online' && onlineRoom
       ? `<span class="pill room-pill">Room ${onlineRoom.code}</span>${isSpectator() ? '<span class="pill spectator-pill">Spectating</span>' : ''}${onlineRoom.spectatorCount ? `<span class="pill watcher-pill">👁 ${onlineRoom.spectatorCount}</span>` : ''}<span class="connection ${connectionStatus}">${connectionStatus}</span>`
       : '';
@@ -256,7 +256,7 @@ namespace BrastaApp {
     const rankedTurnTimer = state?.phase === 'play' && turnDeadline
       ? `<span class="pill ranked-turn-timer" data-ranked-turn-timer data-deadline="${turnDeadline}" data-server-now="${rankedServerNow}" data-turn-seat="${onlineRoom?.ranked?.turnSeat || state.currentSeat}">TURN <b>30</b>s</span>`
       : '';
-    return `<header class="topbar"><div><strong>Brasta</strong>${round ? `<span class="pill">Round ${round}</span>` : ''}${roomPill}</div><div class="scoreline"><span>Team A <b>${scores.A}</b></span><span>Team B <b>${scores.B}</b></span>${rankedTurnTimer}${state ? `<span class="target-score">First to ${state.targetScore}</span>` : ''}</div><nav>${nav}</nav></header>`;
+    return `<header class="topbar"><div><strong>Brasta</strong>${round ? `<span class="pill">Round ${round}</span>` : ''}${roomPill}</div><div class="scoreline">${rankedTurnTimer}${state ? `<span class="target-score">First to ${state.targetScore}</span>` : ''}</div><nav>${nav}</nav></header>`;
   }
 
   function renderPlayerCardBacks(count: number): string {
@@ -657,9 +657,20 @@ namespace BrastaApp {
         render();
       }
       else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; emitChatContext(); render(); }
+      else if (event.type === 'roomClosed') {
+        const code = onlineRoom?.code || onlineSession?.code || '';
+        const role = onlineSession?.role || 'player';
+        abandonPending = false;
+        onlineClient?.close(); onlineClient = null; onlineRoom = null; onlineSession = null; state = null; inviteRoomCode = ''; connectionStatus = 'disconnected'; lastOnlineRevision = -1; context = null; resetInteraction(); notice = event.message; emitChatContext(); if (code) BrastaNet.clearSession(code, role); history.replaceState({}, '', location.pathname); render();
+        window.dispatchEvent(new CustomEvent('brasta-match-abandoned', { detail: { message: event.message } }));
+      }
       else if (event.type === 'error') {
         commandPending = false;
         lastError = event.message;
+        if (abandonPending) {
+          abandonPending = false;
+          window.dispatchEvent(new CustomEvent('brasta-abandon-match-error', { detail: { message: event.message } }));
+        }
         if (pendingFriendRoomMode) {
           pendingFriendRoomMode = null;
           window.dispatchEvent(new CustomEvent('brasta-friend-room-create-error', { detail: { message: event.message } }));
@@ -683,6 +694,7 @@ namespace BrastaApp {
       role: onlineSession?.role || null,
       seat: onlineSession?.seat || null,
       name: onlineSession?.name || '',
+      ranked: Boolean(onlineRoom?.ranked),
       status: connectionStatus,
     };
     (window as any).__BRASTA_CHAT_CONTEXT__ = detail;
@@ -850,6 +862,20 @@ namespace BrastaApp {
       || onlineSession?.role !== 'player'
     ) return;
     client().rankedTurnTimeout();
+  });
+
+  window.addEventListener('brasta-abandon-match', () => {
+    if (abandonPending) return;
+    if (context !== 'online' || !onlineRoom?.started || !state || onlineSession?.role !== 'player') {
+      window.dispatchEvent(new CustomEvent('brasta-abandon-match-error', { detail: { message: 'There is no active private match to abandon.' } }));
+      return;
+    }
+    if (currentRoomIsRanked()) {
+      window.dispatchEvent(new CustomEvent('brasta-abandon-match-error', { detail: { message: 'Ranked matches must use Forfeit Match.' } }));
+      return;
+    }
+    abandonPending = true;
+    client().abandonMatch();
   });
 
   window.addEventListener('brasta-auth-changed', () => {

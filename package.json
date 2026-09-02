@@ -11,7 +11,7 @@
     "build:realtime": "npm run sync:engine && npm run compile:realtime",
     "start:realtime": "node .realtime-dist/realtime/server.js",
     "verify:rules": "node public/dist/tests-bundle.js && node public/dist/release-tests-bundle.js && node public/dist/bot-tests-bundle.js",
-    "verify:client-glue": "node scripts/account-network-tests.mjs",
+    "verify:client-glue": "node scripts/account-network-tests.mjs && node scripts/match-controls-tests.mjs",
     "verify:online": "node .server-test-dist/src/server-integration-tests.js",
     "build": "npm run sync:engine && npm run build:client && npm run verify:rules && npm run verify:client-glue && npm run build:server-tests && npm run verify:online && npm run compile:realtime && next build",
     "start": "next start",

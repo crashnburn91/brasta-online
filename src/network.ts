@@ -38,6 +38,7 @@ namespace BrastaNet {
     | { type: 'status'; status: 'connecting' | 'connected' | 'disconnected' }
     | { type: 'session'; session: SessionInfo }
     | { type: 'room'; update: RoomUpdate }
+    | { type: 'roomClosed'; message: string }
     | { type: 'error'; message: string }
     | { type: 'notice'; message: string };
   type EventHandler = (event: ClientEvent) => void;
@@ -377,6 +378,12 @@ namespace BrastaNet {
         this.handler({ type: 'session', session });
       }
       else if (message.type === 'ROOM_STATE') this.handler({ type: 'room', update: message.update as RoomUpdate });
+      else if (message.type === 'ROOM_CLOSED') {
+        const code = normalizeCode(String(message.code || this.resume?.code || ''));
+        if (code) clearSession(code);
+        this.resume = null;
+        this.handler({ type: 'roomClosed', message: String(message.message || 'The private match was abandoned.') });
+      }
       else if (message.type === 'EMOTE') {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('brasta-emote-received', { detail: message.event }));
@@ -475,6 +482,7 @@ namespace BrastaNet {
     rankedTurnTimeout(): void { this.send({ type: 'RANKED_TURN_TIMEOUT' }); }
     nextRound(): void { this.send({ type: 'NEXT_ROUND' }); }
     endMatch(): void { this.send({ type: 'END_MATCH' }); }
+    abandonMatch(): void { this.send({ type: 'ABANDON_MATCH' }); }
     leaveRoom(): void { this.resume = null; this.send({ type: 'LEAVE_ROOM' }); }
     close(): void {
       this.stopped = true;

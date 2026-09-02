@@ -471,7 +471,7 @@
   }
 
   function updateTriggers() {
-    document.querySelectorAll('.match-chat-trigger').forEach((button) => {
+    document.querySelectorAll('.match-chat-trigger,.mobile-header-chat').forEach((button) => {
       const badge = button.querySelector('.match-chat-unread');
       if (badge) {
         badge.textContent = unread > 9 ? '9+' : String(unread);
@@ -482,19 +482,9 @@
     });
 
     document.querySelectorAll('.mobile-header-menu').forEach((button) => {
-      let badge = button.querySelector('.match-chat-mobile-unread');
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'match-chat-mobile-unread';
-        badge.hidden = true;
-        button.appendChild(badge);
-      }
-      badge.textContent = unread > 9 ? '9+' : String(unread);
-      badge.hidden = unread < 1;
-      button.setAttribute('aria-label', unread ? `Open match menu, ${unread} unread chat message${unread === 1 ? '' : 's'}` : 'Open match menu');
+      button.querySelector('.match-chat-mobile-unread')?.remove();
+      button.setAttribute('aria-label', 'Open match menu');
     });
-
-    document.querySelectorAll('.match-chat-menu-item').forEach(updateMobileMenuItem);
   }
 
   function openChat() {
@@ -536,26 +526,10 @@
     return trigger;
   }
 
-  function buildMobileMenuItem() {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'match-menu-item match-chat-menu-item';
-    button.setAttribute('role', 'menuitem');
-    button.innerHTML = '<span>Match Chat</span><b class="match-chat-menu-count" hidden>0</b>';
-    button.addEventListener('click', () => {
-      document.querySelector('[data-match-menu-panel]')?.setAttribute('hidden', '');
-      document.querySelector('[data-match-menu-toggle]')?.setAttribute('aria-expanded', 'false');
-      document.querySelector('.mobile-header-menu')?.setAttribute('aria-expanded', 'false');
-      openChat();
-    });
-    return button;
-  }
-
-  function updateMobileMenuItem(item) {
-    const count = item?.querySelector('.match-chat-menu-count');
-    if (!count) return;
-    count.textContent = unread > 9 ? '9+' : String(unread);
-    count.hidden = unread < 1;
+  function buildMobileHeaderTrigger() {
+    const trigger = buildTrigger();
+    trigger.className = 'mobile-header-chat';
+    return trigger;
   }
 
   function shouldShow() {
@@ -580,6 +554,7 @@
 
     if (!shouldShow()) {
       document.querySelectorAll('.match-chat-trigger').forEach((node) => node.remove());
+      document.querySelectorAll('.mobile-header-chat').forEach((node) => node.remove());
       document.querySelectorAll('.match-chat-menu-item').forEach((node) => node.remove());
       unread = 0;
       closeChat();
@@ -592,14 +567,11 @@
       menu.insertBefore(buildTrigger(), menuToggle);
     }
     if (window.matchMedia('(max-width: 700px)').matches) {
-      const actionList = menu?.querySelector('[data-match-menu-actions]');
-      let menuItem = actionList?.querySelector('.match-chat-menu-item');
-      if (actionList && !menuItem) {
-        menuItem = buildMobileMenuItem();
-        actionList.insertBefore(menuItem, actionList.firstChild);
-      }
-      updateMobileMenuItem(menuItem);
+      const siteNav = document.querySelector('.brasta-site-nav-inner');
+      if (siteNav && !siteNav.querySelector('.mobile-header-chat')) siteNav.appendChild(buildMobileHeaderTrigger());
+      menu?.querySelector('.match-chat-menu-item')?.remove();
     } else {
+      document.querySelectorAll('.mobile-header-chat').forEach((node) => node.remove());
       menu?.querySelector('.match-chat-menu-item')?.remove();
     }
 
