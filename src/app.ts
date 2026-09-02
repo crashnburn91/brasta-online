@@ -332,7 +332,7 @@ namespace BrastaApp {
     const looseSelectable = state.phase === 'play' && canLocalPlayerAct();
     const lastMove = renderLastMove('board-last-move');
     const eventOverlay = state.phase === 'play' ? renderEventBanner(state.event, 'board') : '';
-    return `<section class="table">${lastMove}${eventOverlay}${renderDeckStack()}<div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
+    return `<section class="table" data-round="${state.round}" data-opening-resolution="${state.openingResolution || ''}">${lastMove}${eventOverlay}${renderDeckStack()}<div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
   }
 
   function renderOpening(): string {
