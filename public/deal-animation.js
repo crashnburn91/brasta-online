@@ -147,12 +147,6 @@
     }, sequenceCount * DEAL_GAP_MS + DEAL_DURATION_MS + 180);
   }
 
-  function removeFlights(run) {
-    window.setTimeout(() => {
-      document.querySelectorAll(`.deal-flight-card[data-deal-run="${run}"]`).forEach((node) => node.remove());
-    }, DEAL_DURATION_MS + 160);
-  }
-
   function flyCard(origin, destination, delay, run) {
     const start = origin.getBoundingClientRect();
     const end = destination.getBoundingClientRect();
@@ -173,7 +167,7 @@
 
     window.setTimeout(() => card.classList.add('dealing'), 16);
     playDealSound(delay);
-    removeFlights(run);
+    window.setTimeout(() => card.remove(), DEAL_DURATION_MS + Math.max(0, delay) + 160);
   }
 
   function animateKeepOpening(seats, table) {
