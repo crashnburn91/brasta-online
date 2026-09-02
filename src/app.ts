@@ -309,6 +309,20 @@ namespace BrastaApp {
     return `<div class="build ${selected ? 'selected' : ''} ${canSelect ? 'clickable' : ''}" data-build="${escapeAttr(build.id)}" role="button" aria-disabled="${canSelect ? 'false' : 'true'}" tabindex="${canSelect ? '0' : '-1'}"><div class="build-label">${Brasta.buildLabel(build)}</div><div class="build-cards">${cards.map((id) => cardHtml(id, { tiny: true })).join('')}</div>${build.modifiers.length ? `<div class="modifier-note">raised +${build.modifiers.map((id) => state!.cards[id]?.value ?? '?').join('+')}</div>` : ''}</div>`;
   }
 
+  function renderDeckStack(): string {
+    if (!state || isSpectator()) return '';
+    const remaining = Math.max(0, state.deck.length);
+    const shown = remaining > 0 ? Math.min(10, Math.max(1, Math.ceil(remaining / 4))) : 0;
+    const cards = Array.from({ length: shown }, (_, index) =>
+      `<span class="table-deck-card" style="--deck-index:${index}" aria-hidden="true"><span>B</span></span>`
+    ).join('');
+    return `<div class="table-deck ${remaining === 0 ? 'empty' : ''}" aria-label="${remaining} card${remaining === 1 ? '' : 's'} remaining in the deck">
+      <span class="table-deck-label">DECK</span>
+      <div class="table-deck-stack">${cards}</div>
+      <span class="table-deck-count">${remaining}</span>
+    </div>`;
+  }
+
   function renderBoard(): string {
     if (!state) return '';
     const looseSelectable = state.phase === 'play' && canLocalPlayerAct();
@@ -316,7 +330,7 @@ namespace BrastaApp {
       ? `<div class="last-move-banner board-last-move"><span>LAST MOVE</span><b>${escapeHtml(state.lastMove)}</b></div>`
       : '';
     const eventOverlay = state.phase === 'play' ? renderEventBanner(state.event, 'board') : '';
-    return `<section class="table">${lastMove}${eventOverlay}<div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
+    return `<section class="table">${lastMove}${eventOverlay}${renderDeckStack()}<div class="table-title">TABLE</div><div class="build-row">${state.builds.length ? state.builds.map(renderBuild).join('') : '<div class="empty-note">No builds</div>'}</div><div class="loose-row">${state.loose.length ? state.loose.map((id) => cardHtml(id, { clickable: looseSelectable, selected: selectedLoose.has(id) })).join('') : '<div class="empty-note">No loose cards</div>'}</div></section>`;
   }
 
   function renderOpening(): string {
