@@ -34,12 +34,20 @@
     }
 
     topbar.classList.add('live-score-enabled');
+    const matchA = Number(latestState.score?.A || 0);
+    const matchB = Number(latestState.score?.B || 0);
     const target = Number(latestState.targetScore || 110);
 
     const rankedTurnTimer = topbar.querySelector('.scoreline [data-ranked-turn-timer]');
     topbar.classList.toggle('ranked-turn-clock-visible', rankedTurnTimer instanceof HTMLElement);
 
     strip.innerHTML = `
+      <div class="live-score-group match-score-live" title="Match total from completed rounds">
+        <small>MATCH</small>
+        <span class="live-team team-a-live" aria-label="Blue Team ${matchA}"><b>${matchA}</b></span>
+        <span class="live-score-dash">–</span>
+        <span class="live-team team-b-live" aria-label="Red Team ${matchB}"><b>${matchB}</b></span>
+      </div>
       <span class="live-score-target">First to ${target}</span>`;
 
     // The core scoreline is hidden once the enhanced live-score strip is active.
