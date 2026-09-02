@@ -75,13 +75,13 @@ namespace BrastaApp {
   }
   function currentPlayerName(seat: Brasta.Seat): string { return state?.players.find((p) => p.seat === seat)?.name || `Seat ${seat}`; }
 
-  function playerRankBadge(rankName: string | null | undefined, seat: Brasta.Seat): string {
+  function playerRankBadge(rankName: string | null | undefined, _seat: Brasta.Seat): string {
     if (!rankName) return '';
     const renderer = (window as any).BrastaRankBadge?.render;
     if (typeof renderer === 'function') {
-      return `<button type="button" class="player-rank-badge" data-player-rank="${seat}" aria-label="View ${escapeAttr(rankName)} rank and player experience">${renderer(rankName, { size: 'small', className: 'player-card-rank' })}</button>`;
+      return `<span class="player-rank-badge" aria-label="${escapeAttr(rankName)} rank">${renderer(rankName, { size: 'small', className: 'player-card-rank' })}</span>`;
     }
-    return `<button type="button" class="player-rank-badge player-rank-fallback" data-player-rank="${seat}" aria-label="View ${escapeAttr(rankName)} rank and player experience">${escapeHtml(rankName)}</button>`;
+    return `<span class="player-rank-badge player-rank-fallback" aria-label="${escapeAttr(rankName)} rank">${escapeHtml(rankName)}</span>`;
   }
 
   function showPlayerRankDetails(player: BrastaNet.RoomPlayer): void {
@@ -282,7 +282,7 @@ namespace BrastaApp {
       const connection = context === 'online'
         ? `<span class="player-status ${disconnected ? 'offline' : 'online'}" aria-label="${disconnected ? 'Offline' : 'Online'}"><i></i><span class="player-status-label">${disconnected ? 'OFFLINE' : 'ONLINE'}</span></span>`
         : '';
-      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${starter ? 'data-starter="1"' : ''} ${you ? 'data-you="1"' : ''}>
+      const profileAttrs = context === 'online'\n        ? `data-player-profile="${escapeAttr(p.name || `Seat ${p.seat}`)}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="View ${escapeAttr(p.name || `Seat ${p.seat}`)} player profile"`\n        : '';\n      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${profileAttrs} ${starter ? 'data-starter="1"' : ''} ${you ? 'data-you="1"' : ''}>
         <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
         ${connection ? `<div class="player-connection-corner" style="position:absolute;right:8px;bottom:8px;top:auto;left:auto;z-index:4;display:flex;align-items:center;justify-content:flex-end;">${connection}</div>` : ''}
         <div class="player-card-top">
@@ -572,11 +572,6 @@ namespace BrastaApp {
 
   function bindGame(): void {
     bindCommonGameControls();
-    document.querySelectorAll<HTMLElement>('[data-player-rank]').forEach((el) => el.onclick = () => {
-      const seat = Number(el.dataset.playerRank);
-      const player = onlineRoom?.players.find((candidate) => candidate.seat === seat);
-      if (player?.rankName) showPlayerRankDetails(player);
-    });
     document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => el.onclick = () => { covered = false; render(); });
     document.querySelectorAll<HTMLElement>('[data-open]').forEach((el) => el.onclick = () => {
       if (!state) return; const choice = el.dataset.open as 'keep' | 'put';
