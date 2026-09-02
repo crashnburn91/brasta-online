@@ -9,7 +9,9 @@ const mobileHeader = readFileSync('public/mobile-game-header.css', 'utf8');
 const server = readFileSync('lib/brasta-server.ts', 'utf8');
 const bot = readFileSync('src/bot.ts', 'utf8');
 
-assert(!/latestState\.score/.test(liveStatus), 'Live header still reads running match scores');
+assert(/latestState\.score/.test(liveStatus), 'Live header no longer renders the completed-round match score');
+assert(liveStatus.includes('match-score-live'), 'Live header is missing the match-score group');
+assert(!liveStatus.includes('round-score-live'), 'Live header still renders the current-round running score');
 assert(!/scoreline[^\n]*Team A <b>/.test(app), 'Core header still renders the live Team A score');
 assert(!/scoreline[^\n]*Team B <b>/.test(app), 'Core header still renders the live Team B score');
 
@@ -29,4 +31,4 @@ assert(menu.includes('brasta-abandon-match'), 'Abandon confirmation does not rea
 assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does not enforce private-match abandonment');
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
-console.log('16 match-control, header, chat, and score-privacy regression checks passed');
+console.log('18 match-control, header, chat, and score-display regression checks passed');
