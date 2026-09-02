@@ -73,7 +73,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/home-brand.css?v=0.7.13" />
         <link rel="stylesheet" href="/brand-polish.css?v=0.9.1" />
         <link rel="stylesheet" href="/learn-brasta-polish.css?v=0.19.1" />
-        <link rel="stylesheet" href="/live-score-ui.css?v=0.15.3" />
+        <link rel="stylesheet" href="/live-score-ui.css?v=0.15.4" />
         <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
         <link rel="stylesheet" href="/player-cards.css?v=0.1.6" />
         <link rel="stylesheet" href="/table-deck.css?v=0.1.1" />
@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
-        <Script src="/live-score-ui.js?v=0.15.3" strategy="beforeInteractive" />
+        <Script src="/live-score-ui.js?v=0.15.4" strategy="beforeInteractive" />
         <Script src="/match-menu.js?v=0.12.1" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
