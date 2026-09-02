@@ -32,6 +32,7 @@ const oldOpening = `  export function resolveOpening(state: GameState, choice: '
       return { ok: false, state, error: 'Opening validation failed; expected four board cards and four cards per active hand.' };
     }
     next.phase = 'play';
+    next.openingResolution = choice;
     next.currentSeat = next.starterSeat;
     next.message = \`Seat \${next.currentSeat}'s turn.\`;
     return { ok: true, state: next };
@@ -66,6 +67,7 @@ const newOpening = `  export function resolveOpening(state: GameState, choice: '
       return { ok: false, state, error: 'Opening validation failed; expected four board cards and four cards per active hand.' };
     }
     next.phase = 'play';
+    next.openingResolution = choice;
     next.currentSeat = next.starterSeat;
     next.message = \`Seat \${next.currentSeat}'s turn.\`;
     return { ok: true, state: next };
