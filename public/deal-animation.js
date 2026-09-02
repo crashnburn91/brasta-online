@@ -83,6 +83,66 @@
     return [...seats.slice(starterIndex), ...seats.slice(0, starterIndex)];
   }
 
+  function yourSeatNumber() {
+    const card = document.querySelector('.player-chip.player-card[data-you="1"][data-seat]');
+    return card instanceof HTMLElement ? Number(card.dataset.seat || 0) : 0;
+  }
+
+  function realHandCards() {
+    return Array.from(document.querySelectorAll('.hand-area .hand > .card'));
+  }
+
+  function prepareHandReveal(seats) {
+    for (const seat of seats) {
+      seat.card.querySelectorAll('.player-card-back').forEach((card, index) => {
+        card.classList.toggle('deal-pending-mini-card', index < CARDS_PER_HAND);
+        card.classList.remove('deal-mini-card-arrived');
+      });
+    }
+
+    const yourSeat = yourSeatNumber();
+    if (!yourSeat) return;
+
+    realHandCards().forEach((card, index) => {
+      card.classList.toggle('deal-pending-hand-card', index < CARDS_PER_HAND);
+      card.classList.remove('deal-hand-card-arrived');
+    });
+  }
+
+  function revealDealtCard(seat, cardIndex) {
+    const miniCard = seat.card.querySelectorAll('.player-card-back')[cardIndex];
+    if (miniCard instanceof HTMLElement) {
+      miniCard.classList.remove('deal-pending-mini-card');
+      miniCard.classList.add('deal-mini-card-arrived');
+    }
+
+    if (seat.seat !== yourSeatNumber()) return;
+    const handCard = realHandCards()[cardIndex];
+    if (!(handCard instanceof HTMLElement)) return;
+    handCard.classList.remove('deal-pending-hand-card');
+    handCard.classList.add('deal-hand-card-arrived');
+  }
+
+  function dealDestination(seat, cardIndex) {
+    if (seat.seat === yourSeatNumber()) {
+      const handCard = realHandCards()[cardIndex];
+      if (handCard instanceof HTMLElement) return handCard;
+    }
+    return seat.card;
+  }
+
+  function finishHandReveal(run, seats) {
+    window.setTimeout(() => {
+      if (run !== animationRun) return;
+      for (const seat of seats) {
+        seat.card.querySelectorAll('.player-card-back').forEach((card) => {
+          card.classList.remove('deal-pending-mini-card');
+        });
+      }
+      realHandCards().forEach((card) => card.classList.remove('deal-pending-hand-card'));
+    }, CARDS_PER_HAND * Math.max(1, seats.length) * DEAL_GAP_MS + DEAL_DURATION_MS + 180);
+  }
+
   function removeFlights(run) {
     window.setTimeout(() => {
       document.querySelectorAll(`.deal-flight-card[data-deal-run="${run}"]`).forEach((node) => node.remove());
@@ -122,16 +182,24 @@
     const order = dealOrder(seats);
     let sequence = 0;
 
+    prepareHandReveal(seats);
+
     for (let cardIndex = 0; cardIndex < CARDS_PER_HAND; cardIndex += 1) {
       for (const seat of order) {
         const delay = sequence * DEAL_GAP_MS;
         window.setTimeout(() => {
           if (run !== animationRun || !seat.card.isConnected) return;
-          flyCard(deck, seat.card, 0, run);
+          flyCard(deck, dealDestination(seat, cardIndex), 0, run);
+          window.setTimeout(() => {
+            if (run !== animationRun) return;
+            revealDealtCard(seat, cardIndex);
+          }, Math.max(80, DEAL_DURATION_MS - 45));
         }, delay);
         sequence += 1;
       }
     }
+
+    finishHandReveal(run, seats);
   }
 
   function inspect() {
