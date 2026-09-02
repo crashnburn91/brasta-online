@@ -100,3 +100,30 @@
     pointer-events:auto!important;
   }
 }
+
+
+/* KEEP opening: reveal the four table cards only as each animated deal lands. */
+.loose-row > .card.deal-pending-board-card{
+  opacity:0!important;
+  transform:translateY(-7px) scale(.92)!important;
+  pointer-events:none!important;
+}
+.loose-row > .card.deal-board-card-arrived{
+  animation:brasta-board-card-arrive 175ms cubic-bezier(.18,.78,.28,1) both;
+}
+@keyframes brasta-board-card-arrive{
+  0%{opacity:0;transform:translateY(-8px) scale(.92)}
+  65%{opacity:1;transform:translateY(2px) scale(1.025)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+html.brasta-dealing-opening .loose-row > .card,
+html.brasta-dealing-opening .hand-area .card{
+  transition:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .loose-row > .card.deal-pending-board-card{
+    opacity:1!important;
+    transform:none!important;
+    pointer-events:auto!important;
+  }
+}
