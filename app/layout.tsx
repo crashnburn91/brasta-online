@@ -76,7 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/live-score-ui.css?v=0.15.1" />
         <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
         <link rel="stylesheet" href="/player-cards.css?v=0.1.6" />
-        <link rel="stylesheet" href="/table-deck.css?v=0.1.0" />
+        <link rel="stylesheet" href="/table-deck.css?v=0.1.1" />
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
