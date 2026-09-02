@@ -282,7 +282,10 @@ namespace BrastaApp {
       const connection = context === 'online'
         ? `<span class="player-status ${disconnected ? 'offline' : 'online'}" aria-label="${disconnected ? 'Offline' : 'Online'}"><i></i><span class="player-status-label">${disconnected ? 'OFFLINE' : 'ONLINE'}</span></span>`
         : '';
-      const profileAttrs = context === 'online'\n        ? `data-player-profile="${escapeAttr(p.name || `Seat ${p.seat}`)}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="View ${escapeAttr(p.name || `Seat ${p.seat}`)} player profile"`\n        : '';\n      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${profileAttrs} ${starter ? 'data-starter="1"' : ''} ${you ? 'data-you="1"' : ''}>
+      const profileAttrs = context === 'online'
+        ? `data-player-profile="${escapeAttr(p.name || `Seat ${p.seat}`)}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="View ${escapeAttr(p.name || `Seat ${p.seat}`)} player profile"`
+        : '';
+      return `<div class="player-chip player-card team-${team}-player ${active ? 'active' : ''} ${disconnected ? 'offline' : ''}" data-seat="${p.seat}" ${profileAttrs} ${starter ? 'data-starter="1"' : ''} ${you ? 'data-you="1"' : ''}>
         <span class="player-seat-corner" aria-label="Seat ${p.seat}">${p.seat}</span>
         ${connection ? `<div class="player-connection-corner" style="position:absolute;right:8px;bottom:8px;top:auto;left:auto;z-index:4;display:flex;align-items:center;justify-content:flex-end;">${connection}</div>` : ''}
         <div class="player-card-top">
