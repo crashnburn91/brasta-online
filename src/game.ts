@@ -71,6 +71,7 @@ namespace Brasta {
     roundStats: RoundStats;
     lastPickupTeam: Team | null;
     lastPickupSeat: Seat | null;
+    openingResolution: 'keep' | 'put' | null;
     event: string | null;
     lastMove: string | null;
     lastHandRound: number | null;
@@ -241,6 +242,7 @@ namespace Brasta {
       roundStats: { brastas: { A: 0, B: 0 }, burnedJacks: { A: 0, B: 0 } },
       lastPickupTeam: null,
       lastPickupSeat: null,
+      openingResolution: null,
       event: null,
       lastMove: null,
       lastHandRound: null,
@@ -286,6 +288,7 @@ namespace Brasta {
       return { ok: false, state, error: 'Opening validation failed; expected four board cards and four cards per active hand.' };
     }
     next.phase = 'play';
+    next.openingResolution = choice;
     next.currentSeat = next.starterSeat;
     next.message = `Seat ${next.currentSeat}'s turn.`;
     return { ok: true, state: next };
@@ -626,6 +629,7 @@ namespace Brasta {
     next.lastPickupTeam = null;
     next.lastPickupSeat = null;
     next.roundScore = null;
+    next.openingResolution = null;
     next.event = null;
     next.lastMove = null;
     next.lastHandRound = null;
