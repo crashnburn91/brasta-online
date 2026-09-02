@@ -77,6 +77,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/team-branding.css?v=0.15.5" />
         <link rel="stylesheet" href="/player-cards.css?v=0.1.6" />
         <link rel="stylesheet" href="/table-deck.css?v=0.1.1" />
+        <link rel="stylesheet" href="/deal-animation.css?v=0.1.0" />
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.12.0" />
@@ -117,6 +118,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/network-stability-v2.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/dealer-marker.js?v=0.5.20" strategy="afterInteractive" />
+        <Script src="/deal-animation.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/build-owner-ui.js?v=0.5.26" strategy="afterInteractive" />
         <Script src="/burn-callout.js?v=0.13.5" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
