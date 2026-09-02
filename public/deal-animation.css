@@ -65,3 +65,38 @@
 @media(prefers-reduced-motion:reduce){
   .deal-flight-card{display:none!important}
 }
+
+
+/* Hold the already-authoritative hand UI visually until each animated card arrives. */
+.player-card-back.deal-pending-mini-card{
+  opacity:0!important;
+}
+.player-card-back.deal-mini-card-arrived{
+  animation:brasta-mini-card-arrive 150ms cubic-bezier(.2,.75,.25,1) both;
+}
+.hand-area .hand > .card.deal-pending-hand-card{
+  opacity:0!important;
+  transform:translateY(-7px) scale(.93)!important;
+  pointer-events:none!important;
+}
+.hand-area .hand > .card.deal-hand-card-arrived{
+  animation:brasta-hand-card-arrive 175ms cubic-bezier(.18,.78,.28,1) both;
+}
+@keyframes brasta-mini-card-arrive{
+  from{opacity:0;transform:translateY(-5px) scale(.9)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes brasta-hand-card-arrive{
+  0%{opacity:0;transform:translateY(-8px) scale(.92)}
+  65%{opacity:1;transform:translateY(2px) scale(1.025)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .player-card-back.deal-pending-mini-card,
+  .hand-area .hand > .card.deal-pending-hand-card{
+    opacity:1!important;
+    transform:none!important;
+    pointer-events:auto!important;
+  }
+}
