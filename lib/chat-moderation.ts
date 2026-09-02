@@ -45,8 +45,25 @@ type ChatMessageRow = {
   room_id: string;
   room_code: string;
   sender_id: string;
+  sender_seat: number;
+  sender_username: string;
+  sender_display_name: string | null;
+  sender_avatar_url: string | null;
   content: string;
   status: 'visible' | 'removed';
+  created_at: string;
+  expires_at: string;
+};
+
+export type PersistedChatMessage = {
+  id: string;
+  roomCode: string;
+  seat: number;
+  senderId: string;
+  name: string;
+  avatarUrl: string | null;
+  text: string;
+  at: number;
 };
 
 type ReportRow = {
@@ -334,8 +351,14 @@ export async function persistChatMessage(args: {
     room_id: args.roomId,
     room_code: args.roomCode,
     sender_id: args.senderId,
+    sender_seat: args.senderSeat,
+    sender_username: args.senderUsername.slice(0, 20),
+    sender_display_name: args.senderDisplayName?.slice(0, 24) || null,
+    sender_avatar_url: safeChatAvatarUrl(args.senderAvatarUrl),
     content: args.content,
     status: 'visible',
+    created_at: args.createdAt,
+    expires_at: args.expiresAt,
   };
   if (memoryMode) {
     memoryMessages.set(args.id, row);
@@ -366,12 +389,48 @@ export async function persistChatMessage(args: {
   );
 }
 
-export async function deletePersistedChatMessage(messageId: string): Promise<void> {
+export async function loadPersistedChatHistory(
+  roomId: string,
+  roomCode: string,
+  requestedLimit = 50,
+): Promise<PersistedChatMessage[]> {
+  const limit = Math.max(1, Math.min(Math.floor(requestedLimit), 50));
+  const now = Date.now();
+  const rows = memoryMode
+    ? [...memoryMessages.values()]
+      .filter((row) => row.room_id === roomId && row.status === 'visible' && Date.parse(row.expires_at) > now)
+      .slice(-limit)
+    : (await rest<ChatMessageRow[]>(
+      `chat_messages?room_id=eq.${encodeURIComponent(roomId)}&status=eq.visible&expires_at=gt.${encodeURIComponent(new Date(now).toISOString())}&select=id,room_id,room_code,sender_id,sender_seat,sender_username,sender_display_name,sender_avatar_url,content,status,created_at,expires_at&order=created_at.desc,id.desc&limit=${limit}`,
+      {},
+      'Could not load chat history',
+    )).reverse();
+
+  return rows
+    .filter((row) => row.room_code === roomCode)
+    .map((row) => ({
+      id: row.id,
+      roomCode: row.room_code,
+      seat: row.sender_seat,
+      senderId: row.sender_id,
+      name: row.sender_display_name || row.sender_username,
+      avatarUrl: safeChatAvatarUrl(row.sender_avatar_url),
+      text: row.content,
+      at: Date.parse(row.created_at),
+    }));
+}
+
+export async function persistedChatMessageSender(messageId: string, roomId: string): Promise<string | null> {
   if (memoryMode) {
-    memoryMessages.delete(messageId);
-    return;
+    const message = memoryMessages.get(messageId);
+    return message?.room_id === roomId && message.status === 'visible' ? message.sender_id : null;
   }
-  await rest<void>(`chat_messages?id=eq.${encodeURIComponent(messageId)}`, { method: 'DELETE' }, 'Could not remove unsent chat message');
+  const rows = await rest<Array<{ sender_id: string }>>(
+    `chat_messages?id=eq.${encodeURIComponent(messageId)}&room_id=eq.${encodeURIComponent(roomId)}&status=eq.visible&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=sender_id&limit=1`,
+    {},
+    'Could not find that chat message',
+  );
+  return rows[0]?.sender_id || null;
 }
 
 export async function reportChatMessage(args: {

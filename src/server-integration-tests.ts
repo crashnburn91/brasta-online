@@ -163,6 +163,7 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(hostChat.event.avatarUrl === `https://example.com/${hostId}.png`, `${choice}: profile avatar was not included in chat`);
   assert(hostChat.event.text === 'Good move <b>', `${choice}: chat whitespace was not normalized`);
   assert(hostSocket.latest('ROOM_STATE').update.room.revision === revisionBeforeChat, `${choice}: chat changed the gameplay revision`);
+  assert(metricsAfterChat.roomReads === metricsBeforeChat.roomReads, `${choice}: chat send unexpectedly read the Redis gameplay room`);
   assert(metricsAfterChat.roomWrites === metricsBeforeChat.roomWrites, `${choice}: chat unexpectedly rewrote room state`);
   assert(metricsAfterChat.chatMessages === metricsBeforeChat.chatMessages + 1, `${choice}: chat message metric did not advance`);
   assert(metricsAfterChat.chatHistoryWrites === metricsBeforeChat.chatHistoryWrites + 1, `${choice}: chat history was not stored exactly once`);
@@ -294,6 +295,12 @@ async function runChatHistoryLimitScenario(server: ServerApi): Promise<void> {
   assert(history[0]?.text === 'Message 2', 'Chat history did not discard the oldest message');
   assert(history[49]?.text === 'Message 51', 'Chat history did not retain the newest message');
   assert(outsiderSocket.count('CHAT_MESSAGE') === 0, 'Match chat leaked into another room');
+
+  const readsBeforeBlock = (await server.health()).roomReads;
+  await send(server, guest, { type: 'CHAT_BLOCK', messageId: history[49].id });
+  assert(guestSocket.latest('CHAT_BLOCK_RESULT')?.blockedUserId === hostId, 'Persisted chat sender was not blocked');
+  assert(guestSocket.latest('CHAT_HISTORY')?.messages?.length === 0, 'Blocked player remained in refreshed chat history');
+  assert((await server.health()).roomReads === readsBeforeBlock, 'Blocking a chat sender unexpectedly read the Redis gameplay room');
 
   await server.unregisterSocket(spectator);
   await send(server, outsider, { type: 'LEAVE_ROOM' });
