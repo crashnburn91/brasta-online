@@ -71,7 +71,7 @@ namespace Brasta {
     roundStats: RoundStats;
     lastPickupTeam: Team | null;
     lastPickupSeat: Seat | null;
-    openingResolution: 'keep' | 'put' | null;
+    openingResolution?: 'keep' | 'put' | null;
     event: string | null;
     lastMove: string | null;
     lastHandRound: number | null;
