@@ -151,7 +151,7 @@ export default function AccountBridge() {
     const nextProfile = data as BrastaProfile | null;
     setProfile(nextProfile);
     setUsername(nextProfile?.username || '');
-    const preferredName = nextProfile?.display_name || nextProfile?.username || suggestedDisplayName(nextSession.user);
+    const preferredName = nextProfile?.username || suggestedDisplayName(nextSession.user);
     if (preferredName) {
       try { localStorage.setItem('brasta-online-last-name', preferredName); } catch {}
     }
@@ -416,7 +416,7 @@ export default function AccountBridge() {
     }
     const nextProfile = data as BrastaProfile;
     setProfile(nextProfile);
-    try { localStorage.setItem('brasta-online-last-name', nextProfile.display_name || nextProfile.username || clean); } catch {}
+    try { localStorage.setItem('brasta-online-last-name', nextProfile.username || clean); } catch {}
     window.dispatchEvent(new CustomEvent('brasta-auth-changed', {
       detail: { signedIn: true, userId: user.id, username: nextProfile.username },
     }));

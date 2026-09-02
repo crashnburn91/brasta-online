@@ -642,18 +642,24 @@ async function bindVerifiedAccountToSeat(
     return;
   }
   const accountId = identity.userId;
+  const publicUsername = cleanName(identity.username);
 
   const changed = await mutateRoom(roomCode, (room) => {
     const p = room.seats[String(seat)];
     if (!p || p.token !== seatToken) return null;
     if (p.accountId && p.accountId !== accountId) return null;
     p.accountId = accountId;
+    if (publicUsername) {
+      p.name = publicUsername;
+      applyNames(room);
+    }
     return p;
   }, false);
 
   if (changed?.result) {
     await bindParticipantActiveMatch(changed.room, changed.result);
     if (conn && conn.roomCode === roomCode && conn.seat === seat && conn.token === seatToken) {
+      conn.name = changed.result.name;
       await applyVerifiedChatIdentity(conn, identity);
     }
     try {
@@ -1437,7 +1443,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         roomCode: chatSession.roomCode,
         seat: chatSession.seat,
         senderId: chatSession.accountId,
-        name: conn.displayName || conn.username || conn.name,
+        name: conn.username || conn.name,
         avatarUrl: conn.avatarUrl,
         text: moderation.text,
         at: acceptedAt,
@@ -1454,7 +1460,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
           senderSeat: chatSession.seat,
           senderTeam: chatSession.seat % 2 === 1 ? 'A' : 'B',
           senderUsername: conn.username || conn.name,
-          senderDisplayName: conn.displayName || conn.name,
+          senderDisplayName: null,
           senderAvatarUrl: conn.avatarUrl,
           content: event.text,
           createdAt,
@@ -1516,7 +1522,10 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (reconnectToken) {
           const existing = participantForToken(room, reconnectToken);
           if (existing) {
-            if (name) existing.name = name;
+            // Once a seat belongs to an account, its public name is the
+            // verified Brasta username. A reconnect payload must not replace
+            // it with a provider display name or stale local preference.
+            if (name && !existing.accountId) existing.name = name;
             applyNames(room);
             existing.connectionId = conn.id;
             existing.lastSeen = Date.now();
@@ -1558,6 +1567,11 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (!existing) throw new Error('Your saved match seat is no longer available.');
         if (room.gameState?.phase === 'matchEnd') throw new Error('That match has already ended.');
         const wasHost = existing.token === room.hostToken;
+        const publicUsername = cleanName(identity.username);
+        if (publicUsername) {
+          existing.name = publicUsername;
+          applyNames(room);
+        }
         existing.token = makeToken();
         existing.connectionId = conn.id;
         existing.lastSeen = Date.now();

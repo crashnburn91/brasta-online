@@ -121,6 +121,9 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   await send(server, guest, { type: 'JOIN_ROOM', code: hostSession.code, name: `Guest-${choice}`, accessToken: chatAuthToken(guestId) });
   const guestSession = guestSocket.latest('SESSION')?.session;
   assert(guestSession?.token, 'Guest session was not created');
+  const privateLobby = hostSocket.latest('ROOM_STATE');
+  assert(privateLobby.update.room.players.find((player: any) => player.seat === 1)?.name === `player_${hostId.slice(-4)}`, `${choice}: private host card did not use the Brasta username`);
+  assert(privateLobby.update.room.players.find((player: any) => player.seat === 2)?.name === `player_${guestId.slice(-4)}`, `${choice}: private guest card did not use the Brasta username`);
 
   await send(server, host, { type: 'CHAT_ACCEPT_POLICY' });
   await send(server, guest, { type: 'CHAT_ACCEPT_POLICY' });
@@ -140,6 +143,8 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const beforeOpening = hostSocket.latest('ROOM_STATE');
   assert(beforeOpening.update.state.starterSeat === 1, 'Seat 1 should start round one');
   assert(beforeOpening.update.state.players[0].hand.length === 4, 'Starter should have four cards before opening choice');
+  assert(beforeOpening.update.state.players.find((player: any) => player.seat === 1)?.name === `player_${hostId.slice(-4)}`, `${choice}: in-match host card did not retain the Brasta username`);
+  assert(beforeOpening.update.state.players.find((player: any) => player.seat === 2)?.name === `player_${guestId.slice(-4)}`, `${choice}: in-match guest card did not retain the Brasta username`);
 
   await send(server, host, { type: 'OPENING_CHOICE', choice });
   assertSynced(hostSocket, guestSocket, 'play');
@@ -159,7 +164,7 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   const metricsAfterChat = await server.health();
   assert(hostChat?.event?.id && hostChat.event.id === guestChat?.event?.id, `${choice}: players did not receive the same chat event`);
   assert(hostChat.event.roomCode === hostSession.code, `${choice}: chat event escaped its room`);
-  assert(hostChat.event.seat === 1 && hostChat.event.senderId === hostId && hostChat.event.name === `Player ${hostId.slice(-4)}`, `${choice}: chat sender identity was not authoritative`);
+  assert(hostChat.event.seat === 1 && hostChat.event.senderId === hostId && hostChat.event.name === `player_${hostId.slice(-4)}`, `${choice}: chat did not use the authoritative Brasta username`);
   assert(hostChat.event.avatarUrl === `https://example.com/${hostId}.png`, `${choice}: profile avatar was not included in chat`);
   assert(hostChat.event.text === 'Good move <b>', `${choice}: chat whitespace was not normalized`);
   assert(hostSocket.latest('ROOM_STATE').update.room.revision === revisionBeforeChat, `${choice}: chat changed the gameplay revision`);
@@ -168,11 +173,25 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(metricsAfterChat.chatMessages === metricsBeforeChat.chatMessages + 1, `${choice}: chat message metric did not advance`);
   assert(metricsAfterChat.chatHistoryWrites === metricsBeforeChat.chatHistoryWrites + 1, `${choice}: chat history was not stored exactly once`);
 
-  host.lastChatAt = 0;
-  const guestMessagesBeforeFilter = guestSocket.count('CHAT_MESSAGE');
-  await send(server, host, { type: 'CHAT_SEND', text: 'you are a fucking loser' });
-  assert(/not allowed/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: profanity filter did not reject the message`);
-  assert(guestSocket.count('CHAT_MESSAGE') === guestMessagesBeforeFilter, `${choice}: filtered chat leaked to the room`);
+  const blockedChatSamples = [
+    'you are a fucking loser',
+    'shitty',
+    'shitdickmotherfucker',
+    'fuckyoumotherbrastaapp',
+    'donny fucked your 3 build',
+    'f.u.c.k this',
+    'f*ck this',
+    'phuck this',
+  ];
+  for (const sample of blockedChatSamples) {
+    host.lastChatAt = 0;
+    const guestMessagesBeforeFilter = guestSocket.count('CHAT_MESSAGE');
+    const hostErrorsBeforeFilter = hostSocket.count('CHAT_ERROR');
+    await send(server, host, { type: 'CHAT_SEND', text: sample });
+    assert(hostSocket.count('CHAT_ERROR') === hostErrorsBeforeFilter + 1, `${choice}: profanity filter accepted "${sample}"`);
+    assert(/not allowed/i.test(hostSocket.latest('CHAT_ERROR')?.message || ''), `${choice}: profanity filter returned the wrong error for "${sample}"`);
+    assert(guestSocket.count('CHAT_MESSAGE') === guestMessagesBeforeFilter, `${choice}: filtered chat leaked to the room for "${sample}"`);
+  }
 
   const guestChatCount = guestSocket.count('CHAT_MESSAGE');
   host.lastChatAt = Date.now();
@@ -246,12 +265,14 @@ async function runOpeningScenario(server: ServerApi, choice: 'keep' | 'put'): Pr
   assert(reconnectedRoom.update.state?.phase === 'play', `${choice}: reconnect did not restore play phase`);
   const reconnectedGuest = reconnectedRoom.update.room.players.find((player: any) => player.seat === 2);
   assert(reconnectedGuest?.connected === true, `${choice}: reconnect did not mark the guest online immediately`);
+  assert(reconnectedGuest?.name === `player_${guestId.slice(-4)}`, `${choice}: reconnect replaced the verified Brasta username`);
   assert(JSON.stringify(publicState(reconnectedRoom.update)) === authoritativeAfterPlay, `${choice}: reconnect did not restore the latest progressed hand`);
   const guestHandAfterReconnect = [...reconnectedRoom.update.state.players.find((p: any) => p.seat === 2).hand];
   assert(JSON.stringify(guestHandAfterReconnect) === JSON.stringify(guestHandBeforeReconnect), `${choice}: reconnect did not restore the same private hand`);
   const reconnectHistory = reconnectSocket.latest('CHAT_HISTORY');
   assert(reconnectHistory?.roomCode === hostSession.code, `${choice}: reconnect did not receive room chat history`);
   assert(reconnectHistory.messages?.some((message: any) => message.id === hostChat.event.id), `${choice}: reconnect history missed the match chat message`);
+  assert(reconnectHistory.messages?.find((message: any) => message.id === hostChat.event.id)?.name === `player_${hostId.slice(-4)}`, `${choice}: reconnect history exposed a provider display name`);
 
   // The still-connected opponent must remain on the exact same revision/state;
   // reconnecting one player must never require the other player to refresh.
@@ -413,6 +434,10 @@ async function main(): Promise<void> {
   process.env.BRASTA_CHAT_MODERATION_MEMORY = 'true';
   installChatAuthFetch();
   const server = await import('../lib/brasta-server');
+  const { moderateChatText } = await import('../lib/chat-moderation');
+  for (const safeSample of ['That was a classic capture', 'Scunthorpe won the round', 'Serve shiitake mushrooms']) {
+    assert(moderateChatText(safeSample).allowed, `Profanity filter rejected safe text: "${safeSample}"`);
+  }
   await runOpeningScenario(server, 'keep');
   await runOpeningScenario(server, 'put');
   await runChatHistoryLimitScenario(server);

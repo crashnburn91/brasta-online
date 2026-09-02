@@ -34,6 +34,24 @@ const categoryTerms: Record<string, string[]> = {
   ],
 };
 
+// Exact word boundaries keep ordinary words from being caught by short terms,
+// but abusive chat commonly joins a prohibited root to a suffix or another
+// word (for example, "fucked", "shitty", or "fuckyou..."). These roots are
+// safe to reject when they begin a token and cover those evasions without
+// reintroducing substring false positives such as "class" or "Scunthorpe".
+const rootedCategoryTerms: Record<string, string[]> = {
+  hate: [
+    'faggot', 'gook', 'kike', 'nigger', 'nigga', 'raghead', 'tranny',
+  ],
+  profanity: [
+    'asshole', 'bullshit', 'cocksucker', 'dickhead', 'dumbass', 'fuck', 'fck',
+    'fuk', 'motherfucker', 'phuck', 'shit',
+  ],
+  sexual: [
+    'blowjob', 'onlyfans', 'porn',
+  ],
+};
+
 type ChatRestrictionRow = {
   action_type: 'warning' | 'mute' | 'suspension' | 'ban' | 'reversal';
   reason: string;
@@ -166,9 +184,22 @@ function termPattern(term: string): RegExp {
   return new RegExp(`(?:^|[^a-z0-9])${pieces.join('[^a-z0-9]+')}(?=$|[^a-z0-9])`, 'i');
 }
 
+function rootedTermPattern(term: string): RegExp {
+  const root = canonicalText(term).replace(/[^a-z0-9]/g, '');
+  const flexibleRoot = [...root]
+    .map(escapeRegex)
+    .join('[^a-z0-9]*');
+  return new RegExp(`(?:^|[^a-z0-9])${flexibleRoot}[a-z0-9]*`, 'i');
+}
+
 const categoryPatterns = Object.fromEntries(Object.entries(categoryTerms).map(([category, terms]) => [
   category,
   terms.map(termPattern),
+])) as Record<string, RegExp[]>;
+
+const rootedCategoryPatterns = Object.fromEntries(Object.entries(rootedCategoryTerms).map(([category, terms]) => [
+  category,
+  terms.map(rootedTermPattern),
 ])) as Record<string, RegExp[]>;
 
 function configuredPatterns(): RegExp[] {
@@ -194,6 +225,15 @@ export function moderateChatText(value: unknown): ChatModerationDecision {
 
   const canonical = canonicalText(text);
   for (const [category, patterns] of Object.entries(categoryPatterns)) {
+    if (patterns.some((pattern) => pattern.test(canonical))) {
+      return {
+        allowed: false,
+        reasonCode: category,
+        message: 'That message includes content that is not allowed in Brasta chat.',
+      };
+    }
+  }
+  for (const [category, patterns] of Object.entries(rootedCategoryPatterns)) {
     if (patterns.some((pattern) => pattern.test(canonical))) {
       return {
         allowed: false,
@@ -413,7 +453,7 @@ export async function loadPersistedChatHistory(
       roomCode: row.room_code,
       seat: row.sender_seat,
       senderId: row.sender_id,
-      name: row.sender_display_name || row.sender_username,
+      name: row.sender_username,
       avatarUrl: safeChatAvatarUrl(row.sender_avatar_url),
       text: row.content,
       at: Date.parse(row.created_at),

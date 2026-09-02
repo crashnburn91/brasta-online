@@ -82,7 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.14" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.0" />
         <link rel="stylesheet" href="/emote-ui.css?v=0.1.3" />
-        <link rel="stylesheet" href="/chat-ui.css?v=0.2.0" />
+        <link rel="stylesheet" href="/chat-ui.css?v=0.2.1" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.4" />
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
       </head>
@@ -96,7 +96,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
-        <Script src="/account-network.js?v=0.6.0" strategy="afterInteractive" />
+        <Script src="/account-network.js?v=0.6.1" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.7" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.6" strategy="afterInteractive" />
@@ -111,7 +111,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/dist/bot.js?v=0.5.3" strategy="afterInteractive" />
         <Script src="/team-branding.js?v=0.15.5" strategy="afterInteractive" />
         <Script src="/connection-ui.js?v=0.5.17" strategy="afterInteractive" />
-        <Script src="/network-stability-v2.js?v=0.5.17" strategy="afterInteractive" />
+        <Script src="/network-stability-v2.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/seat-picker.js?v=0.5.18" strategy="afterInteractive" />
         <Script src="/dealer-marker.js?v=0.5.20" strategy="afterInteractive" />
         <Script src="/build-owner-ui.js?v=0.5.26" strategy="afterInteractive" />
@@ -120,7 +120,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/emote-ui.js?v=0.1.4" strategy="afterInteractive" />
-        <Script src="/chat-ui.js?v=0.2.0" strategy="afterInteractive" />
+        <Script src="/chat-ui.js?v=0.2.1" strategy="afterInteractive" />
         <Script src="/mobile-game-header.js?v=0.1.4" strategy="afterInteractive" />
         <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
       </body>

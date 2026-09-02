@@ -23,7 +23,7 @@
 
     try {
       const accessToken = localStorage.getItem(AUTH_TOKEN_KEY);
-      if (accessToken) message.authAccessToken = accessToken;
+      if (accessToken) message.accessToken = accessToken;
     } catch {}
     return originalSend.call(this, JSON.stringify(message));
   };

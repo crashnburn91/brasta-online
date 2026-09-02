@@ -204,20 +204,28 @@
 .match-chat-seat{color:#87a296;font-size:8px;font-weight:800;text-transform:uppercase}
 .match-chat-message-meta time{margin-left:auto;color:#70877c;font-size:8px;white-space:nowrap}
 .match-chat-safety-button{
-  width:25px;
-  height:25px;
+  position:relative;
+  z-index:2;
+  width:36px;
+  min-width:36px;
+  height:36px;
   display:grid;
   place-items:center;
+  margin:-5px -5px -5px 0;
   padding:0!important;
   border:0!important;
-  border-radius:8px!important;
+  border-radius:10px!important;
   background:transparent!important;
   color:#80988d!important;
-  font-size:9px!important;
-  letter-spacing:0!important;
   box-shadow:none!important;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
+.match-chat-safety-button svg{width:19px;height:19px;display:block;fill:currentColor;pointer-events:none}
 .match-chat-safety-button:hover,.match-chat-safety-button:focus-visible{background:rgba(255,255,255,.08)!important;color:#f2dd9d!important}
+.match-chat-safety-button:focus-visible{outline:2px solid #d8b75e;outline-offset:1px}
+.match-chat-safety-button:active{background:rgba(255,255,255,.12)!important;transform:scale(.96)}
 .match-chat-message p{margin:6px 0 0 35px;color:#f7f3e9;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
 .match-chat-status{
   min-height:0;
@@ -408,6 +416,7 @@ body.brasta-chat-open{overflow:hidden!important}
   }
   .match-chat-header{padding:12px 14px}
   .match-chat-message{width:min(90%,330px)}
+  .match-chat-safety-button{width:42px;min-width:42px;height:42px;margin:-8px -7px -8px 0}
 }
 @media(max-width:700px){
   body.brasta-mobile-merged-header .topbar .match-chat-trigger{

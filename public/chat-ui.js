@@ -35,6 +35,7 @@
   let lastSubmitAt = 0;
   let statusTimer = null;
   let selectedMessage = null;
+  let selectedSafetyButton = null;
   let blockConfirmation = false;
   let backdrop = null;
   let drawer = null;
@@ -231,8 +232,15 @@
         safety.type = 'button';
         safety.className = 'match-chat-safety-button';
         safety.setAttribute('aria-label', `Report or block ${message.name}`);
-        safety.textContent = '•••';
-        safety.addEventListener('click', () => openSafetySheet(message));
+        safety.setAttribute('aria-haspopup', 'dialog');
+        safety.setAttribute('aria-controls', 'brasta-chat-safety-sheet');
+        safety.title = 'Report or block player';
+        safety.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+        safety.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openSafetySheet(message, safety);
+        });
         header.appendChild(safety);
       }
 
@@ -302,12 +310,13 @@
     }
   }
 
-  function openSafetySheet(message) {
+  function openSafetySheet(message, trigger = null) {
     if (!capabilities.signedIn) {
       setStatus('Sign in to report or block a player.', true);
       return;
     }
     selectedMessage = message;
+    selectedSafetyButton = trigger instanceof HTMLElement ? trigger : null;
     blockConfirmation = false;
     if (safetyTitle) safetyTitle.textContent = `Safety tools for ${message.name}`;
     if (reportForm) reportForm.reset();
@@ -315,13 +324,24 @@
       blockButton.disabled = false;
       blockButton.textContent = 'Block Player';
     }
-    if (safetySheet) safetySheet.hidden = false;
+    if (safetySheet) {
+      safetySheet.hidden = false;
+      safetySheet.scrollTop = 0;
+      requestAnimationFrame(() => reportReason?.focus());
+    }
   }
 
-  function closeSafetySheet() {
+  function closeSafetySheet(restoreFocus = true) {
+    const trigger = selectedSafetyButton;
     selectedMessage = null;
+    selectedSafetyButton = null;
     blockConfirmation = false;
     if (safetySheet) safetySheet.hidden = true;
+    if (restoreFocus && trigger) {
+      requestAnimationFrame(() => {
+        if (trigger.isConnected) trigger.focus();
+      });
+    }
   }
 
   function ensureShell() {
@@ -362,8 +382,8 @@
         <input id="brasta-match-chat-input" type="text" maxlength="${MAX_CHARS}" autocomplete="off" enterkeyhint="send" placeholder="Message the table…">
         <button type="submit">Send</button>
       </form>
-      <section class="match-chat-safety-sheet" aria-label="Chat safety tools" hidden>
-        <header><div><span>CHAT SAFETY</span><b data-chat-safety-title>Safety tools</b></div><button type="button" data-chat-safety-close aria-label="Close safety tools">×</button></header>
+      <section id="brasta-chat-safety-sheet" class="match-chat-safety-sheet" role="dialog" aria-modal="true" aria-labelledby="brasta-chat-safety-title" hidden>
+        <header><div><span>CHAT SAFETY</span><b id="brasta-chat-safety-title" data-chat-safety-title>Safety tools</b></div><button type="button" data-chat-safety-close aria-label="Close safety tools">×</button></header>
         <form data-chat-report-form>
           <label>Reason<select name="reason" required>
             <option value="">Choose a reason</option>
@@ -494,7 +514,7 @@
 
   function closeChat() {
     open = false;
-    closeSafetySheet();
+    closeSafetySheet(false);
     if (backdrop) backdrop.hidden = true;
     document.body.classList.remove('brasta-chat-open');
     updateTriggers();
@@ -603,6 +623,8 @@
     ensureShell();
     const pendingHistory = window.__BRASTA_CHAT_HISTORY__;
     if (pendingHistory) setHistory(pendingHistory);
+    const pendingCapabilities = window.__BRASTA_CHAT_CAPABILITIES__;
+    if (pendingCapabilities) capabilities = { ...capabilities, ...pendingCapabilities };
 
     window.addEventListener('brasta-chat-context', (event) => {
       context = event.detail || context;

@@ -406,7 +406,9 @@ namespace BrastaNet {
       }
       else if (message.type === 'CHAT_CAPABILITIES') {
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('brasta-chat-capabilities', { detail: message.capabilities || {} }));
+          const detail = message.capabilities || {};
+          (window as any).__BRASTA_CHAT_CAPABILITIES__ = detail;
+          window.dispatchEvent(new CustomEvent('brasta-chat-capabilities', { detail }));
         }
       }
       else if (message.type === 'CHAT_REPORT_RESULT') {

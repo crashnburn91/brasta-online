@@ -3,7 +3,12 @@
   window.__BRASTA_NETWORK_STABILITY_V2__ = true;
 
   const DIAGNOSTICS_KEY = 'brasta-network-diagnostics-v1';
+  const AUTH_TOKEN_KEY = 'brasta-auth-access-token';
   const CONNECT_TIMEOUT_MS = 10000;
+
+  function authAccessToken() {
+    try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+  }
 
   function diagnostic(event, extra = {}) {
     try {
@@ -94,6 +99,7 @@
               code: this.resume.code,
               name: this.resume.name,
               token: this.resume.token,
+              accessToken: authAccessToken() || undefined,
             });
           }
           resolve();
