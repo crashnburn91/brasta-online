@@ -310,16 +310,15 @@ namespace BrastaApp {
   }
 
   function renderDeckStack(): string {
-    if (!state || isSpectator()) return '';
+    if (!state) return '';
     const remaining = Math.max(0, state.deck.length);
     const shown = remaining > 0 ? Math.min(10, Math.max(1, Math.ceil(remaining / 4))) : 0;
     const cards = Array.from({ length: shown }, (_, index) =>
       `<span class="table-deck-card" style="--deck-index:${index}" aria-hidden="true"><span>B</span></span>`
     ).join('');
-    return `<div class="table-deck ${remaining === 0 ? 'empty' : ''}" aria-label="${remaining} card${remaining === 1 ? '' : 's'} remaining in the deck">
+    return `<div class="table-deck ${remaining === 0 ? 'empty' : ''}" aria-label="Remaining deck">
       <span class="table-deck-label">DECK</span>
       <div class="table-deck-stack">${cards}</div>
-      <span class="table-deck-count">${remaining}</span>
     </div>`;
   }
 
