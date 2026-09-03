@@ -46,6 +46,7 @@ assert(specialMoves.includes('effectQueue.push({ key, layer })'), 'Special-move 
 assert(specialMoves.includes('navigator.vibrate(42)'), 'Brasta crest impact is missing its supported-device haptic');
 assert(specialMoveStyles.includes('position:fixed!important'), 'Brasta crest is not anchored to the viewport takeover layer');
 assert(specialMoveStyles.includes('height:100dvh!important'), 'Brasta crest does not cover the dynamic viewport');
+assert(specialMoveStyles.includes('pointer-events:none'), 'Brasta crest blocks the next player from taking their turn');
 assert(specialMoveStyles.includes('@media(prefers-reduced-motion:reduce)'), 'Brasta effect is missing its reduced-motion presentation');
 assert(lobbyPolish.includes('playBrastaRush(delay)'), 'Brasta audio is missing the card-rush layer');
 assert(lobbyPolish.includes('playBrastaImpact(delay + 0.39)'), 'Brasta audio is missing the crest-impact layer');

@@ -24,6 +24,7 @@
   padding:0!important;
   display:grid;
   place-items:center;
+  pointer-events:none;
   overflow:hidden;
   border:0!important;
   border-radius:0!important;
