@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 
 const app = readFileSync('src/app.ts', 'utf8');
 const chat = readFileSync('public/chat-ui.js', 'utf8');
@@ -37,7 +38,7 @@ assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does no
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.1.1'), 'Brasta effect controller is not loaded by the root layout');
+assert(layout.includes('/brasta-special-moves.js?v=0.1.2'), 'Brasta effect controller is not loaded by the root layout');
 assert(specialMoves.includes("name: 'brasta'"), 'Special-move registry is missing the Brasta renderer');
 assert(specialMoves.includes("banner.dataset.brastaEffectKind = 'brasta'"), 'Brasta banners are not protected from duplicate decoration');
 assert(specialMoves.includes("layer.className = 'event brasta-crest-event brasta-effect-layer'"), 'Brasta animation is still coupled to the replaceable game render tree');
@@ -50,5 +51,18 @@ assert(specialMoveStyles.includes('pointer-events:none'), 'Brasta crest blocks t
 assert(specialMoveStyles.includes('@media(prefers-reduced-motion:reduce)'), 'Brasta effect is missing its reduced-motion presentation');
 assert(lobbyPolish.includes('playBrastaRush(delay)'), 'Brasta audio is missing the card-rush layer');
 assert(lobbyPolish.includes('playBrastaImpact(delay + 0.39)'), 'Brasta audio is missing the crest-impact layer');
+
+const specialMoveSandbox = {
+  window: {},
+  document: { readyState: 'loading', addEventListener() {} },
+};
+runInNewContext(specialMoves, specialMoveSandbox);
+const pointsForEvent = specialMoveSandbox.window.BrastaSpecialMoves?.pointsForEvent;
+assert.equal(typeof pointsForEvent, 'function', 'Brasta point-total helper is unavailable');
+assert.equal(pointsForEvent('BRASTA! Team A +10'), 10, 'A standalone Brasta does not show +10');
+assert.equal(pointsForEvent('BRASTA! Team A +10 • BIG 2! Team A'), 20, 'Brasta + Big 2 does not show +20');
+assert.equal(pointsForEvent('BRASTA! Team A +10 • BIG 10! Team A'), 20, 'Brasta + Big 10 does not show +20');
+assert.equal(pointsForEvent('BRASTA! Team A +10 • LAST PICKUP! Team A +10'), 20, 'Brasta + Last Pickup does not show +20');
+assert.equal(pointsForEvent('BRASTA! Team A +10 • BIG 2 + BIG 10! Team A • LAST PICKUP! Team A +10'), 40, 'The full Brasta combination does not show +40');
 
 console.log('Match-control, header, chat, score-display, and special-move regression checks passed');

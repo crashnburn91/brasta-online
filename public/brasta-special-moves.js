@@ -13,6 +13,12 @@
 
   const flightSuits = ['♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
   const burstSuits = ['♠', '♦', '♣', '♥', '♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
+  const scoringBonuses = Object.freeze([
+    { name: 'a Brasta', label: 'BRASTA', pattern: /\bBRASTA!/i },
+    { name: 'Big 2', label: 'BIG 2', pattern: /\bBIG\s*2\b/i },
+    { name: 'Big 10', label: 'BIG 10', pattern: /\bBIG\s*10\b/i },
+    { name: 'Last Pickup', label: 'LAST PICKUP', pattern: /\bLAST\s+PICKUP!/i },
+  ]);
 
   function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, (character) => ({
@@ -70,10 +76,25 @@
     }).join('');
   }
 
+  function matchingBonuses(text) {
+    const value = String(text || '');
+    return scoringBonuses.filter((bonus) => bonus.pattern.test(value));
+  }
+
+  function eventPoints(text) {
+    return Math.max(10, matchingBonuses(text).length * 10);
+  }
+
+  function naturalList(items) {
+    if (items.length < 2) return items[0] || '';
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+  }
+
   function comboMarkup(text) {
-    const badges = [];
-    if (/BIG\s*2/i.test(text)) badges.push('<span class="brasta-combo-medallion">BIG 2</span>');
-    if (/BIG\s*10/i.test(text)) badges.push('<span class="brasta-combo-medallion">BIG 10</span>');
+    const badges = matchingBonuses(text)
+      .filter((bonus) => bonus.label !== 'BRASTA')
+      .map((bonus) => `<span class="brasta-combo-medallion">${bonus.label}</span>`);
     return badges.length ? badges.join('') : '<span>Board cleared</span>';
   }
 
@@ -126,10 +147,9 @@
 
     const team = eventTeam(banner, rawText);
     const actor = eventActor(team);
-    const hasBig2 = /BIG\s*2/i.test(rawText);
-    const hasBig10 = /BIG\s*10/i.test(rawText);
-    const combination = [hasBig2 ? 'Big 2' : '', hasBig10 ? 'Big 10' : ''].filter(Boolean);
-    const combinationLabel = combination.length ? ` with ${combination.join(' and ')}` : '';
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
 
     const layer = document.createElement('div');
     layer.className = 'event brasta-crest-event brasta-effect-layer';
@@ -139,9 +159,10 @@
     layer.dataset.eventText = rawText;
     layer.dataset.brastaRawEvent = rawText;
     if (team) layer.dataset.eventTeam = team;
+    layer.dataset.brastaTotalPoints = String(totalPoints);
     layer.setAttribute('role', 'status');
     layer.setAttribute('aria-live', 'polite');
-    layer.setAttribute('aria-label', `${actor} scored a Brasta for 10 points${combinationLabel}.`);
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
     layer.innerHTML = `
       <span class="brasta-crest-vignette" aria-hidden="true"></span>
       <span class="brasta-card-storm" aria-hidden="true">${flightCardsMarkup()}</span>
@@ -151,7 +172,7 @@
         <span class="brasta-crest-player">${escapeHtml(actor)}</span>
         <span class="brasta-crest-suits"><i>♠</i><i>♦</i><i>♣</i><i>♥</i></span>
         <strong class="brasta-crest-title">BRASTA<em>!</em></strong>
-        <span class="brasta-crest-score"><b>+10</b><small>POINTS</small></span>
+        <span class="brasta-crest-score"><b>+${totalPoints}</b><small>POINTS</small></span>
         <span class="brasta-crest-footer">${comboMarkup(rawText)}</span>
       </span>`;
 
@@ -195,7 +216,7 @@
     queueSync();
   }
 
-  window.BrastaSpecialMoves = Object.freeze({ refresh: queueSync });
+  window.BrastaSpecialMoves = Object.freeze({ refresh: queueSync, pointsForEvent: eventPoints });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot, { once: true });
