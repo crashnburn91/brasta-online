@@ -183,12 +183,13 @@ namespace BrastaTests {
   });
 
   test('capturing Big 10 produces a special announcement', () => {
-    const s = Brasta.createLabState('1v1');
-    s.players[0].hand = [card(s, '10', 'hearts')];
-    s.loose = [card(s, '10', 'diamonds')];
+    const s = Brasta.scenario('big10');
     const r = Brasta.applyCommand(s, { type: 'CAPTURE_LOOSE', seat: 1, cardId: card(s, '10', 'hearts'), looseIds: [card(s, '10', 'diamonds')] });
     assert(r.ok, r.error || 'capture failed');
     assert((r.state.event || '').includes('BIG 10!'), `missing Big 10 event: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('BRASTA!'), `standalone Big 10 incorrectly triggered Brasta: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('LAST PICKUP!'), `standalone Big 10 incorrectly triggered Last Pickup: ${r.state.event}`);
+    assert(r.state.loose.includes(card(s, 'A', 'clubs')), 'Big 10 lab capture did not leave the non-captured table card in place');
   });
 
   test('build action records a readable last move', () => {

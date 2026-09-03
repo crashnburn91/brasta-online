@@ -4,6 +4,7 @@
   window.__BRASTA_SPECIAL_MOVE_EFFECTS__ = true;
 
   const EFFECT_SHOW_MS = 2800;
+  const BIG10_SHOW_MS = 1900;
   const EFFECT_FADE_MS = 220;
   const hapticKeys = new Set();
   const presentedKeys = new Set();
@@ -13,6 +14,7 @@
 
   const flightSuits = ['♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
   const burstSuits = ['♠', '♦', '♣', '♥', '♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
+  const big10RushSuits = ['♠', '♥', '♣', '♦', '♣', '♥'];
   const scoringBonuses = Object.freeze([
     { name: 'a Brasta', label: 'BRASTA', pattern: /\bBRASTA!/i },
     { name: 'Big 2', label: 'BIG 2', pattern: /\bBIG\s*2\b/i },
@@ -76,6 +78,17 @@
     }).join('');
   }
 
+  function big10FlightMarkup() {
+    return big10RushSuits.map((suit) => {
+      const red = suit === '♦' || suit === '♥' ? ' red' : '';
+      return `<i class="big10-rush-card${red}"><b>${suit}</b></i>`;
+    }).join('');
+  }
+
+  function diamondBurstMarkup() {
+    return Array.from({ length: 12 }, () => '<i>♦</i>').join('');
+  }
+
   function matchingBonuses(text) {
     const value = String(text || '');
     return scoringBonuses.filter((bonus) => bonus.pattern.test(value));
@@ -91,15 +104,16 @@
     return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
   }
 
-  function comboMarkup(text) {
+  function bonusBadgesMarkup(text, primaryLabel) {
     const badges = matchingBonuses(text)
-      .filter((bonus) => bonus.label !== 'BRASTA')
+      .filter((bonus) => bonus.label !== primaryLabel)
       .map((bonus) => `<span class="brasta-combo-medallion">${bonus.label}</span>`);
-    return badges.length ? badges.join('') : '<span>Board cleared</span>';
+    return badges.join('');
   }
 
   function scheduleHaptic(banner) {
-    const key = `${banner.dataset.eventSeq || ''}|brasta`;
+    const kind = banner.dataset.specialMoveKind || 'special';
+    const key = `${banner.dataset.eventSeq || ''}|${kind}`;
     if (!key || hapticKeys.has(key)) return;
     hapticKeys.add(key);
     while (hapticKeys.size > 80) hapticKeys.delete(hapticKeys.values().next().value);
@@ -108,7 +122,8 @@
     if (reducedMotion || typeof navigator.vibrate !== 'function') return;
     window.setTimeout(() => {
       if (!banner.isConnected || document.visibilityState !== 'visible') return;
-      try { navigator.vibrate(42); } catch {}
+      const pattern = kind === 'big10' ? [18, 32, 46] : 42;
+      try { navigator.vibrate(pattern); } catch {}
     }, 480);
   }
 
@@ -133,7 +148,7 @@
         if (activeEffect?.key === next.key) activeEffect = null;
         playNextEffect();
       }, EFFECT_FADE_MS);
-    }, EFFECT_SHOW_MS);
+    }, next.showMs || EFFECT_SHOW_MS);
   }
 
   function decorateBrasta(banner, rawText) {
@@ -158,6 +173,7 @@
     layer.dataset.eventSeq = banner.dataset.eventSeq || '';
     layer.dataset.eventText = rawText;
     layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'brasta';
     if (team) layer.dataset.eventTeam = team;
     layer.dataset.brastaTotalPoints = String(totalPoints);
     layer.setAttribute('role', 'status');
@@ -173,11 +189,73 @@
         <span class="brasta-crest-suits"><i>♠</i><i>♦</i><i>♣</i><i>♥</i></span>
         <strong class="brasta-crest-title">BRASTA<em>!</em></strong>
         <span class="brasta-crest-score"><b>+${totalPoints}</b><small>POINTS</small></span>
-        <span class="brasta-crest-footer">${comboMarkup(rawText)}</span>
+        <span class="brasta-crest-footer">${bonusBadgesMarkup(rawText, 'BRASTA') || '<span>Board cleared</span>'}</span>
       </span>`;
 
     rememberEffect(key);
     effectQueue.push({ key, layer });
+    playNextEffect();
+  }
+
+  function decorateBig10(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'big10') return;
+    const key = `${banner.dataset.eventSeq || ''}|big10`;
+    banner.dataset.brastaEffectKind = 'big10';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+    const companionBonuses = bonuses.filter((bonus) => bonus.label !== 'BIG 10');
+    const prizeLabel = companionBonuses.length === 0
+      ? 'DIAMOND CAPTURED'
+      : companionBonuses.length === 1
+        ? 'DOUBLE PRIZE'
+        : 'TRIPLE PRIZE';
+
+    const layer = document.createElement('div');
+    layer.className = 'event big10-strike-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'big10';
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="big10-strike-vignette" aria-hidden="true"></span>
+      <span class="big10-strike-beam" aria-hidden="true"></span>
+      <span class="big10-card-rush" aria-hidden="true">${big10FlightMarkup()}</span>
+      <span class="big10-diamond-shockwave" aria-hidden="true"></span>
+      <span class="big10-diamond-burst" aria-hidden="true">${diamondBurstMarkup()}</span>
+      <span class="big10-strike-lockup" aria-hidden="true">
+        <span class="big10-prize-card">
+          <span class="big10-card-corner">10<i>♦</i></span>
+          <strong>♦</strong>
+          <span class="big10-card-corner bottom">10<i>♦</i></span>
+        </span>
+        <span class="big10-strike-copy">
+          <span class="big10-strike-player">${escapeHtml(actor)}</span>
+          <strong class="big10-strike-title">BIG <em>10</em></strong>
+          <span class="big10-strike-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="big10-strike-footer">
+            <small>${prizeLabel}</small>
+            <span class="big10-combo-badges">${bonusBadgesMarkup(rawText, 'BIG 10')}</span>
+          </span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: BIG10_SHOW_MS });
     playNextEffect();
   }
 
@@ -186,6 +264,11 @@
       name: 'brasta',
       matches: (text) => /\bBRASTA!/i.test(text),
       decorate: decorateBrasta,
+    },
+    {
+      name: 'big10',
+      matches: (text) => /\bBIG\s*10\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      decorate: decorateBig10,
     },
   ];
 

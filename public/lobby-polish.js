@@ -162,11 +162,15 @@
   }
 
   function playBig10Sound(delay = 0) {
+    playBrastaRush(delay);
+    playBrastaMetallicStrike(delay + 0.43);
     playNotes([
-      { frequency: 523.25, offset: 0, duration: 0.14, gain: 0.09 },
-      { frequency: 783.99, offset: 0.13, duration: 0.25, gain: 0.1 },
+      { frequency: 130.81, offset: 0.18, duration: 0.26, gain: 0.065 },
+      { frequency: 523.25, offset: 0.3, duration: 0.13, gain: 0.085 },
+      { frequency: 783.99, offset: 0.4, duration: 0.18, gain: 0.09 },
+      { frequency: 1046.5, offset: 0.51, duration: 0.36, gain: 0.105 },
     ], delay);
-    return 0.4;
+    return 0.9;
   }
 
   function playLastPickupSound(delay = 0) {
