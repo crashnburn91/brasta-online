@@ -1,6 +1,10 @@
 /* Rich special-move presentation. The controller in public/brasta-special-moves.js
    decorates the existing authoritative event banner; it never changes game state. */
 
+.event.brasta-effect-source{
+  visibility:hidden!important;
+}
+
 .event.brasta-crest-event{
   --brasta-team-accent:#d8b75e;
   --brasta-team-glow:#d8b75e4d;

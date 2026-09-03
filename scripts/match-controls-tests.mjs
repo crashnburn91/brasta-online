@@ -37,9 +37,12 @@ assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does no
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.1.0'), 'Brasta effect controller is not loaded by the root layout');
+assert(layout.includes('/brasta-special-moves.js?v=0.1.1'), 'Brasta effect controller is not loaded by the root layout');
 assert(specialMoves.includes("name: 'brasta'"), 'Special-move registry is missing the Brasta renderer');
 assert(specialMoves.includes("banner.dataset.brastaEffectKind = 'brasta'"), 'Brasta banners are not protected from duplicate decoration');
+assert(specialMoves.includes("layer.className = 'event brasta-crest-event brasta-effect-layer'"), 'Brasta animation is still coupled to the replaceable game render tree');
+assert(specialMoves.includes('document.body.append(next.layer)'), 'Brasta animation does not mount in the persistent presentation layer');
+assert(specialMoves.includes('effectQueue.push({ key, layer })'), 'Special-move effects cannot queue without interrupting one another');
 assert(specialMoves.includes('navigator.vibrate(42)'), 'Brasta crest impact is missing its supported-device haptic');
 assert(specialMoveStyles.includes('position:fixed!important'), 'Brasta crest is not anchored to the viewport takeover layer');
 assert(specialMoveStyles.includes('height:100dvh!important'), 'Brasta crest does not cover the dynamic viewport');

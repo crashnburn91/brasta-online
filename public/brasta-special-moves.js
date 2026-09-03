@@ -3,7 +3,12 @@
   if (window.__BRASTA_SPECIAL_MOVE_EFFECTS__) return;
   window.__BRASTA_SPECIAL_MOVE_EFFECTS__ = true;
 
+  const EFFECT_SHOW_MS = 2800;
+  const EFFECT_FADE_MS = 220;
   const hapticKeys = new Set();
+  const presentedKeys = new Set();
+  const effectQueue = [];
+  let activeEffect = null;
   let syncQueued = false;
 
   const flightSuits = ['♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
@@ -86,8 +91,39 @@
     }, 480);
   }
 
+  function rememberEffect(key) {
+    presentedKeys.add(key);
+    while (presentedKeys.size > 80) presentedKeys.delete(presentedKeys.values().next().value);
+  }
+
+  function playNextEffect() {
+    if (activeEffect || !effectQueue.length) return;
+    const next = effectQueue.shift();
+    if (!next?.layer) return;
+
+    activeEffect = next;
+    document.body.append(next.layer);
+    scheduleHaptic(next.layer);
+
+    window.setTimeout(() => {
+      next.layer.classList.add('brasta-event-leaving');
+      window.setTimeout(() => {
+        next.layer.remove();
+        if (activeEffect?.key === next.key) activeEffect = null;
+        playNextEffect();
+      }, EFFECT_FADE_MS);
+    }, EFFECT_SHOW_MS);
+  }
+
   function decorateBrasta(banner, rawText) {
     if (banner.dataset.brastaEffectKind === 'brasta') return;
+    const key = `${banner.dataset.eventSeq || ''}|brasta`;
+    banner.dataset.brastaEffectKind = 'brasta';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
     const team = eventTeam(banner, rawText);
     const actor = eventActor(team);
     const hasBig2 = /BIG\s*2/i.test(rawText);
@@ -95,13 +131,18 @@
     const combination = [hasBig2 ? 'Big 2' : '', hasBig10 ? 'Big 10' : ''].filter(Boolean);
     const combinationLabel = combination.length ? ` with ${combination.join(' and ')}` : '';
 
-    banner.dataset.brastaEffectKind = 'brasta';
-    banner.dataset.brastaRawEvent = rawText;
-    banner.classList.add('brasta-crest-event');
-    banner.setAttribute('role', 'status');
-    banner.setAttribute('aria-live', 'polite');
-    banner.setAttribute('aria-label', `${actor} scored a Brasta for 10 points${combinationLabel}.`);
-    banner.innerHTML = `
+    const layer = document.createElement('div');
+    layer.className = 'event brasta-crest-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored a Brasta for 10 points${combinationLabel}.`);
+    layer.innerHTML = `
       <span class="brasta-crest-vignette" aria-hidden="true"></span>
       <span class="brasta-card-storm" aria-hidden="true">${flightCardsMarkup()}</span>
       <span class="brasta-crest-shockwave" aria-hidden="true"></span>
@@ -114,7 +155,9 @@
         <span class="brasta-crest-footer">${comboMarkup(rawText)}</span>
       </span>`;
 
-    scheduleHaptic(banner);
+    rememberEffect(key);
+    effectQueue.push({ key, layer });
+    playNextEffect();
   }
 
   const renderers = [
