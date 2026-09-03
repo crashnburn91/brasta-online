@@ -81,7 +81,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/deal-animation.css?v=0.1.2" />
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
-        <link rel="stylesheet" href="/match-menu.css?v=0.12.1" />
+        <link rel="stylesheet" href="/match-menu.css?v=0.13.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
         <link rel="stylesheet" href="/no-scroll-layout.css?v=0.1.14" />
         <link rel="stylesheet" href="/game-overlays.css?v=0.1.1" />
@@ -96,7 +96,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/live-score-ui.js?v=0.15.4" strategy="beforeInteractive" />
-        <Script src="/match-menu.js?v=0.12.1" strategy="beforeInteractive" />
+        <Script src="/match-menu.js?v=0.13.0" strategy="beforeInteractive" />
         <Script src="/ranked-forfeit.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/home-wordmark.js?v=0.7.14" strategy="afterInteractive" />
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
@@ -124,7 +124,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/burn-callout.js?v=0.13.5" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
-        <Script src="/brasta-special-moves.js?v=0.3.0" strategy="afterInteractive" />
+        <Script src="/brasta-special-moves.js?v=0.3.1" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/emote-ui.js?v=0.1.4" strategy="afterInteractive" />
         <Script src="/chat-ui.js?v=0.2.3" strategy="afterInteractive" />

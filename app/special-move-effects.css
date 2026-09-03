@@ -1532,23 +1532,26 @@
   .power-pair-footer{margin-top:5px}
 }
 
-@media(prefers-reduced-motion:reduce){
-  .event.brasta-crest-event{
-    animation:none;
-    background:radial-gradient(circle at 50% 50%,#173428e8 0,#06100df5 72%)!important;
-  }
-  .event.big10-strike-event{
-    animation:none;
-    background:radial-gradient(circle at 50% 50%,#3d171dd9 0,#06100ddf 72%)!important;
-  }
-  .event.big2-crush-event{
-    animation:none;
-    background:radial-gradient(circle at 50% 50%,#143d2be8 0,#030906f2 72%)!important;
-  }
-  .event.power-pair-event{
-    animation:none;
-    background:linear-gradient(120deg,#123626e8,#35141be8)!important;
-  }
+/* Reduced Motion is an explicit Brasta preference instead of inheriting a
+   potentially surprising browser/OS default. Full special-move motion remains
+   on until the player enables this mode from the match menu. */
+:root[data-brasta-motion="reduced"] .event.brasta-crest-event{
+  animation:none;
+  background:radial-gradient(circle at 50% 50%,#173428e8 0,#06100df5 72%)!important;
+}
+:root[data-brasta-motion="reduced"] .event.big10-strike-event{
+  animation:none;
+  background:radial-gradient(circle at 50% 50%,#3d171dd9 0,#06100ddf 72%)!important;
+}
+:root[data-brasta-motion="reduced"] .event.big2-crush-event{
+  animation:none;
+  background:radial-gradient(circle at 50% 50%,#143d2be8 0,#030906f2 72%)!important;
+}
+:root[data-brasta-motion="reduced"] .event.power-pair-event{
+  animation:none;
+  background:linear-gradient(120deg,#123626e8,#35141be8)!important;
+}
+:root[data-brasta-motion="reduced"] :is(
   .brasta-crest-vignette,
   .brasta-card-storm,
   .brasta-crest-shockwave,
@@ -1568,7 +1571,9 @@
   .power-pair-diamond-cut,
   .power-pair-shockwave,
   .power-pair-clubs,
-  .power-pair-diamonds{display:none!important}
+  .power-pair-diamonds
+){display:none!important}
+:root[data-brasta-motion="reduced"] :is(
   .brasta-crest-seal,
   .brasta-crest-player,
   .brasta-crest-suits i,
@@ -1586,9 +1591,9 @@
   .power-pair-card,
   .power-pair-copy,
   .power-pair-score,
-  .power-pair-footer{
-    opacity:1;
-    transform:none;
-    animation:none;
-  }
+  .power-pair-footer
+){
+  opacity:1;
+  transform:none;
+  animation:none;
 }

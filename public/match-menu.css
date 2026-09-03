@@ -86,6 +86,29 @@
 .topbar .match-menu-panel .match-menu-item:hover{
   background:#ffffff0f!important;
 }
+.topbar .match-menu-panel .match-menu-motion-button{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.match-menu-motion-state{
+  min-width:34px;
+  padding:3px 7px;
+  border:1px solid #ffffff20;
+  border-radius:999px;
+  background:#ffffff08;
+  color:#9eafa6;
+  font-size:9px;
+  line-height:1.1;
+  text-align:center;
+  text-transform:uppercase;
+}
+.match-menu-motion-button[aria-checked="true"] .match-menu-motion-state{
+  border-color:#d8b75e66;
+  background:#d8b75e1c;
+  color:#f1d987;
+}
 .match-menu-danger{
   margin-top:8px;
   padding-top:8px;

@@ -35,11 +35,15 @@ assert(mobileHeader.includes('body.brasta-mobile-merged-header .account-dock-cop
 
 assert(menu.includes('Abandon Match'), 'Private-match menu is missing the abandon action');
 assert(menu.includes('brasta-abandon-match'), 'Abandon confirmation does not reach the game client');
+assert(menu.includes("const MOTION_STORAGE_KEY = 'brasta-special-motion'"), 'Match menu does not persist the special-move motion preference');
+assert(menu.includes("motionButton.setAttribute('role', 'menuitemcheckbox')"), 'Reduced Motion is not exposed as an accessible menu toggle');
+assert(menu.includes('document.documentElement.dataset.brastaMotion = next'), 'Motion preference does not reach the special-move presentation layer');
 assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does not enforce private-match abandonment');
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.3.0'), 'Special-move effect controller is not loaded by the root layout');
+assert(layout.includes('/brasta-special-moves.js?v=0.3.1'), 'Special-move effect controller is not loaded by the root layout');
+assert(layout.includes('/match-menu.js?v=0.13.0'), 'Motion preference control is not cache-busted by the root layout');
 assert(layout.includes('/lobby-polish.js?v=11'), 'Special-move sound update is not cache-busted by the root layout');
 assert(layout.includes('/tutorial.js?v=0.6.0'), 'Special-card tutorial steps are not cache-busted by the root layout');
 assert(specialMoves.includes("name: 'brasta'"), 'Special-move registry is missing the Brasta renderer');
@@ -71,7 +75,9 @@ assert(specialMoveStyles.includes('.event.big2-crush-event'), 'Big 2 Club Crush 
 assert(specialMoveStyles.includes('@keyframes big2-prize-card-drop'), 'Big 2 card-drop impact animation is missing');
 assert(specialMoveStyles.includes('.event.power-pair-event'), 'Big 2 + Big 10 Power Pair styling is missing');
 assert(specialMoveStyles.includes('@keyframes power-pair-card-diamond'), 'Power Pair diamond-cut animation is missing');
-assert(specialMoveStyles.includes('@media(prefers-reduced-motion:reduce)'), 'Brasta effect is missing its reduced-motion presentation');
+assert(specialMoveStyles.includes(':root[data-brasta-motion="reduced"]'), 'Brasta effect is missing its explicit reduced-motion presentation');
+assert(!specialMoveStyles.includes('@media(prefers-reduced-motion:reduce)'), 'System reduced-motion still forces special moves directly to their final frame');
+assert(specialMoves.includes("dataset.brastaMotion === 'reduced'"), 'Special-move haptics do not honor the explicit Brasta motion preference');
 assert(lobbyPolish.includes('playBrastaRush(delay)'), 'Brasta audio is missing the card-rush layer');
 assert(lobbyPolish.includes('playBrastaImpact(delay + 0.39)'), 'Brasta audio is missing the crest-impact layer');
 assert(lobbyPolish.includes('playBrastaMetallicStrike(delay + 0.43)'), 'Big 10 audio is missing its crystal-strike layer');
@@ -84,6 +90,26 @@ assert(tutorial.includes("title: 'Capture Both Prizes'"), 'Tutorial is missing t
 assert(tutorial.includes("scenario: 'big2'"), 'Big 2 tutorial step does not load its standalone scenario');
 assert(tutorial.includes("scenario: 'big10'"), 'Big 10 tutorial step does not load its standalone scenario');
 assert(tutorial.includes("scenario: 'big2big10'"), 'Power Pair tutorial step does not load its combined scenario');
+
+function motionPreferenceSandbox(savedPreference = null) {
+  const documentElement = { dataset: {} };
+  const sandbox = {
+    window: { dispatchEvent() {} },
+    document: { documentElement, readyState: 'loading', addEventListener() {} },
+    localStorage: {
+      getItem(key) { return key === 'brasta-special-motion' ? savedPreference : null; },
+      setItem() {},
+    },
+    CustomEvent: class CustomEvent {
+      constructor(type, init) { this.type = type; this.detail = init?.detail; }
+    },
+  };
+  runInNewContext(menu, sandbox);
+  return documentElement.dataset.brastaMotion;
+}
+
+assert.equal(motionPreferenceSandbox(), 'full', 'Special moves do not default to full motion');
+assert.equal(motionPreferenceSandbox('reduced'), 'reduced', 'Saved Reduced Motion preference is not restored');
 
 const specialMoveSandbox = {
   window: {},

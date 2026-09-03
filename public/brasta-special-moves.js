@@ -125,7 +125,7 @@
     hapticKeys.add(key);
     while (hapticKeys.size > 80) hapticKeys.delete(hapticKeys.values().next().value);
 
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = document.documentElement.dataset.brastaMotion === 'reduced';
     if (reducedMotion || typeof navigator.vibrate !== 'function') return;
     window.setTimeout(() => {
       if (!banner.isConnected || document.visibilityState !== 'visible') return;
@@ -441,7 +441,11 @@
     queueSync();
   }
 
-  window.BrastaSpecialMoves = Object.freeze({ refresh: queueSync, pointsForEvent: eventPoints });
+  window.BrastaSpecialMoves = Object.freeze({
+    refresh: queueSync,
+    pointsForEvent: eventPoints,
+    motionPreference: () => document.documentElement.dataset.brastaMotion === 'reduced' ? 'reduced' : 'full',
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot, { once: true });

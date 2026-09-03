@@ -10,6 +10,33 @@
 
   const SOLO_RANKED_PREFIX = 'brasta-ranked-room:';
   const TEAM_RANKED_PREFIX = 'brasta-ranked-2v2-room:';
+  const MOTION_STORAGE_KEY = 'brasta-special-motion';
+
+  function storedMotionPreference() {
+    try {
+      return localStorage.getItem(MOTION_STORAGE_KEY) === 'reduced' ? 'reduced' : 'full';
+    } catch {
+      return 'full';
+    }
+  }
+
+  function motionPreference() {
+    return document.documentElement.dataset.brastaMotion === 'reduced' ? 'reduced' : 'full';
+  }
+
+  function applyMotionPreference(preference, persist = false) {
+    const next = preference === 'reduced' ? 'reduced' : 'full';
+    document.documentElement.dataset.brastaMotion = next;
+    if (persist) {
+      try { localStorage.setItem(MOTION_STORAGE_KEY, next); } catch {}
+    }
+    window.dispatchEvent(new CustomEvent('brasta-motion-preference', { detail: { preference: next } }));
+    return next;
+  }
+
+  // Special moves are a core part of the game presentation, so they use full
+  // motion by default. Players can explicitly opt into the static composition.
+  applyMotionPreference(storedMotionPreference());
 
   function roomCode() {
     try {
@@ -55,6 +82,17 @@
       statusValue.className = `match-menu-status ${connection.toLowerCase()}`;
     }
     if (spectatorsValue) spectatorsValue.textContent = watcherCount;
+  }
+
+  function syncMotionAction(panel) {
+    const button = panel?.querySelector('[data-match-menu-motion]');
+    if (!(button instanceof HTMLButtonElement)) return;
+    const reduced = motionPreference() === 'reduced';
+    button.setAttribute('aria-checked', reduced ? 'true' : 'false');
+    button.setAttribute('aria-label', `Reduced Motion: ${reduced ? 'On' : 'Off'}`);
+    button.classList.toggle('active', reduced);
+    const state = button.querySelector('[data-match-menu-motion-state]');
+    if (state) state.textContent = reduced ? 'On' : 'Off';
   }
 
   function shouldShowAbandon() {
@@ -148,7 +186,9 @@
     const existing = nav.querySelector(':scope > [data-match-menu]');
     if (existing) {
       updateMeta(existing, topbar);
-      syncAbandonAction(existing.querySelector('[data-match-menu-panel]'));
+      const existingPanel = existing.querySelector('[data-match-menu-panel]');
+      syncMotionAction(existingPanel);
+      syncAbandonAction(existingPanel);
       return;
     }
 
@@ -193,9 +233,23 @@
       actionList?.appendChild(action);
     }
 
+    const motionButton = document.createElement('button');
+    motionButton.type = 'button';
+    motionButton.className = 'match-menu-item match-menu-motion-button';
+    motionButton.dataset.matchMenuMotion = '1';
+    motionButton.setAttribute('role', 'menuitemcheckbox');
+    motionButton.innerHTML = '<span>Reduced Motion</span><b class="match-menu-motion-state" data-match-menu-motion-state>Off</b>';
+    motionButton.addEventListener('click', () => {
+      const next = motionPreference() === 'reduced' ? 'full' : 'reduced';
+      applyMotionPreference(next, true);
+      syncMotionAction(panel);
+    });
+    actionList?.appendChild(motionButton);
+
     menu.append(trigger, panel);
     nav.appendChild(menu);
     updateMeta(menu, topbar);
+    syncMotionAction(panel);
     syncAbandonAction(panel);
 
     trigger.onclick = (event) => {
@@ -231,6 +285,11 @@
     });
 
     window.addEventListener('brasta-chat-context', queueEnhance);
+    window.addEventListener('storage', (event) => {
+      if (event.key !== MOTION_STORAGE_KEY) return;
+      applyMotionPreference(storedMotionPreference());
+      queueEnhance();
+    });
     window.addEventListener('brasta-match-abandoned', () => {
       abandonSubmitting = false;
       closeAbandonModal(true);
