@@ -123,6 +123,61 @@
     } catch {}
   }
 
+  function playClubDoubleImpact(delay = 0) {
+    if (!audioUnlocked || !audioContext) return;
+    try {
+      const context = audioContext;
+      const at = context.currentTime + delay;
+      [
+        { offset: 0, start: 108, end: 48, gain: 0.115, duration: 0.3 },
+        { offset: 0.18, start: 94, end: 41, gain: 0.135, duration: 0.4 },
+      ].forEach((voice) => {
+        const oscillator = context.createOscillator();
+        const volume = context.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(voice.start, at + voice.offset);
+        oscillator.frequency.exponentialRampToValueAtTime(voice.end, at + voice.offset + voice.duration);
+        volume.gain.setValueAtTime(0.0001, at + voice.offset);
+        volume.gain.exponentialRampToValueAtTime(voice.gain, at + voice.offset + 0.012);
+        volume.gain.exponentialRampToValueAtTime(0.0001, at + voice.offset + voice.duration);
+        oscillator.connect(volume);
+        volume.connect(context.destination);
+        oscillator.start(at + voice.offset);
+        oscillator.stop(at + voice.offset + voice.duration + 0.02);
+      });
+    } catch {}
+  }
+
+  function playCardSnap(delay = 0) {
+    if (!audioUnlocked || !audioContext) return;
+    try {
+      const context = audioContext;
+      const duration = 0.075;
+      const length = Math.max(1, Math.floor(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, length, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let index = 0; index < length; index += 1) {
+        const progress = index / length;
+        data[index] = (Math.random() * 2 - 1) * Math.pow(1 - progress, 3);
+      }
+
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      const at = context.currentTime + delay;
+      source.buffer = buffer;
+      filter.type = 'highpass';
+      filter.frequency.value = 1650;
+      gain.gain.setValueAtTime(0.04, at);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(context.destination);
+      source.start(at);
+      source.stop(at + duration + 0.02);
+    } catch {}
+  }
+
   function playTurnSound() {
     playNotes([
       { frequency: 659.25, offset: 0, duration: 0.15 },
@@ -154,11 +209,13 @@
   }
 
   function playBig2Sound(delay = 0) {
+    playClubDoubleImpact(delay);
+    playCardSnap(delay + 0.33);
     playNotes([
-      { frequency: 220, offset: 0, duration: 0.16, gain: 0.1 },
-      { frequency: 440, offset: 0.14, duration: 0.25, gain: 0.095 },
+      { frequency: 1174.66, offset: 0.43, duration: 0.16, gain: 0.055 },
+      { frequency: 1567.98, offset: 0.5, duration: 0.27, gain: 0.072 },
     ], delay);
-    return 0.41;
+    return 0.8;
   }
 
   function playBig10Sound(delay = 0) {
@@ -171,6 +228,12 @@
       { frequency: 1046.5, offset: 0.51, duration: 0.36, gain: 0.105 },
     ], delay);
     return 0.9;
+  }
+
+  function playPowerPairSound(delay = 0) {
+    playBig2Sound(delay);
+    playBig10Sound(delay + 0.38);
+    return 1.32;
   }
 
   function playLastPickupSound(delay = 0) {
@@ -193,14 +256,18 @@
 
   function playSpecialEventSounds(text) {
     let delay = 0;
+    const powerPair = /BIG 2\s*\+\s*BIG 10!/i.test(text);
     const enqueue = (player) => {
       delay += player(delay) + 0.12;
     };
 
     if (/Jack sweep/i.test(text)) enqueue(playJackSweepSound);
     if (/BRASTA!/i.test(text)) enqueue(playBrastaSound);
-    if (/BIG 2(?:\s*\+\s*BIG 10)?!/i.test(text)) enqueue(playBig2Sound);
-    if (/BIG 10!/i.test(text) || /BIG 2\s*\+\s*BIG 10!/i.test(text)) enqueue(playBig10Sound);
+    if (powerPair) enqueue(playPowerPairSound);
+    else {
+      if (/BIG 2!/i.test(text)) enqueue(playBig2Sound);
+      if (/BIG 10!/i.test(text)) enqueue(playBig10Sound);
+    }
     if (/LAST PICKUP!/i.test(text)) enqueue(playLastPickupSound);
     if (/LAST HAND!/i.test(text)) enqueue(playLastHandSound);
   }

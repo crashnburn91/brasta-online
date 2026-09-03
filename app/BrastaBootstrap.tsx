@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-const CLIENT_VERSION = '0.5.63';
+const CLIENT_VERSION = '0.5.64';
 const HISTORY_KEY = 'brasta-bootstrap-history-v2';
 
 type BootEvent = { ms: number; stage: string; detail?: unknown };

@@ -698,6 +698,518 @@
 .big10-combo-badges .brasta-combo-medallion{padding:4px 7px;font-size:8px;animation-delay:1120ms}
 .big10-combo-badges .brasta-combo-medallion + .brasta-combo-medallion{animation-delay:1220ms}
 
+/* Big 2 — Club Crush. A darker, heavier reward beat built around a double
+   club impact and a vertical 2♣ card drop. */
+.event.big2-crush-event,
+.event.power-pair-event{
+  --big2-team-accent:#d8b75e;
+  --big2-team-glow:#d8b75e4d;
+  position:fixed!important;
+  z-index:1200;
+  top:0!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-width:0;
+  max-width:none!important;
+  min-height:0;
+  margin:0!important;
+  padding:0!important;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  overflow:hidden;
+  border:0!important;
+  border-radius:0!important;
+  color:#f8f2df!important;
+  box-shadow:inset 0 0 118px #000e!important;
+  text-transform:none;
+  transform:none;
+  isolation:isolate;
+  opacity:1;
+  animation:big2-overlay-in 150ms ease-out both;
+  transition:opacity 180ms ease;
+}
+
+.event.big2-crush-event{
+  background:
+    radial-gradient(circle at 50% 54%,var(--big2-team-glow) 0,transparent 32%),
+    radial-gradient(circle at 50% 58%,#174f35a8 0,transparent 44%),
+    linear-gradient(180deg,#020806e8,#010403f5)!important;
+}
+
+.event.power-pair-event{
+  background:
+    radial-gradient(circle at 50% 50%,var(--big2-team-glow) 0,transparent 31%),
+    radial-gradient(circle at 33% 52%,#17583bb0 0,transparent 38%),
+    radial-gradient(circle at 67% 48%,#7b21309c 0,transparent 38%),
+    linear-gradient(135deg,#020806ed,#050304f2)!important;
+}
+
+.event.big2-crush-event.team-event-blue,
+.event.power-pair-event.team-event-blue{
+  --big2-team-accent:#5eb8ff;
+  --big2-team-glow:#287fc566;
+  border:0!important;
+  box-shadow:inset 0 0 118px #000e!important;
+}
+
+.event.big2-crush-event.team-event-red,
+.event.power-pair-event.team-event-red{
+  --big2-team-accent:#ff6f67;
+  --big2-team-glow:#b8313d66;
+  border:0!important;
+  box-shadow:inset 0 0 118px #000e!important;
+}
+
+.event.big2-crush-event.brasta-event-leaving,
+.event.power-pair-event.brasta-event-leaving{opacity:0}
+
+.big2-crush-vignette,
+.big2-club-pincers,
+.big2-club-burst,
+.power-pair-vignette,
+.power-pair-clubs{
+  position:absolute;
+  inset:0;
+}
+
+.big2-crush-vignette{
+  z-index:0;
+  background:
+    repeating-radial-gradient(circle at 50% 62%,transparent 0 34px,#d8b75e0a 35px 36px),
+    linear-gradient(90deg,#000b,transparent 28% 72%,#000b);
+  opacity:0;
+  animation:big2-vignette-pulse 1450ms 120ms ease-out both;
+}
+
+.big2-crush-floor{
+  position:absolute;
+  z-index:1;
+  top:66%;
+  left:50%;
+  width:min(90vw,920px);
+  height:2px;
+  background:linear-gradient(90deg,transparent,#d8b75e5c 18%,#e9d58b 50%,#d8b75e5c 82%,transparent);
+  box-shadow:0 0 12px #d8b75e66,0 0 38px #11613f88;
+  opacity:0;
+  transform:translateX(-50%) scaleX(.06);
+  animation:big2-floor-crack 720ms 390ms cubic-bezier(.18,.78,.18,1) both;
+}
+
+.big2-club-pincers i{
+  position:absolute;
+  z-index:1;
+  top:50%;
+  left:50%;
+  color:#0a1711;
+  font:700 clamp(150px,27vw,320px)/1 Georgia,"Times New Roman",serif;
+  font-style:normal;
+  opacity:0;
+  text-shadow:0 0 2px #d8b75e,0 0 28px #0c8a5699,0 20px 50px #000;
+}
+
+.big2-club-pincers i:first-child{
+  transform:translate(-50%,-50%) translateX(-58vw) rotate(-28deg) scale(.55);
+  animation:big2-club-left-strike 670ms 70ms cubic-bezier(.18,.76,.16,1) both;
+}
+
+.big2-club-pincers i:last-child{
+  transform:translate(-50%,-50%) translateX(58vw) rotate(28deg) scale(.55);
+  animation:big2-club-right-strike 670ms 130ms cubic-bezier(.18,.76,.16,1) both;
+}
+
+.big2-club-shockwave{
+  position:absolute;
+  z-index:2;
+  left:50%;
+  top:52%;
+  color:transparent;
+  font:700 122px/1 Georgia,"Times New Roman",serif;
+  -webkit-text-stroke:2px #d9bd67;
+  opacity:0;
+  filter:drop-shadow(0 0 12px #d8b75eaa) drop-shadow(0 0 24px #0c8a5677);
+  transform:translate(-50%,-50%) scale(.18);
+  animation:big2-club-wave 760ms 390ms ease-out both;
+}
+
+.big2-club-burst i{
+  --club-x:0px;
+  --club-y:0px;
+  --club-r:0deg;
+  --club-delay:0ms;
+  position:absolute;
+  z-index:3;
+  left:50%;
+  top:52%;
+  color:#d9c16f;
+  font:700 clamp(11px,1.9vw,20px)/1 Georgia,"Times New Roman",serif;
+  font-style:normal;
+  opacity:0;
+  text-shadow:0 0 7px #0b8a55,0 3px 7px #000;
+  transform:translate(-50%,-50%) scale(.25);
+  animation:big2-club-particle 800ms calc(520ms + var(--club-delay)) cubic-bezier(.16,.72,.28,1) both;
+}
+
+.big2-club-burst i:nth-child(1){--club-x:-260px;--club-y:-72px;--club-r:-75deg}
+.big2-club-burst i:nth-child(2){--club-x:-202px;--club-y:-158px;--club-r:48deg;--club-delay:30ms}
+.big2-club-burst i:nth-child(3){--club-x:-105px;--club-y:-214px;--club-r:-42deg;--club-delay:75ms}
+.big2-club-burst i:nth-child(4){--club-x:12px;--club-y:-230px;--club-r:72deg;--club-delay:15ms}
+.big2-club-burst i:nth-child(5){--club-x:126px;--club-y:-204px;--club-r:-50deg;--club-delay:60ms}
+.big2-club-burst i:nth-child(6){--club-x:224px;--club-y:-132px;--club-r:82deg;--club-delay:105ms}
+.big2-club-burst i:nth-child(7){--club-x:270px;--club-y:-22px;--club-r:-68deg;--club-delay:20ms}
+.big2-club-burst i:nth-child(8){--club-x:225px;--club-y:112px;--club-r:55deg;--club-delay:85ms}
+.big2-club-burst i:nth-child(9){--club-x:126px;--club-y:192px;--club-r:-46deg;--club-delay:120ms}
+.big2-club-burst i:nth-child(10){--club-x:4px;--club-y:218px;--club-r:78deg;--club-delay:40ms}
+.big2-club-burst i:nth-child(11){--club-x:-132px;--club-y:184px;--club-r:-58deg;--club-delay:95ms}
+.big2-club-burst i:nth-child(12){--club-x:-232px;--club-y:102px;--club-r:44deg;--club-delay:10ms}
+
+.big2-crush-lockup{
+  position:relative;
+  z-index:5;
+  width:min(calc(100% - 34px),650px);
+  min-height:280px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(20px,5vw,44px);
+}
+
+.big2-prize-card{
+  position:relative;
+  flex:0 0 auto;
+  width:clamp(104px,14vw,138px);
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border:2px solid #c9ad59;
+  border-radius:11px;
+  background:radial-gradient(circle at 50% 44%,#fffdf2 0,#e9e1ca 70%,#c9b98e 100%);
+  color:#07100c;
+  box-shadow:
+    0 26px 46px #000d,
+    0 0 0 4px #020704dd,
+    0 0 0 6px #d8b75e6b,
+    0 0 46px #13855555,
+    inset 0 0 28px #3154421e;
+  opacity:0;
+  transform:translateY(-72vh) rotate(-8deg) scale(.86);
+  animation:big2-prize-card-drop 860ms 80ms cubic-bezier(.15,.76,.18,1.12) both;
+}
+
+.big2-prize-card::after,
+.power-pair-card::after{
+  content:"";
+  position:absolute;
+  inset:7px;
+  border:1px solid #8b74433d;
+  border-radius:7px;
+}
+
+.big2-prize-card>strong{
+  position:relative;
+  z-index:1;
+  color:#07110c;
+  font:700 clamp(56px,9vw,88px)/1 Georgia,"Times New Roman",serif;
+  text-shadow:0 4px 0 #607066,0 9px 15px #0004;
+}
+
+.big2-card-corner,
+.power-pair-card-corner{
+  position:absolute;
+  z-index:2;
+  top:10px;
+  left:10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  color:#07100c;
+  font:900 clamp(16px,2.5vw,24px)/.8 Georgia,"Times New Roman",serif;
+}
+
+.big2-card-corner i,
+.power-pair-card-corner i{font-size:.72em;font-style:normal;line-height:1}
+.big2-card-corner.bottom,
+.power-pair-card-corner.bottom{top:auto;right:10px;bottom:10px;left:auto;transform:rotate(180deg)}
+
+.big2-crush-copy{
+  position:relative;
+  width:clamp(230px,48vw,380px);
+  min-height:194px;
+  padding:22px 28px 20px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  border:1px solid #bda15370;
+  border-left:3px solid var(--big2-team-accent);
+  border-radius:3px 14px 3px 14px;
+  background:linear-gradient(118deg,#03110ced,#071b13e8 65%,#11150fdc);
+  box-shadow:0 22px 54px #000c,0 0 30px var(--big2-team-glow),inset 0 0 36px #0008;
+  opacity:0;
+  transform:translateX(38px) scale(.93);
+  animation:big2-copy-arrive 480ms 500ms cubic-bezier(.18,.84,.22,1) both;
+}
+
+.big2-crush-copy::before,
+.power-pair-copy::before{
+  content:"";
+  position:absolute;
+  inset:7px;
+  border:1px solid #d8b75e28;
+  border-radius:1px 9px 1px 9px;
+}
+
+.big2-crush-player,
+.big2-crush-title,
+.big2-crush-score,
+.big2-crush-footer,
+.power-pair-player,
+.power-pair-title,
+.power-pair-score,
+.power-pair-footer{position:relative;z-index:1}
+
+.big2-crush-player,
+.power-pair-player{
+  max-width:100%;
+  overflow:hidden;
+  color:var(--big2-team-accent);
+  font:800 clamp(10px,1.7vw,13px)/1.2 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.18em;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+.big2-crush-title{
+  margin:7px 0 0;
+  color:#f4e5ad;
+  font:900 clamp(42px,7.5vw,72px)/.88 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.035em;
+  text-shadow:0 3px 0 #614c14,0 7px 18px #000d;
+}
+
+.big2-crush-title em{
+  color:#75c99e;
+  font-style:normal;
+  text-shadow:0 3px 0 #174c35,0 0 22px #42bd8166;
+}
+
+.big2-crush-score,
+.power-pair-score{
+  margin-top:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  opacity:0;
+  transform:scale(.5);
+  transform-origin:left center;
+  animation:big2-score-pop 390ms 780ms cubic-bezier(.16,.9,.22,1.22) both;
+}
+
+.big2-crush-score b,
+.power-pair-score b{
+  display:grid;
+  min-width:64px;
+  height:38px;
+  padding:0 12px;
+  place-items:center;
+  border:1px solid #f4dc8d;
+  border-radius:999px;
+  background:linear-gradient(180deg,#f1dc83,#b78328);
+  color:#211704;
+  box-shadow:0 7px 16px #0009,inset 0 1px 0 #fff9;
+  font:900 clamp(21px,3.5vw,29px)/1 var(--font-brasta-display),Georgia,serif;
+}
+
+.big2-crush-score small,
+.power-pair-score small{
+  color:#d3c8a7;
+  font:800 9px/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.17em;
+}
+
+.big2-crush-footer,
+.power-pair-footer{
+  min-height:25px;
+  margin-top:10px;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  opacity:0;
+  animation:big2-footer-arrive 320ms 1020ms ease-out both;
+}
+
+.big2-crush-footer>small,
+.power-pair-footer>small{
+  color:#ded3b5;
+  font:800 9px/1.2 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.14em;
+}
+
+.big2-combo-badges,
+.power-pair-badges{display:flex;align-items:center;gap:5px}
+.big2-combo-badges .brasta-combo-medallion,
+.power-pair-badges .brasta-combo-medallion{padding:4px 7px;font-size:8px;animation-delay:1120ms}
+
+/* Big 2 + Big 10 — Power Pair. The club lands first, then the diamond cuts
+   across it so the combined reward reads as one authored sequence. */
+.power-pair-vignette{
+  z-index:0;
+  background:
+    linear-gradient(116deg,transparent 0 39%,#f8dfa915 47%,#fff6ce35 50%,#f8dfa915 53%,transparent 61%),
+    repeating-radial-gradient(circle at 50% 50%,transparent 0 40px,#d8b75e0a 41px 42px);
+  background-size:220% 100%,auto;
+  opacity:0;
+  animation:power-pair-vignette 1700ms 140ms ease-out both;
+}
+
+.power-pair-club-impact{
+  position:absolute;
+  z-index:1;
+  left:42%;
+  top:50%;
+  color:#07110c;
+  font:700 clamp(160px,29vw,330px)/1 Georgia,"Times New Roman",serif;
+  text-shadow:0 0 2px #d8b75e,0 0 35px #15905b99,0 20px 52px #000;
+  opacity:0;
+  transform:translate(-50%,-50%) translateY(-70vh) rotate(-12deg) scale(.75);
+  animation:power-pair-club-drop 760ms 70ms cubic-bezier(.16,.76,.18,1.08) both;
+}
+
+.power-pair-diamond-cut{
+  position:absolute;
+  z-index:2;
+  left:50%;
+  top:50%;
+  width:160vw;
+  height:3px;
+  background:linear-gradient(90deg,transparent,#e34855 35%,#fff0b8 50%,#e34855 65%,transparent);
+  box-shadow:0 0 9px #e34855,0 0 30px #e3485599;
+  opacity:0;
+  transform:translate(-50%,-50%) rotate(-17deg) scaleX(.04);
+  animation:power-pair-diamond-cut 660ms 390ms cubic-bezier(.17,.78,.2,1) both;
+}
+
+.power-pair-shockwave{
+  position:absolute;
+  z-index:2;
+  left:50%;
+  top:50%;
+  width:112px;
+  height:112px;
+  border:2px solid #f1db91;
+  border-radius:50%;
+  box-shadow:0 0 16px #d8b75eaa,inset 0 0 18px #d8b75e66;
+  opacity:0;
+  transform:translate(-50%,-50%) scale(.2);
+  animation:power-pair-wave 820ms 440ms ease-out both;
+}
+
+.power-pair-clubs i{animation-delay:calc(610ms + var(--club-delay))}
+.power-pair-diamonds i{animation-delay:calc(650ms + var(--diamond-delay))}
+
+.power-pair-lockup{
+  position:relative;
+  z-index:5;
+  width:min(calc(100% - 34px),760px);
+  min-height:290px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(26px,5vw,52px);
+}
+
+.power-pair-cards{
+  position:relative;
+  flex:0 0 220px;
+  width:220px;
+  height:206px;
+}
+
+.power-pair-card{
+  position:absolute;
+  top:8px;
+  width:112px;
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border:2px solid #d1b45f;
+  border-radius:11px;
+  background:radial-gradient(circle at 50% 44%,#fffdf2 0,#ece3cb 70%,#cbb98d 100%);
+  box-shadow:0 24px 42px #000d,0 0 0 4px #030805dd,0 0 0 6px #d8b75e66;
+  opacity:0;
+}
+
+.power-pair-card>strong{
+  position:relative;
+  z-index:1;
+  font:700 68px/1 Georgia,"Times New Roman",serif;
+}
+
+.power-pair-card-big2{
+  left:4px;
+  color:#07110c;
+  transform:translateY(-70vh) rotate(-15deg) scale(.82);
+  animation:power-pair-card-club 850ms 90ms cubic-bezier(.16,.76,.18,1.1) both;
+}
+
+.power-pair-card-big10{
+  right:4px;
+  color:#bc2534;
+  transform:translateX(65vw) rotate(28deg) scale(.78);
+  animation:power-pair-card-diamond 780ms 340ms cubic-bezier(.16,.82,.2,1.12) both;
+}
+
+.power-pair-card-big10 .power-pair-card-corner{color:#a51f2d}
+.power-pair-card-big10>strong{color:#c52837;text-shadow:0 4px 0 #7b1922,0 8px 13px #4a101744}
+.power-pair-card-big2>strong{color:#07110c;text-shadow:0 4px 0 #607066,0 8px 13px #0003}
+
+.power-pair-copy{
+  position:relative;
+  width:clamp(270px,48vw,410px);
+  min-height:210px;
+  padding:22px 28px 20px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  border:1px solid #d8b75e70;
+  border-left:3px solid var(--big2-team-accent);
+  border-radius:4px 18px 4px 18px;
+  background:linear-gradient(118deg,#04120dec,#0f1812e8 54%,#321016dd);
+  box-shadow:0 24px 58px #000c,0 0 34px var(--big2-team-glow),inset 0 0 38px #0008;
+  opacity:0;
+  transform:translateX(42px) scale(.92);
+  animation:power-pair-copy-arrive 510ms 650ms cubic-bezier(.18,.84,.22,1) both;
+}
+
+.power-pair-title{
+  margin:8px 0 0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#f4e5ad;
+  font:900 clamp(28px,5vw,48px)/.92 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.025em;
+  text-shadow:0 3px 0 #604714,0 7px 18px #000d;
+  white-space:nowrap;
+}
+
+.power-pair-title span:first-child em{color:#75c99e;text-shadow:0 3px 0 #174c35,0 0 18px #42bd8166}
+.power-pair-title span:last-child em{color:#ee5965;text-shadow:0 3px 0 #751c28,0 0 18px #e5435066}
+.power-pair-title em{font-style:normal}
+.power-pair-title>i{color:#fff2bd;font:.72em/1 Georgia,"Times New Roman",serif;font-style:normal}
+.power-pair-score{animation-delay:940ms}
+.power-pair-footer{animation-delay:1170ms}
+.power-pair-badges .brasta-combo-medallion{animation-delay:1270ms}
+
 @keyframes brasta-table-takeover{
   from{opacity:0}
   to{opacity:1}
@@ -814,9 +1326,126 @@
   to{opacity:1;transform:translateY(0)}
 }
 
+@keyframes big2-overlay-in{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+@keyframes big2-vignette-pulse{
+  0%{opacity:0;transform:scale(.82)}
+  28%{opacity:.9}
+  58%{opacity:.62;transform:scale(1.04)}
+  100%{opacity:.38;transform:scale(1)}
+}
+
+@keyframes big2-floor-crack{
+  0%,42%{opacity:0;transform:translateX(-50%) scaleX(.06)}
+  54%{opacity:1}
+  100%{opacity:.35;transform:translateX(-50%) scaleX(1)}
+}
+
+@keyframes big2-club-left-strike{
+  0%{opacity:0;transform:translate(-50%,-50%) translateX(-58vw) rotate(-28deg) scale(.55)}
+  22%{opacity:.88}
+  72%{opacity:.78;transform:translate(-50%,-50%) translateX(-155px) rotate(-8deg) scale(.96)}
+  100%{opacity:0;transform:translate(-50%,-50%) translateX(-82px) rotate(0) scale(.45)}
+}
+
+@keyframes big2-club-right-strike{
+  0%{opacity:0;transform:translate(-50%,-50%) translateX(58vw) rotate(28deg) scale(.55)}
+  22%{opacity:.88}
+  72%{opacity:.78;transform:translate(-50%,-50%) translateX(155px) rotate(8deg) scale(.96)}
+  100%{opacity:0;transform:translate(-50%,-50%) translateX(82px) rotate(0) scale(.45)}
+}
+
+@keyframes big2-club-wave{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.18)}
+  18%{opacity:.95}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(4.8)}
+}
+
+@keyframes big2-club-particle{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.25) rotate(0)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) translate(var(--club-x),var(--club-y)) scale(1.05) rotate(var(--club-r))}
+}
+
+@keyframes big2-prize-card-drop{
+  0%{opacity:0;transform:translateY(-72vh) rotate(-8deg) scale(.86)}
+  42%{opacity:1}
+  58%{transform:translateY(11px) rotate(2deg) scale(1.09)}
+  72%{transform:translateY(-8px) rotate(-1deg) scale(.985)}
+  84%{transform:translateY(3px) rotate(.3deg) scale(1.01)}
+  100%{opacity:1;transform:translateY(0) rotate(0) scale(1)}
+}
+
+@keyframes big2-copy-arrive{
+  from{opacity:0;transform:translateX(38px) scale(.93)}
+  to{opacity:1;transform:translateX(0) scale(1)}
+}
+
+@keyframes big2-score-pop{
+  from{opacity:0;transform:scale(.5)}
+  to{opacity:1;transform:scale(1)}
+}
+
+@keyframes big2-footer-arrive{
+  from{opacity:0;transform:translateY(7px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@keyframes power-pair-vignette{
+  from{opacity:0;background-position:125% 0,0 0}
+  26%{opacity:1}
+  to{opacity:.58;background-position:-115% 0,0 0}
+}
+
+@keyframes power-pair-club-drop{
+  0%{opacity:0;transform:translate(-50%,-50%) translateY(-70vh) rotate(-12deg) scale(.75)}
+  42%{opacity:.82}
+  62%{opacity:.72;transform:translate(-50%,-50%) translateY(10px) rotate(2deg) scale(1.04)}
+  100%{opacity:0;transform:translate(-50%,-50%) translateY(0) rotate(0) scale(.55)}
+}
+
+@keyframes power-pair-diamond-cut{
+  0%{opacity:0;transform:translate(-50%,-50%) rotate(-17deg) scaleX(.04)}
+  25%{opacity:1}
+  70%{opacity:.9}
+  100%{opacity:0;transform:translate(-50%,-50%) rotate(-17deg) scaleX(1)}
+}
+
+@keyframes power-pair-wave{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(5.2)}
+}
+
+@keyframes power-pair-card-club{
+  0%{opacity:0;transform:translateY(-70vh) rotate(-15deg) scale(.82)}
+  48%{opacity:1}
+  65%{transform:translateY(10px) rotate(-5deg) scale(1.06)}
+  82%{transform:translateY(-5px) rotate(-8deg) scale(.99)}
+  100%{opacity:1;transform:translateY(0) rotate(-7deg) scale(1)}
+}
+
+@keyframes power-pair-card-diamond{
+  0%{opacity:0;transform:translateX(65vw) rotate(28deg) scale(.78)}
+  45%{opacity:1}
+  68%{transform:translateX(-8px) rotate(3deg) scale(1.08)}
+  84%{transform:translateX(4px) rotate(8deg) scale(.985)}
+  100%{opacity:1;transform:translateX(0) rotate(7deg) scale(1)}
+}
+
+@keyframes power-pair-copy-arrive{
+  from{opacity:0;transform:translateX(42px) scale(.92)}
+  to{opacity:1;transform:translateX(0) scale(1)}
+}
+
 @media(max-width:600px){
   .event.brasta-crest-event,
-  .event.big10-strike-event{border-radius:0!important}
+  .event.big10-strike-event,
+  .event.big2-crush-event,
+  .event.power-pair-event{border-radius:0!important}
   .brasta-flight-card:nth-child(1){--card-x:-132px;--card-y:-70px}
   .brasta-flight-card:nth-child(2){--card-x:-112px;--card-y:82px}
   .brasta-flight-card:nth-child(3){--card-x:-54px;--card-y:-102px}
@@ -850,6 +1479,31 @@
   .big10-strike-score{margin-top:9px}
   .big10-strike-footer{margin-top:7px;gap:4px}
   .big10-strike-footer>small{font-size:8px}
+  .big2-club-pincers i{font-size:170px}
+  .big2-club-burst{transform:scale(.7)}
+  .big2-crush-lockup{width:calc(100% - 22px);gap:14px}
+  .big2-prize-card{width:clamp(82px,25vw,102px);border-radius:9px}
+  .big2-crush-copy{width:min(62vw,250px);min-height:168px;padding:18px 17px 16px}
+  .big2-crush-title{font-size:clamp(36px,12vw,51px)}
+  .big2-crush-score{margin-top:9px}
+  .big2-crush-footer{margin-top:7px;gap:4px}
+  .big2-crush-footer>small{font-size:8px}
+  .power-pair-club-impact{font-size:190px}
+  .power-pair-clubs,
+  .power-pair-diamonds{transform:scale(.68)}
+  .power-pair-lockup{width:calc(100% - 20px);min-height:330px;flex-direction:column;gap:4px}
+  .power-pair-cards{flex-basis:132px;width:188px;height:132px}
+  .power-pair-card{width:80px;top:0}
+  .power-pair-card-big2{left:20px}
+  .power-pair-card-big10{right:20px}
+  .power-pair-card>strong{font-size:48px}
+  .power-pair-card-corner{top:7px;left:7px;font-size:15px}
+  .power-pair-card-corner.bottom{right:7px;bottom:7px}
+  .power-pair-copy{width:min(calc(100vw - 34px),330px);min-height:150px;padding:15px 18px 14px;align-items:center}
+  .power-pair-player{max-width:92%}
+  .power-pair-title{margin-top:5px;font-size:clamp(25px,8vw,34px)}
+  .power-pair-score{margin-top:7px;transform-origin:center}
+  .power-pair-footer{margin-top:5px;justify-content:center}
 }
 
 @media(max-height:620px){
@@ -863,6 +1517,19 @@
   .big10-strike-title{font-size:38px}
   .big10-strike-score{margin-top:7px}
   .big10-strike-footer{margin-top:5px}
+  .big2-crush-lockup{min-height:190px}
+  .big2-prize-card{width:82px}
+  .big2-crush-copy{min-height:145px;padding-top:13px;padding-bottom:12px}
+  .big2-crush-title{font-size:38px}
+  .big2-crush-score{margin-top:7px}
+  .big2-crush-footer{margin-top:5px}
+  .power-pair-lockup{min-height:210px}
+  .power-pair-cards{flex-basis:174px;height:165px}
+  .power-pair-card{width:88px}
+  .power-pair-copy{min-height:154px;padding-top:13px;padding-bottom:12px}
+  .power-pair-title{font-size:30px}
+  .power-pair-score{margin-top:7px}
+  .power-pair-footer{margin-top:5px}
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -874,6 +1541,14 @@
     animation:none;
     background:radial-gradient(circle at 50% 50%,#3d171dd9 0,#06100ddf 72%)!important;
   }
+  .event.big2-crush-event{
+    animation:none;
+    background:radial-gradient(circle at 50% 50%,#143d2be8 0,#030906f2 72%)!important;
+  }
+  .event.power-pair-event{
+    animation:none;
+    background:linear-gradient(120deg,#123626e8,#35141be8)!important;
+  }
   .brasta-crest-vignette,
   .brasta-card-storm,
   .brasta-crest-shockwave,
@@ -882,7 +1557,18 @@
   .big10-strike-beam,
   .big10-card-rush,
   .big10-diamond-shockwave,
-  .big10-diamond-burst{display:none!important}
+  .big10-diamond-burst,
+  .big2-crush-vignette,
+  .big2-crush-floor,
+  .big2-club-pincers,
+  .big2-club-shockwave,
+  .big2-club-burst,
+  .power-pair-vignette,
+  .power-pair-club-impact,
+  .power-pair-diamond-cut,
+  .power-pair-shockwave,
+  .power-pair-clubs,
+  .power-pair-diamonds{display:none!important}
   .brasta-crest-seal,
   .brasta-crest-player,
   .brasta-crest-suits i,
@@ -892,7 +1578,15 @@
   .big10-prize-card,
   .big10-strike-copy,
   .big10-strike-score,
-  .big10-strike-footer{
+  .big10-strike-footer,
+  .big2-prize-card,
+  .big2-crush-copy,
+  .big2-crush-score,
+  .big2-crush-footer,
+  .power-pair-card,
+  .power-pair-copy,
+  .power-pair-score,
+  .power-pair-footer{
     opacity:1;
     transform:none;
     animation:none;

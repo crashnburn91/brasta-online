@@ -4,7 +4,9 @@
   window.__BRASTA_SPECIAL_MOVE_EFFECTS__ = true;
 
   const EFFECT_SHOW_MS = 2800;
+  const BIG2_SHOW_MS = 1900;
   const BIG10_SHOW_MS = 1900;
+  const POWER_PAIR_SHOW_MS = 2200;
   const EFFECT_FADE_MS = 220;
   const hapticKeys = new Set();
   const presentedKeys = new Set();
@@ -89,6 +91,10 @@
     return Array.from({ length: 12 }, () => '<i>♦</i>').join('');
   }
 
+  function clubBurstMarkup() {
+    return Array.from({ length: 12 }, () => '<i>♣</i>').join('');
+  }
+
   function matchingBonuses(text) {
     const value = String(text || '');
     return scoringBonuses.filter((bonus) => bonus.pattern.test(value));
@@ -104,9 +110,10 @@
     return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
   }
 
-  function bonusBadgesMarkup(text, primaryLabel) {
+  function bonusBadgesMarkup(text, primaryLabels) {
+    const excluded = new Set(Array.isArray(primaryLabels) ? primaryLabels : [primaryLabels]);
     const badges = matchingBonuses(text)
-      .filter((bonus) => bonus.label !== primaryLabel)
+      .filter((bonus) => !excluded.has(bonus.label))
       .map((bonus) => `<span class="brasta-combo-medallion">${bonus.label}</span>`);
     return badges.join('');
   }
@@ -122,7 +129,12 @@
     if (reducedMotion || typeof navigator.vibrate !== 'function') return;
     window.setTimeout(() => {
       if (!banner.isConnected || document.visibilityState !== 'visible') return;
-      const pattern = kind === 'big10' ? [18, 32, 46] : 42;
+      const patterns = {
+        big2: [36, 45, 68],
+        big10: [18, 32, 46],
+        'power-pair': [36, 32, 56, 28, 24],
+      };
+      const pattern = patterns[kind] || 42;
       try { navigator.vibrate(pattern); } catch {}
     }, 480);
   }
@@ -197,6 +209,126 @@
     playNextEffect();
   }
 
+  function decorateBig2(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'big2') return;
+    const key = `${banner.dataset.eventSeq || ''}|big2`;
+    banner.dataset.brastaEffectKind = 'big2';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+    const companionBonuses = bonuses.filter((bonus) => bonus.label !== 'BIG 2');
+    const prizeLabel = companionBonuses.length === 0 ? 'CLUB CAPTURED' : 'DOUBLE PRIZE';
+
+    const layer = document.createElement('div');
+    layer.className = 'event big2-crush-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'big2';
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="big2-crush-vignette" aria-hidden="true"></span>
+      <span class="big2-crush-floor" aria-hidden="true"></span>
+      <span class="big2-club-pincers" aria-hidden="true"><i>♣</i><i>♣</i></span>
+      <span class="big2-club-shockwave" aria-hidden="true">♣</span>
+      <span class="big2-club-burst" aria-hidden="true">${clubBurstMarkup()}</span>
+      <span class="big2-crush-lockup" aria-hidden="true">
+        <span class="big2-prize-card">
+          <span class="big2-card-corner">2<i>♣</i></span>
+          <strong>♣</strong>
+          <span class="big2-card-corner bottom">2<i>♣</i></span>
+        </span>
+        <span class="big2-crush-copy">
+          <span class="big2-crush-player">${escapeHtml(actor)}</span>
+          <strong class="big2-crush-title">BIG <em>2</em></strong>
+          <span class="big2-crush-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="big2-crush-footer">
+            <small>${prizeLabel}</small>
+            <span class="big2-combo-badges">${bonusBadgesMarkup(rawText, 'BIG 2')}</span>
+          </span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: BIG2_SHOW_MS });
+    playNextEffect();
+  }
+
+  function decoratePowerPair(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'power-pair') return;
+    const key = `${banner.dataset.eventSeq || ''}|power-pair`;
+    banner.dataset.brastaEffectKind = 'power-pair';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+
+    const layer = document.createElement('div');
+    layer.className = 'event power-pair-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'power-pair';
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="power-pair-vignette" aria-hidden="true"></span>
+      <span class="power-pair-club-impact" aria-hidden="true">♣</span>
+      <span class="power-pair-diamond-cut" aria-hidden="true"></span>
+      <span class="power-pair-shockwave" aria-hidden="true"></span>
+      <span class="big2-club-burst power-pair-clubs" aria-hidden="true">${clubBurstMarkup()}</span>
+      <span class="big10-diamond-burst power-pair-diamonds" aria-hidden="true">${diamondBurstMarkup()}</span>
+      <span class="power-pair-lockup" aria-hidden="true">
+        <span class="power-pair-cards">
+          <span class="power-pair-card power-pair-card-big2">
+            <span class="power-pair-card-corner">2<i>♣</i></span><strong>♣</strong>
+            <span class="power-pair-card-corner bottom">2<i>♣</i></span>
+          </span>
+          <span class="power-pair-card power-pair-card-big10">
+            <span class="power-pair-card-corner">10<i>♦</i></span><strong>♦</strong>
+            <span class="power-pair-card-corner bottom">10<i>♦</i></span>
+          </span>
+        </span>
+        <span class="power-pair-copy">
+          <span class="power-pair-player">${escapeHtml(actor)}</span>
+          <strong class="power-pair-title"><span>BIG <em>2</em></span><i>+</i><span>BIG <em>10</em></span></strong>
+          <span class="power-pair-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="power-pair-footer">
+            <small>POWER PAIR</small>
+            <span class="power-pair-badges">${bonusBadgesMarkup(rawText, ['BIG 2', 'BIG 10'])}</span>
+          </span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: POWER_PAIR_SHOW_MS });
+    playNextEffect();
+  }
+
   function decorateBig10(banner, rawText) {
     if (banner.dataset.brastaEffectKind === 'big10') return;
     const key = `${banner.dataset.eventSeq || ''}|big10`;
@@ -266,8 +398,18 @@
       decorate: decorateBrasta,
     },
     {
+      name: 'power-pair',
+      matches: (text) => /\bBIG\s*2\b/i.test(text) && /\bBIG\s*10\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      decorate: decoratePowerPair,
+    },
+    {
+      name: 'big2',
+      matches: (text) => /\bBIG\s*2\b/i.test(text) && !/\bBIG\s*10\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      decorate: decorateBig2,
+    },
+    {
       name: 'big10',
-      matches: (text) => /\bBIG\s*10\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      matches: (text) => /\bBIG\s*10\b/i.test(text) && !/\bBIG\s*2\b/i.test(text) && !/\bBRASTA!/i.test(text),
       decorate: decorateBig10,
     },
   ];

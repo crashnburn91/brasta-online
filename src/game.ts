@@ -924,9 +924,15 @@ namespace Brasta {
     } else if (name === 'burnJack') {
       p1.hand = [id('J', 'hearts'), id('A', 'spades')];
       s.builds = [{ id: 'lab-b8', kind: 'numeric', declaredValue: 8, groups: [[id('5', 'spades'), id('3', 'hearts')]], modifiers: [] }];
+    } else if (name === 'big2') {
+      p1.hand = [id('2', 'hearts'), id('4', 'spades')];
+      s.loose = [id('2', 'clubs'), id('A', 'diamonds')];
     } else if (name === 'big10') {
       p1.hand = [id('10', 'hearts'), id('4', 'spades')];
       s.loose = [id('10', 'diamonds'), id('A', 'clubs')];
+    } else if (name === 'big2big10') {
+      p1.hand = [id('10', 'hearts'), id('4', 'spades')];
+      s.loose = [id('10', 'diamonds'), id('2', 'clubs'), id('8', 'spades'), id('A', 'hearts')];
     } else if (name === 'brasta') {
       p1.hand = [id('8', 'hearts')];
       s.loose = [id('5', 'clubs'), id('3', 'diamonds')];
