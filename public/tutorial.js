@@ -65,8 +65,15 @@
       scenario: 'brasta',
     },
     {
+      title: 'Capture the Big 10',
+      eyebrow: '9 · BIG 10',
+      text: 'The 10♦ is the Big 10. Capturing it adds +10 points to your side at the end of the round, even when the move is not a Brasta.',
+      tip: 'Try it: select 10♥, then capture 10♦. The A♣ stays on the table, so this triggers the standalone BIG 10! +10 presentation.',
+      scenario: 'big10',
+    },
+    {
       title: 'Round Scoring',
-      eyebrow: '9 · SCORING',
+      eyebrow: '10 · SCORING',
       text: 'At the end of the round, captured cards and bonuses are counted together. These are the values to remember.',
       tip: 'Special cards score individually. Majority bonuses, Last Pickup, Brastas, and Burned Jacks are then added to the round total.',
       mode: 'scoring',

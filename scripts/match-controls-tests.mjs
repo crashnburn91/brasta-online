@@ -13,6 +13,7 @@ const layout = readFileSync('app/layout.tsx', 'utf8');
 const specialMoves = readFileSync('public/brasta-special-moves.js', 'utf8');
 const specialMoveStyles = readFileSync('app/special-move-effects.css', 'utf8');
 const lobbyPolish = readFileSync('public/lobby-polish.js', 'utf8');
+const tutorial = readFileSync('public/tutorial.js', 'utf8');
 
 assert(/latestState\.score/.test(liveStatus), 'Live header no longer renders the completed-round match score');
 assert(liveStatus.includes('match-score-live'), 'Live header is missing the match-score group');
@@ -40,6 +41,7 @@ assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not prote
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
 assert(layout.includes('/brasta-special-moves.js?v=0.2.0'), 'Special-move effect controller is not loaded by the root layout');
 assert(layout.includes('/lobby-polish.js?v=10'), 'Big 10 sound update is not cache-busted by the root layout');
+assert(layout.includes('/tutorial.js?v=0.5.15'), 'Big 10 tutorial step is not cache-busted by the root layout');
 assert(specialMoves.includes("name: 'brasta'"), 'Special-move registry is missing the Brasta renderer');
 assert(specialMoves.includes("name: 'big10'"), 'Special-move registry is missing the Big 10 renderer');
 assert(specialMoves.includes("!/\\bBRASTA!/i.test(text)"), 'Standalone Big 10 renderer can incorrectly replace the Brasta combination effect');
@@ -60,6 +62,8 @@ assert(specialMoveStyles.includes('@media(prefers-reduced-motion:reduce)'), 'Bra
 assert(lobbyPolish.includes('playBrastaRush(delay)'), 'Brasta audio is missing the card-rush layer');
 assert(lobbyPolish.includes('playBrastaImpact(delay + 0.39)'), 'Brasta audio is missing the crest-impact layer');
 assert(lobbyPolish.includes('playBrastaMetallicStrike(delay + 0.43)'), 'Big 10 audio is missing its crystal-strike layer');
+assert(tutorial.includes("title: 'Capture the Big 10'"), 'Tutorial is missing the interactive standalone Big 10 step');
+assert(tutorial.includes("scenario: 'big10'"), 'Big 10 tutorial step does not load its standalone scenario');
 
 const specialMoveSandbox = {
   window: {},

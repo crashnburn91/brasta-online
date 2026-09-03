@@ -129,7 +129,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/emote-ui.js?v=0.1.4" strategy="afterInteractive" />
         <Script src="/chat-ui.js?v=0.2.3" strategy="afterInteractive" />
         <Script src="/mobile-game-header.js?v=0.1.5" strategy="afterInteractive" />
-        <Script src="/tutorial.js?v=0.5.14" strategy="afterInteractive" />
+        <Script src="/tutorial.js?v=0.5.15" strategy="afterInteractive" />
       </body>
     </html>
   );
