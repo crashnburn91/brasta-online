@@ -42,6 +42,87 @@
     } catch {}
   }
 
+  function playBrastaRush(delay = 0) {
+    if (!audioUnlocked || !audioContext) return;
+    try {
+      const context = audioContext;
+      const duration = 0.46;
+      const length = Math.max(1, Math.floor(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, length, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let index = 0; index < length; index += 1) {
+        const progress = index / length;
+        const envelope = Math.sin(Math.PI * progress) * (1 - progress * 0.35);
+        data[index] = (Math.random() * 2 - 1) * envelope;
+      }
+
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      const at = context.currentTime + delay;
+      source.buffer = buffer;
+      filter.type = 'bandpass';
+      filter.Q.value = 0.7;
+      filter.frequency.setValueAtTime(2400, at);
+      filter.frequency.exponentialRampToValueAtTime(380, at + duration);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.055, at + 0.055);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(context.destination);
+      source.start(at);
+      source.stop(at + duration + 0.02);
+    } catch {}
+  }
+
+  function playBrastaImpact(delay = 0) {
+    if (!audioUnlocked || !audioContext) return;
+    try {
+      const context = audioContext;
+      const at = context.currentTime + delay;
+      [
+        { type: 'sine', start: 92, end: 43, gain: 0.15, duration: 0.46 },
+        { type: 'triangle', start: 184, end: 82, gain: 0.045, duration: 0.31 },
+      ].forEach((voice) => {
+        const oscillator = context.createOscillator();
+        const volume = context.createGain();
+        oscillator.type = voice.type;
+        oscillator.frequency.setValueAtTime(voice.start, at);
+        oscillator.frequency.exponentialRampToValueAtTime(voice.end, at + voice.duration);
+        volume.gain.setValueAtTime(0.0001, at);
+        volume.gain.exponentialRampToValueAtTime(voice.gain, at + 0.012);
+        volume.gain.exponentialRampToValueAtTime(0.0001, at + voice.duration);
+        oscillator.connect(volume);
+        volume.connect(context.destination);
+        oscillator.start(at);
+        oscillator.stop(at + voice.duration + 0.02);
+      });
+    } catch {}
+  }
+
+  function playBrastaMetallicStrike(delay = 0) {
+    if (!audioUnlocked || !audioContext) return;
+    try {
+      const context = audioContext;
+      const at = context.currentTime + delay;
+      [1046.5, 1612.4, 2388.7].forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const volume = context.createGain();
+        const duration = 0.42 - index * 0.06;
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, at);
+        volume.gain.setValueAtTime(0.0001, at);
+        volume.gain.exponentialRampToValueAtTime(0.044 - index * 0.008, at + 0.008);
+        volume.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+        oscillator.connect(volume);
+        volume.connect(context.destination);
+        oscillator.start(at);
+        oscillator.stop(at + duration + 0.02);
+      });
+    } catch {}
+  }
+
   function playTurnSound() {
     playNotes([
       { frequency: 659.25, offset: 0, duration: 0.15 },
@@ -59,14 +140,17 @@
   }
 
   function playBrastaSound(delay = 0) {
+    playBrastaRush(delay);
+    playBrastaImpact(delay + 0.39);
+    playBrastaMetallicStrike(delay + 0.44);
     playNotes([
-      { frequency: 392, offset: 0, duration: 0.16, gain: 0.09 },
-      { frequency: 523.25, offset: 0.12, duration: 0.17, gain: 0.095 },
-      { frequency: 659.25, offset: 0.24, duration: 0.18, gain: 0.1 },
-      { frequency: 783.99, offset: 0.36, duration: 0.2, gain: 0.105 },
-      { frequency: 1046.5, offset: 0.5, duration: 0.34, gain: 0.12 },
-    ], delay);
-    return 0.86;
+      { frequency: 392, offset: 0, duration: 0.17, gain: 0.07 },
+      { frequency: 523.25, offset: 0.13, duration: 0.18, gain: 0.078 },
+      { frequency: 659.25, offset: 0.26, duration: 0.19, gain: 0.084 },
+      { frequency: 783.99, offset: 0.39, duration: 0.22, gain: 0.09 },
+      { frequency: 1046.5, offset: 0.55, duration: 0.42, gain: 0.105 },
+    ], delay + 0.48);
+    return 1.48;
   }
 
   function playBig2Sound(delay = 0) {
@@ -131,7 +215,9 @@
     const seq = eventBanner.dataset.eventSeq || '';
     if (!seq) return;
 
-    const text = String(eventBanner.textContent || '').replace(/\s+/g, ' ').trim();
+    const text = String(eventBanner.dataset.eventText || eventBanner.dataset.brastaRawEvent || eventBanner.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const key = `${seq}|${text}`;
 
     // The app can re-render the same event banner many times while waiting for

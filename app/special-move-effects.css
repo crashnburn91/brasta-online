@@ -1,0 +1,436 @@
+/* Rich special-move presentation. The controller in public/brasta-special-moves.js
+   decorates the existing authoritative event banner; it never changes game state. */
+
+.event.brasta-crest-event{
+  --brasta-team-accent:#d8b75e;
+  --brasta-team-glow:#d8b75e4d;
+  inset:0;
+  width:auto;
+  min-width:0;
+  max-width:none!important;
+  height:auto;
+  margin:0!important;
+  padding:0!important;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border:0!important;
+  border-radius:13px!important;
+  background:
+    radial-gradient(circle at 50% 48%,var(--brasta-team-glow) 0,transparent 36%),
+    radial-gradient(circle at 50% 50%,#193e2db8 0,#06110de8 68%,#020704f5 100%)!important;
+  color:#f7efd7!important;
+  box-shadow:inset 0 0 80px #000b!important;
+  text-transform:none;
+  transform:none;
+  isolation:isolate;
+  animation:brasta-table-takeover 180ms ease-out both;
+}
+
+.event.brasta-crest-event.team-event-blue{
+  --brasta-team-accent:#5eb8ff;
+  --brasta-team-glow:#287fc566;
+  border:0!important;
+  background:
+    radial-gradient(circle at 50% 48%,var(--brasta-team-glow) 0,transparent 38%),
+    radial-gradient(circle at 50% 50%,#122d31c7 0,#05100eea 68%,#020704f5 100%)!important;
+  box-shadow:inset 0 0 80px #000b!important;
+}
+
+.event.brasta-crest-event.team-event-red{
+  --brasta-team-accent:#ff6f67;
+  --brasta-team-glow:#b8313d66;
+  border:0!important;
+  background:
+    radial-gradient(circle at 50% 48%,var(--brasta-team-glow) 0,transparent 38%),
+    radial-gradient(circle at 50% 50%,#321a1bc7 0,#100907ea 68%,#050202f5 100%)!important;
+  box-shadow:inset 0 0 80px #000b!important;
+}
+
+.event.brasta-crest-event.brasta-event-leaving{
+  opacity:0;
+  transform:none;
+}
+
+.brasta-crest-vignette{
+  position:absolute;
+  inset:-1px;
+  z-index:0;
+  background:
+    linear-gradient(115deg,transparent 25%,#f6df8b13 43%,#fff5c52b 50%,#f6df8b10 57%,transparent 75%),
+    repeating-radial-gradient(circle at 50% 50%,transparent 0 26px,#d8b75e0b 27px 28px);
+  background-size:220% 100%,auto;
+  animation:brasta-crest-glint 1600ms 420ms ease-out both;
+}
+
+.brasta-card-storm,
+.brasta-suit-burst{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+
+.brasta-flight-card{
+  --card-x:0px;
+  --card-y:0px;
+  --card-r:0deg;
+  --card-delay:0ms;
+  position:absolute;
+  z-index:1;
+  left:50%;
+  top:50%;
+  width:clamp(25px,4vw,38px);
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+  border:1px solid #ddcfaa;
+  border-radius:5px;
+  background:linear-gradient(145deg,#fff9e8,#ddd2b8);
+  color:#181512;
+  box-shadow:0 8px 18px #000b,inset 0 0 0 2px #fff8;
+  opacity:0;
+  transform:translate(-50%,-50%) translate(var(--card-x),var(--card-y)) rotate(var(--card-r)) scale(.78);
+  animation:brasta-card-collapse 720ms var(--card-delay) cubic-bezier(.22,.75,.22,1) both;
+}
+
+.brasta-flight-card::before{
+  content:"";
+  position:absolute;
+  inset:3px;
+  border:1px solid #8c774133;
+  border-radius:3px;
+}
+
+.brasta-flight-card b{
+  position:relative;
+  z-index:1;
+  font:800 clamp(14px,2.5vw,22px)/1 Georgia,"Times New Roman",serif;
+}
+
+.brasta-flight-card.red{color:#a42931}
+.brasta-flight-card:nth-child(1){--card-x:-235px;--card-y:-96px;--card-r:-24deg;--card-delay:0ms}
+.brasta-flight-card:nth-child(2){--card-x:-178px;--card-y:112px;--card-r:19deg;--card-delay:55ms}
+.brasta-flight-card:nth-child(3){--card-x:-72px;--card-y:-148px;--card-r:11deg;--card-delay:90ms}
+.brasta-flight-card:nth-child(4){--card-x:88px;--card-y:142px;--card-r:-15deg;--card-delay:35ms}
+.brasta-flight-card:nth-child(5){--card-x:226px;--card-y:-86px;--card-r:27deg;--card-delay:80ms}
+.brasta-flight-card:nth-child(6){--card-x:184px;--card-y:103px;--card-r:-20deg;--card-delay:120ms}
+.brasta-flight-card:nth-child(7){--card-x:42px;--card-y:-166px;--card-r:-8deg;--card-delay:145ms}
+.brasta-flight-card:nth-child(8){--card-x:-34px;--card-y:158px;--card-r:17deg;--card-delay:105ms}
+
+.brasta-crest-shockwave{
+  position:absolute;
+  z-index:2;
+  left:50%;
+  top:50%;
+  width:82px;
+  height:82px;
+  border:2px solid #f6dc7e;
+  border-radius:50%;
+  opacity:0;
+  box-shadow:0 0 14px #f6dc7e99,inset 0 0 14px #f6dc7e66;
+  transform:translate(-50%,-50%) scale(.35);
+  animation:brasta-shockwave 780ms 390ms ease-out both;
+}
+
+.brasta-crest-seal{
+  position:relative;
+  z-index:4;
+  width:clamp(224px,50%,430px);
+  min-height:clamp(184px,62%,254px);
+  padding:clamp(18px,3.2vw,28px) clamp(22px,5vw,48px) clamp(16px,3vw,24px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  border:2px solid #d8b75e;
+  border-radius:24px 8px 24px 8px;
+  background:
+    linear-gradient(145deg,#251716 0,#091d16 45%,#08150f 68%,#2b1216 100%);
+  box-shadow:
+    0 24px 60px #000c,
+    0 0 0 4px #07110dcc,
+    0 0 0 6px #d8b75e66,
+    0 0 42px var(--brasta-team-glow),
+    inset 0 0 48px #0008;
+  opacity:0;
+  transform:scale(.54) rotate(-5deg);
+  animation:brasta-crest-stamp 1180ms cubic-bezier(.18,.78,.2,1) both;
+}
+
+.brasta-crest-seal::before,
+.brasta-crest-seal::after{
+  content:"";
+  position:absolute;
+  pointer-events:none;
+}
+
+.brasta-crest-seal::before{
+  inset:8px;
+  border:1px solid #d8b75e59;
+  border-radius:17px 5px 17px 5px;
+}
+
+.brasta-crest-seal::after{
+  left:12%;
+  right:12%;
+  top:50%;
+  height:1px;
+  background:linear-gradient(90deg,transparent,#d8b75e42,transparent);
+}
+
+.brasta-crest-player{
+  position:relative;
+  z-index:1;
+  max-width:92%;
+  overflow:hidden;
+  color:var(--brasta-team-accent);
+  font:800 clamp(10px,1.7vw,13px)/1.2 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.18em;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+  opacity:0;
+  animation:brasta-crest-copy-in 360ms 520ms ease-out both;
+}
+
+.brasta-crest-suits{
+  position:relative;
+  z-index:1;
+  margin:7px 0 2px;
+  display:flex;
+  align-items:center;
+  gap:clamp(8px,2vw,16px);
+  font:700 clamp(15px,3vw,24px)/1 Georgia,"Times New Roman",serif;
+}
+
+.brasta-crest-suits i{
+  display:inline-block;
+  color:#e8dec5;
+  font-style:normal;
+  opacity:0;
+  transform:translateY(-12px) scale(.5) rotate(-20deg);
+  animation:brasta-sigil-arrive 420ms cubic-bezier(.2,.86,.22,1.2) both;
+}
+
+.brasta-crest-suits i:nth-child(1){animation-delay:470ms}
+.brasta-crest-suits i:nth-child(2){animation-delay:525ms;color:#c9434a}
+.brasta-crest-suits i:nth-child(3){animation-delay:580ms}
+.brasta-crest-suits i:nth-child(4){animation-delay:635ms;color:#c9434a}
+
+.brasta-crest-title{
+  position:relative;
+  z-index:1;
+  margin:0;
+  color:#f4df91;
+  font:900 clamp(31px,7vw,62px)/.92 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.08em;
+  text-shadow:0 2px 0 #6f4d13,0 5px 14px #000b,0 0 22px #d8b75e2e;
+}
+
+.brasta-crest-title em{
+  color:#fff3be;
+  font-style:normal;
+}
+
+.brasta-crest-score{
+  position:relative;
+  z-index:1;
+  margin-top:10px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  opacity:0;
+  transform:scale(.45);
+  animation:brasta-score-pop 460ms 820ms cubic-bezier(.18,.9,.25,1.25) both;
+}
+
+.brasta-crest-score b{
+  display:grid;
+  min-width:58px;
+  height:35px;
+  padding:0 10px;
+  place-items:center;
+  border:1px solid #f0d985;
+  border-radius:999px;
+  background:linear-gradient(180deg,#efd879,#bd8b2d);
+  color:#211805;
+  box-shadow:0 6px 14px #0007,inset 0 1px 0 #fff9;
+  font:900 clamp(18px,3.6vw,27px)/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.02em;
+}
+
+.brasta-crest-score small{
+  color:#cfc5a6;
+  font:800 9px/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.16em;
+}
+
+.brasta-crest-footer{
+  position:relative;
+  z-index:1;
+  min-height:22px;
+  margin-top:9px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  color:#d7cfb9;
+  font:800 clamp(8px,1.35vw,10px)/1.2 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  opacity:0;
+  animation:brasta-crest-copy-in 320ms 980ms ease-out both;
+}
+
+.brasta-combo-medallion{
+  padding:5px 8px;
+  border:1px solid #d8b75e99;
+  border-radius:999px;
+  background:#070d0ae8;
+  color:#f0dc91;
+  box-shadow:0 3px 10px #0008;
+  opacity:0;
+  transform:translateY(10px) scale(.75);
+  animation:brasta-medallion-strike 380ms 1320ms cubic-bezier(.16,.9,.24,1.2) both;
+}
+
+.brasta-combo-medallion + .brasta-combo-medallion{animation-delay:1440ms}
+
+.brasta-suit-particle{
+  --burst-x:0px;
+  --burst-y:0px;
+  --burst-r:0deg;
+  --burst-delay:0ms;
+  position:absolute;
+  z-index:3;
+  left:50%;
+  top:50%;
+  color:#f1dc91;
+  font:700 clamp(12px,2vw,20px)/1 Georgia,"Times New Roman",serif;
+  opacity:0;
+  text-shadow:0 2px 6px #000;
+  transform:translate(-50%,-50%) scale(.35);
+  animation:brasta-suit-particle 900ms calc(940ms + var(--burst-delay)) cubic-bezier(.18,.72,.32,1) both;
+}
+
+.brasta-suit-particle.red{color:#e45c62}
+.brasta-suit-particle:nth-child(1){--burst-x:-190px;--burst-y:-86px;--burst-r:-80deg}
+.brasta-suit-particle:nth-child(2){--burst-x:-136px;--burst-y:-132px;--burst-r:42deg;--burst-delay:40ms}
+.brasta-suit-particle:nth-child(3){--burst-x:-74px;--burst-y:-155px;--burst-r:-38deg;--burst-delay:90ms}
+.brasta-suit-particle:nth-child(4){--burst-x:12px;--burst-y:-166px;--burst-r:68deg;--burst-delay:25ms}
+.brasta-suit-particle:nth-child(5){--burst-x:105px;--burst-y:-142px;--burst-r:-44deg;--burst-delay:70ms}
+.brasta-suit-particle:nth-child(6){--burst-x:184px;--burst-y:-92px;--burst-r:82deg;--burst-delay:115ms}
+.brasta-suit-particle:nth-child(7){--burst-x:205px;--burst-y:-4px;--burst-r:-70deg;--burst-delay:35ms}
+.brasta-suit-particle:nth-child(8){--burst-x:174px;--burst-y:92px;--burst-r:51deg;--burst-delay:80ms}
+.brasta-suit-particle:nth-child(9){--burst-x:98px;--burst-y:148px;--burst-r:-48deg;--burst-delay:130ms}
+.brasta-suit-particle:nth-child(10){--burst-x:10px;--burst-y:168px;--burst-r:75deg;--burst-delay:50ms}
+.brasta-suit-particle:nth-child(11){--burst-x:-90px;--burst-y:148px;--burst-r:-58deg;--burst-delay:105ms}
+.brasta-suit-particle:nth-child(12){--burst-x:-174px;--burst-y:86px;--burst-r:44deg;--burst-delay:20ms}
+
+@keyframes brasta-table-takeover{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+@keyframes brasta-crest-glint{
+  from{opacity:0;background-position:120% 0,0 0}
+  30%{opacity:1}
+  to{opacity:.45;background-position:-110% 0,0 0}
+}
+
+@keyframes brasta-card-collapse{
+  0%{opacity:0;transform:translate(-50%,-50%) translate(var(--card-x),var(--card-y)) rotate(var(--card-r)) scale(.72)}
+  14%{opacity:.95}
+  74%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) translate(0,0) rotate(0) scale(.32)}
+}
+
+@keyframes brasta-shockwave{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}
+  16%{opacity:.95}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(5.4)}
+}
+
+@keyframes brasta-crest-stamp{
+  0%,34%{opacity:0;transform:scale(.54) rotate(-5deg)}
+  48%{opacity:1;transform:scale(1.075) rotate(1deg)}
+  60%{transform:scale(.975) rotate(-.35deg)}
+  72%,100%{opacity:1;transform:scale(1) rotate(0)}
+}
+
+@keyframes brasta-sigil-arrive{
+  from{opacity:0;transform:translateY(-12px) scale(.5) rotate(-20deg)}
+  to{opacity:1;transform:translateY(0) scale(1) rotate(0)}
+}
+
+@keyframes brasta-score-pop{
+  from{opacity:0;transform:scale(.45)}
+  to{opacity:1;transform:scale(1)}
+}
+
+@keyframes brasta-crest-copy-in{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@keyframes brasta-medallion-strike{
+  from{opacity:0;transform:translateY(10px) scale(.75)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+@keyframes brasta-suit-particle{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.35) rotate(0)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) translate(var(--burst-x),var(--burst-y)) scale(1.05) rotate(var(--burst-r))}
+}
+
+@media(max-width:600px){
+  .event.brasta-crest-event{border-radius:8px!important}
+  .brasta-flight-card:nth-child(1){--card-x:-132px;--card-y:-70px}
+  .brasta-flight-card:nth-child(2){--card-x:-112px;--card-y:82px}
+  .brasta-flight-card:nth-child(3){--card-x:-54px;--card-y:-102px}
+  .brasta-flight-card:nth-child(4){--card-x:58px;--card-y:101px}
+  .brasta-flight-card:nth-child(5){--card-x:134px;--card-y:-66px}
+  .brasta-flight-card:nth-child(6){--card-x:111px;--card-y:78px}
+  .brasta-flight-card:nth-child(7){--card-x:28px;--card-y:-112px}
+  .brasta-flight-card:nth-child(8){--card-x:-26px;--card-y:108px}
+  .brasta-crest-seal{
+    width:min(76%,300px);
+    min-height:168px;
+    padding:15px 18px 13px;
+    border-radius:19px 7px 19px 7px;
+  }
+  .brasta-crest-suits{margin-top:5px}
+  .brasta-crest-score{margin-top:8px}
+  .brasta-crest-footer{margin-top:7px;gap:4px}
+  .brasta-combo-medallion{padding:4px 6px}
+  .brasta-suit-burst{transform:scale(.68)}
+}
+
+@media(max-height:620px){
+  .brasta-crest-seal{min-height:148px;padding-top:12px;padding-bottom:10px}
+  .brasta-crest-suits{margin:3px 0 0}
+  .brasta-crest-score{margin-top:6px}
+  .brasta-crest-footer{margin-top:5px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .event.brasta-crest-event{
+    animation:none;
+    background:radial-gradient(circle at 50% 50%,#173428e8 0,#06100df5 72%)!important;
+  }
+  .brasta-crest-vignette,
+  .brasta-card-storm,
+  .brasta-crest-shockwave,
+  .brasta-suit-burst{display:none!important}
+  .brasta-crest-seal,
+  .brasta-crest-player,
+  .brasta-crest-suits i,
+  .brasta-crest-score,
+  .brasta-crest-footer,
+  .brasta-combo-medallion{
+    opacity:1;
+    transform:none;
+    animation:none;
+  }
+}

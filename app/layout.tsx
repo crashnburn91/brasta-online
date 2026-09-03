@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Cinzel } from 'next/font/google';
 import type { ReactNode } from 'react';
 import PresenceTracker from './PresenceTracker';
+import './special-move-effects.css';
 
 const brastaDisplay = Cinzel({
   subsets: ['latin'],
@@ -109,7 +110,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/ranked-match-transition.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/ranked-postmatch.js?v=0.8.0" strategy="afterInteractive" />
         <Script src="/private-postmatch.js?v=0.16.1" strategy="afterInteractive" />
-        <Script src="/lobby-polish.js?v=8" strategy="afterInteractive" />
+        <Script src="/lobby-polish.js?v=9" strategy="afterInteractive" />
         <Script src="/hard-bot.js?v=0.18.1" strategy="afterInteractive" />
         <Script src="/bot-launcher-fix.js?v=0.19.0" strategy="afterInteractive" />
         <Script src="/dist/bot.js?v=0.5.5" strategy="afterInteractive" />
@@ -123,6 +124,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/burn-callout.js?v=0.13.5" strategy="afterInteractive" />
         <Script src="/opening-order-fix.js?v=0.5.10" strategy="afterInteractive" />
         <Script src="/no-scroll-layout.js?v=0.1.2" strategy="afterInteractive" />
+        <Script src="/brasta-special-moves.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/game-overlays.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/emote-ui.js?v=0.1.4" strategy="afterInteractive" />
         <Script src="/chat-ui.js?v=0.2.3" strategy="afterInteractive" />

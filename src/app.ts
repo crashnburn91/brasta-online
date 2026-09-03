@@ -429,7 +429,7 @@ namespace BrastaApp {
     const teamClass = team === 'A' ? ' team-event-blue' : team === 'B' ? ' team-event-red' : '';
     const placementClass = placement === 'round' ? ' round-event-overlay' : ' board-event-overlay';
 
-    return `<div class="event transient-event-overlay${placementClass}${teamClass}" data-event-seq="${eventRenderSequence}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
+    return `<div class="event transient-event-overlay${placementClass}${teamClass}" data-event-seq="${eventRenderSequence}" data-event-text="${escapeAttr(text)}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
   }
 
   function currentRoomIsRanked(): boolean {
