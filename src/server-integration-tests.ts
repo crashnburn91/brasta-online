@@ -1,3 +1,5 @@
+import { rankedSearchAllows, rankedSearchWindow } from '../lib/ranked-search-window';
+
 class FakeSocket {
   messages: any[] = [];
   closed = false;
@@ -21,6 +23,17 @@ class FakeSocket {
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
+}
+
+function assertRankedSearchWidening(): void {
+  assert(rankedSearchWindow(0) === 3, 'Ranked search should begin within about one division');
+  assert(rankedSearchWindow(9_999) === 3, 'Ranked search widened before ten seconds');
+  assert(rankedSearchWindow(10_000) === 9, 'Ranked search should reach about three divisions at ten seconds');
+  assert(rankedSearchWindow(20_000) === 15, 'Ranked search should reach about five divisions at twenty seconds');
+  assert(rankedSearchWindow(30_000) === null, 'Ranked search should open to every rank at thirty seconds');
+  assert(!rankedSearchAllows(4, 0, 0), 'A new queue should not immediately accept a multi-division gap');
+  assert(rankedSearchAllows(9, 0, 10_000), 'The longer-waiting player should widen a potential match');
+  assert(rankedSearchAllows(10_000, 30_000, 0), 'A thirty-second wait should accept any available rank');
 }
 
 type ServerApi = typeof import('../lib/brasta-server');
@@ -448,6 +461,7 @@ async function runLateAccountClaimScenario(server: ServerApi): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  assertRankedSearchWidening();
   delete process.env.REDIS_URL;
   process.env.BRASTA_CHAT_MODERATION_MEMORY = 'true';
   installChatAuthFetch();

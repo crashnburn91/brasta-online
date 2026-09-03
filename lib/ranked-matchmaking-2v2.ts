@@ -5,6 +5,7 @@ import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
 import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
+import { rankedSearchAllows, rankedSearchWindow } from './ranked-search-window';
 import {
   competitiveBackendReady,
   getCompetitiveStatus,
@@ -395,10 +396,6 @@ export async function ranked2v2PartyAction(
   }
 }
 
-function searchWindow(waitMs: number): number {
-  return Math.min(18, 3 + Math.floor(Math.max(0, waitMs) / 10_000) * 2);
-}
-
 async function cleanAndLoadCandidates(): Promise<QueueEntry[]> {
   const r = await requireRedis();
   const now = Date.now();
@@ -489,15 +486,18 @@ function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEnt
   // Array.find() narrowing for currentUnit inside those closures.
   const anchorUnit: QueueUnit = currentUnit;
   const now = Date.now();
-  const currentWindow = searchWindow(now - anchorUnit.joinedAt);
   const eligible = units
     .filter((unit) => unit.key !== anchorUnit.key)
     .map((unit) => ({
       unit,
       gap: Math.abs(unit.ordinal - anchorUnit.ordinal),
-      allowed: Math.max(currentWindow, searchWindow(now - unit.joinedAt)),
+      allowed: rankedSearchAllows(
+        unit.ordinal - anchorUnit.ordinal,
+        now - anchorUnit.joinedAt,
+        now - unit.joinedAt,
+      ),
     }))
-    .filter(({ gap, allowed }) => gap <= allowed)
+    .filter(({ allowed }) => allowed)
     .sort((a, b) => a.gap - b.gap || a.unit.joinedAt - b.unit.joinedAt)
     .slice(0, 24)
     .map(({ unit }) => unit);
@@ -693,7 +693,7 @@ function queuePayload(
       competitive: status,
       queuedAt: entry.joinedAt,
       waitSeconds: Math.max(0, Math.floor((Date.now() - entry.joinedAt) / 1000)),
-      searchRange: searchWindow(Date.now() - entry.joinedAt),
+      searchRange: rankedSearchWindow(Date.now() - entry.joinedAt),
       queueType: entry.partyId ? 'duo' as const : 'solo' as const,
       partnerName: entry.partyId ? partner?.username || null : null,
       playersNeeded: entry.partyId ? 2 : 3,

@@ -322,7 +322,7 @@
       <div class="eyebrow">RANKED 1v1</div>
       <h2>Finding an opponent…</h2>
       ${rankBadge(rank)}
-      <p data-queue-detail>${seconds < 12 ? 'Searching close to your skill level.' : seconds < 32 ? 'Expanding the matchmaking search.' : 'Searching a wider range for the best available opponent.'}</p>
+      <p data-queue-detail>${seconds < 10 ? 'Searching close to your skill level.' : seconds < 20 ? 'Expanding to nearby ranks.' : seconds < 30 ? 'Searching a much wider rank range.' : 'Matching with the closest available opponent.'}</p>
       <div class="queue-time">${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}</div>
       <button data-ranked-cancel>Cancel Search</button>
     </section>`;

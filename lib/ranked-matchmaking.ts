@@ -5,6 +5,7 @@ import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
 import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
+import { rankedSearchAllows, rankedSearchWindow } from './ranked-search-window';
 import {
   competitiveBackendReady,
   createRankedMatchRecord,
@@ -158,10 +159,6 @@ async function makeRoomCode(): Promise<string> {
   throw new Error('Could not allocate a ranked room code.');
 }
 
-function searchWindow(waitMs: number): number {
-  return Math.min(18, 3 + Math.floor(Math.max(0, waitMs) / 10_000) * 2);
-}
-
 async function cleanAndLoadCandidates(excludeUserId: string): Promise<QueueEntry[]> {
   const r = await requireRedis();
   const now = Date.now();
@@ -268,14 +265,17 @@ async function tryMatch(entry: QueueEntry): Promise<RankedAssignment | null> {
     await writeQueueEntry(current);
 
     const candidates = await cleanAndLoadCandidates(entry.userId);
-    const currentWindow = searchWindow(now - current.joinedAt);
     const eligible = candidates
       .map((candidate) => ({
         candidate,
         gap: Math.abs(candidate.ordinal - current.ordinal),
-        allowed: Math.max(currentWindow, searchWindow(now - candidate.joinedAt)),
+        allowed: rankedSearchAllows(
+          candidate.ordinal - current.ordinal,
+          now - current.joinedAt,
+          now - candidate.joinedAt,
+        ),
       }))
-      .filter(({ gap, allowed }) => gap <= allowed)
+      .filter(({ allowed }) => allowed)
       .sort((a, b) => a.gap - b.gap || a.candidate.joinedAt - b.candidate.joinedAt);
     const best = eligible[0]?.candidate;
     if (!best) return null;
@@ -306,7 +306,7 @@ function queuePayload(status: CompetitiveStatus, entry: QueueEntry | null, assig
     competitive: status,
     queuedAt: entry.joinedAt,
     waitSeconds: Math.max(0, Math.floor((Date.now() - entry.joinedAt) / 1000)),
-    searchRange: searchWindow(Date.now() - entry.joinedAt),
+    searchRange: rankedSearchWindow(Date.now() - entry.joinedAt),
   };
   return { state: 'idle' as const, competitive: status };
 }

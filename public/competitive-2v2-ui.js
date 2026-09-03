@@ -475,8 +475,8 @@
       <h2>Finding a team match…</h2>
       ${rankBadge(rank)}
       <p data-queue-2v2-detail>${data?.queueType === 'duo'
-        ? `Queued with ${esc(data.partnerName || 'your partner')}. ${seconds < 20 ? 'Looking for another duo or two solo opponents.' : 'Expanding the search for a balanced opposing team.'}`
-        : seconds < 12 ? 'Looking for a teammate and two opponents near your skill level.' : seconds < 32 ? 'Expanding the four-player search.' : 'Searching a wider range for a balanced match.'}</p>
+        ? `Queued with ${esc(data.partnerName || 'your partner')}. ${seconds < 10 ? 'Looking for nearby ranks.' : seconds < 30 ? 'Expanding the search while balancing teams.' : 'Matching the closest available players and balancing the teams.'}`
+        : seconds < 10 ? 'Looking for a teammate and opponents near your skill level.' : seconds < 20 ? 'Expanding to nearby ranks.' : seconds < 30 ? 'Searching a much wider rank range.' : 'Matching the closest available players and balancing the teams.'}</p>
       <div class="queue-time">${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}</div>
       <button data-ranked-2v2-cancel>Cancel Search</button>
     </section>`;
