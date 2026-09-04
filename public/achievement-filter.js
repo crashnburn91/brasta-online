@@ -33,15 +33,26 @@
 
     panel.querySelectorAll('[data-achievement-filter]').forEach((button) => {
       const active = button.dataset.achievementFilter === key;
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      const next = active ? 'true' : 'false';
+      if (button.getAttribute('aria-pressed') !== next) button.setAttribute('aria-pressed', next);
     });
 
     const empty = panel.querySelector('[data-achievement-filter-empty]');
     if (empty) {
       empty.hidden = visible !== 0;
-      const label = key === 'unlocked' ? 'No unlocked achievements yet.' : key === 'locked' ? 'No locked achievements remain.' : 'No achievements to show.';
-      empty.textContent = label;
+      const label = key === 'unlocked'
+        ? 'No unlocked achievements yet.'
+        : key === 'locked'
+          ? 'No locked achievements remain.'
+          : 'No achievements to show.';
+      if (empty.textContent !== label) empty.textContent = label;
     }
+  }
+
+  function wireButtons(panel, controls) {
+    controls.querySelectorAll('[data-achievement-filter]').forEach((button) => {
+      button.addEventListener('click', () => applyFilter(panel, button.dataset.achievementFilter || 'all'));
+    });
   }
 
   function enhancePanel(panel) {
@@ -51,6 +62,7 @@
     if (!list || !summary) return;
 
     const currentCounts = counts(panel);
+    const signature = `${currentCounts.all}:${currentCounts.unlocked}:${currentCounts.locked}`;
     let controls = panel.querySelector('.ppg-achievement-filters');
     if (!controls) {
       controls = document.createElement('div');
@@ -60,9 +72,13 @@
       summary.insertAdjacentElement('afterend', controls);
     }
 
-    controls.innerHTML = FILTERS.map(({ key, label }) => (
-      `<button type="button" data-achievement-filter="${key}" aria-pressed="false">${label}<span>${currentCounts[key]}</span></button>`
-    )).join('');
+    if (controls.dataset.countSignature !== signature) {
+      controls.innerHTML = FILTERS.map(({ key, label }) => (
+        `<button type="button" data-achievement-filter="${key}" aria-pressed="false">${label}<span>${currentCounts[key]}</span></button>`
+      )).join('');
+      controls.dataset.countSignature = signature;
+      wireButtons(panel, controls);
+    }
 
     let empty = panel.querySelector('[data-achievement-filter-empty]');
     if (!empty) {
@@ -72,10 +88,6 @@
       empty.hidden = true;
       list.insertAdjacentElement('afterend', empty);
     }
-
-    controls.querySelectorAll('[data-achievement-filter]').forEach((button) => {
-      button.addEventListener('click', () => applyFilter(panel, button.dataset.achievementFilter || 'all'));
-    });
 
     const selected = panel.dataset.achievementFilter || 'all';
     applyFilter(panel, selected);
