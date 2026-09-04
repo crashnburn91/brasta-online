@@ -6,6 +6,8 @@ export type MatchHistoryResult = 'win' | 'loss' | 'draw';
 
 export type MatchHistoryPlayerStats = {
   brastas: number;
+  currentBrastaStreak: number;
+  bestBrastaStreak: number;
   bigTenCaptures: number;
   bigTwoCaptures: number;
   jackSweeps: number;
@@ -76,6 +78,7 @@ export type PlayerRecentMatch = {
   rankBefore: string | null;
   rankAfter: string | null;
   brastas: number;
+  bestBrastaStreak: number;
   bigTenCaptures: number;
   bigTwoCaptures: number;
   jackSweeps: number;
@@ -125,6 +128,8 @@ export const blankPlayerStats = (): PlayerGameStats => ({
   currentWinStreak: 0,
   bestWinStreak: 0,
   brastas: 0,
+  currentBrastaStreak: 0,
+  bestBrastaStreak: 0,
   bigTenCaptures: 0,
   bigTwoCaptures: 0,
   jackSweeps: 0,
@@ -179,6 +184,7 @@ function dbPlayer(player: MatchHistoryPlayerInput) {
     username: player.username,
     result: player.result,
     brastas: player.brastas,
+    best_brasta_streak: player.bestBrastaStreak,
     big_ten_captures: player.bigTenCaptures,
     big_two_captures: player.bigTwoCaptures,
     jack_sweeps: player.jackSweeps,
@@ -230,7 +236,7 @@ export async function getPlayerProgression(playerId: string, limit = 10): Promis
   }, 'Could not load player progression');
   if (!data || typeof data !== 'object') return blankPlayerProgression();
   return {
-    stats: { ...blankPlayerStats(), ...(data.stats || {}) },
+    stats: { ...blankPlayerStats(), ...(data.stats || {}), currentBrastaStreak: 0 },
     matches: Array.isArray(data.matches) ? data.matches : [],
     achievements: Array.isArray(data.achievements) ? data.achievements : [],
   };
