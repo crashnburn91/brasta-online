@@ -161,7 +161,7 @@ export default function LiveTrafficClient() {
     };
 
     void load();
-    timer = window.setInterval(() => void load(), 5_000);
+    timer = window.setInterval(() => void load(), 10_000);
     const { data: listener } = supabase.auth.onAuthStateChange(() => void load());
 
     return () => {
@@ -179,7 +179,7 @@ export default function LiveTrafficClient() {
           <h1>Live Traffic</h1>
           <p>Real-time browser presence. IP and network details expire with the short-lived presence record.</p>
         </div>
-        <a href="/" className="traffic-back">Back to Brasta</a>
+        <div><a href="/admin/moderation" className="traffic-back">Moderation</a> <a href="/" className="traffic-back">Back to Brasta</a></div>
       </header>
 
       {loading && <section className="traffic-panel traffic-message">Loading live traffic…</section>}
@@ -221,7 +221,7 @@ export default function LiveTrafficClient() {
                 <h2>Current Sessions</h2>
                 <p>{snapshot.totals.recent10m} browser sessions seen in the last 10 minutes.</p>
               </div>
-              <span className="traffic-refresh">Auto-refresh · 5s</span>
+              <span className="traffic-refresh">Auto-refresh · 10s</span>
             </div>
 
             {snapshot.sessions.length === 0 ? (

@@ -27,3 +27,46 @@
 }
 
 @media(prefers-reduced-motion:reduce){.brasta-turn-alert{animation:none;transition:none}}
+
+.toolbar-exit{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.toolbar-exit-icon{
+  width:17px;
+  height:17px;
+  display:none;
+  fill:currentColor;
+}
+.copy-confirmed{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.copy-confirm-icon{
+  width:16px;
+  height:16px;
+  flex:0 0 auto;
+  fill:currentColor;
+}
+
+@media(max-width:800px){
+  .topbar nav .toolbar-exit{
+    width:44px;
+    height:44px;
+    min-width:44px;
+    padding:0!important;
+    border-radius:12px;
+  }
+  .topbar nav .toolbar-exit-icon{
+    display:block;
+    width:20px;
+    height:20px;
+  }
+  .topbar nav .toolbar-exit-label{
+    display:none;
+  }
+}

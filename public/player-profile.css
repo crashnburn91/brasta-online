@@ -1,0 +1,282 @@
+/* Full player profile opened from the in-match player card. */
+.player-chip.player-card[data-player-profile]{
+  cursor:pointer;
+  transition:border-color .14s ease,box-shadow .14s ease,transform .14s ease;
+}
+.player-chip.player-card[data-player-profile]:hover{
+  border-color:#d8b75e88;
+  box-shadow:inset 0 1px 0 #ffffff12,0 9px 22px #0004,0 0 0 1px #d8b75e18;
+}
+.player-chip.player-card[data-player-profile]:focus-visible{
+  outline:2px solid #f0d46a;
+  outline-offset:2px;
+}
+.player-rank-row .player-rank-badge{
+  cursor:inherit!important;
+  pointer-events:none;
+}
+
+.player-profile-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:7900;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:#010806dc;
+  backdrop-filter:blur(9px);
+}
+.player-profile-modal{
+  position:relative;
+  width:min(470px,100%);
+  max-height:min(760px,calc(100dvh - 36px));
+  overflow:auto;
+  padding:26px 24px 23px;
+  border:1px solid #d4af376a;
+  border-radius:23px;
+  background:linear-gradient(180deg,#0c2c21 0%,#061913 100%);
+  color:#f7f2e8;
+  box-shadow:0 30px 90px #000d,inset 0 1px 0 #ffffff13;
+}
+.player-profile-close{
+  position:absolute;
+  z-index:2;
+  right:11px;
+  top:11px;
+  width:35px;
+  height:35px;
+  padding:0;
+  border:1px solid #ffffff20;
+  border-radius:50%;
+  background:#ffffff08;
+  color:#f7f2e8;
+  font-size:23px;
+  line-height:1;
+  cursor:pointer;
+}
+.player-profile-head{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-height:88px;
+  padding-right:38px;
+}
+.player-profile-avatar,
+.player-profile-avatar-fallback{
+  position:relative;
+  width:82px;
+  height:82px;
+  flex:0 0 82px;
+  overflow:hidden;
+  border:2px solid #d8b75e88;
+  border-radius:50%;
+  background:#17372d;
+  box-shadow:0 8px 22px #0007;
+}
+.player-profile-avatar img{
+  position:relative;
+  z-index:2;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.player-profile-avatar span,
+.player-profile-avatar-fallback{
+  display:grid;
+  place-items:center;
+  color:#f6e7b0;
+  font-size:32px;
+  font-weight:900;
+}
+.player-profile-avatar span{
+  position:absolute;
+  inset:0;
+}
+.player-profile-identity{min-width:0}
+.player-profile-eyebrow{
+  color:#d8b75e;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.16em;
+}
+.player-profile-identity h2{
+  margin:5px 0 3px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#fff;
+  font-size:25px;
+  line-height:1.05;
+}
+.player-profile-identity small{color:#95a99e;font-size:10px}
+
+.player-profile-ranks{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:20px;
+}
+.player-profile-rank-card{
+  min-width:0;
+  padding:13px 12px 11px;
+  border:1px solid #ffffff15;
+  border-radius:14px;
+  background:#0003;
+  text-align:center;
+}
+.player-profile-rank-mode{
+  display:block;
+  margin-bottom:6px;
+  color:#9caf9f;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.player-profile-rank-badge{
+  min-height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.player-profile-rank-badge .rank-visual{
+  justify-content:center;
+}
+.player-profile-rank-card small{
+  display:block;
+  margin-top:5px;
+  color:#9fb0a7;
+  font-size:9px;
+  line-height:1.3;
+}
+
+.player-profile-xp{
+  margin-top:11px;
+  padding:13px 14px;
+  border:1px solid #ffffff16;
+  border-radius:14px;
+  background:#0003;
+}
+.player-profile-xp-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.player-profile-xp-head span{
+  color:#94a79d;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.player-profile-xp-head b{font-size:12px}
+.player-profile-xp-track{
+  height:6px;
+  margin:10px 0 6px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#020906;
+}
+.player-profile-xp-track i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#bc9631,#f0d46a);
+}
+.player-profile-xp small{color:#aab9b1;font-size:10px}
+
+.player-profile-social{margin-top:14px}
+.player-profile-social-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.player-profile-social button,
+.player-profile-signin{
+  min-height:42px;
+  padding:9px 12px;
+  border:1px solid #ffffff20;
+  border-radius:11px;
+  background:#ffffff09;
+  color:#f7f2e8;
+  font:inherit;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.player-profile-social button:disabled{opacity:.58;cursor:default}
+.player-profile-block{
+  border-color:#b957575e!important;
+  background:#5d202344!important;
+  color:#ffaaaa!important;
+}
+.player-profile-signin{width:100%}
+.player-profile-self-note{
+  padding:10px 12px;
+  border:1px solid #d8b75e32;
+  border-radius:11px;
+  color:#e6d6a0;
+  text-align:center;
+  font-size:11px;
+}
+.player-profile-message{
+  min-height:16px;
+  margin-top:9px;
+  color:#b8d8c5;
+  text-align:center;
+  font-size:10px;
+}
+.player-profile-message.error{color:#ff9e9e}
+.player-profile-guest,
+.player-profile-error{
+  margin-top:18px;
+  padding:15px;
+  border:1px solid #ffffff16;
+  border-radius:13px;
+  background:#0003;
+  color:#aebdb5;
+  font-size:11px;
+  line-height:1.5;
+}
+.player-profile-error h2{margin:0 0 8px;color:#fff}
+.player-profile-error p{margin:0}
+
+.player-profile-loading{
+  min-height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+}
+.player-profile-avatar-skeleton{
+  width:78px;
+  height:78px;
+  border-radius:50%;
+  background:#ffffff0d;
+  animation:player-profile-pulse 1.1s ease-in-out infinite alternate;
+}
+.player-profile-loading>div:last-child{width:180px;display:grid;gap:9px}
+.player-profile-loading span{height:9px;border-radius:5px;background:#ffffff0d}
+.player-profile-loading strong{font-size:20px}
+@keyframes player-profile-pulse{from{opacity:.45}to{opacity:1}}
+
+@media(max-width:600px){
+  .player-profile-backdrop{align-items:end;padding:8px}
+  .player-profile-modal{
+    width:100%;
+    max-height:88dvh;
+    padding:22px 16px max(20px,env(safe-area-inset-bottom));
+    border-radius:21px 21px 13px 13px;
+  }
+  .player-profile-head{gap:13px}
+  .player-profile-avatar,.player-profile-avatar-fallback{width:70px;height:70px;flex-basis:70px}
+  .player-profile-avatar-fallback{font-size:27px}
+  .player-profile-identity h2{font-size:22px}
+  .player-profile-ranks{gap:7px}
+  .player-profile-rank-card{padding:11px 8px 9px}
+  .player-profile-rank-card .rank-badge-copy{font-size:10px}
+}
+
+@media(max-width:390px){
+  .player-profile-ranks{grid-template-columns:1fr}
+}

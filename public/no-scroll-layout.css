@@ -280,6 +280,10 @@ body.brasta-shell-locked.brasta-density-tight .seat-label{
   display:none;
 }
 
+body.brasta-shell-locked.brasta-density-tight .players.players-2v2 .player-chip > .player-card-hand{
+  display:flex!important;
+}
+
 body.brasta-shell-locked.brasta-density-tight .last-move-banner{
   margin:2px auto 3px;
   padding:3px 6px;
@@ -802,6 +806,112 @@ body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.ti
 }
 body.brasta-shell-locked .build-row:has(> .build:nth-child(3)) > .build .card.tiny .suit{
   font-size:15px;
+}
+
+/* A horizontally scrollable hand also clips vertical overflow in browsers.
+   Keep the mobile selection entirely inside the card instead of lifting it or
+   drawing an outline beyond the scrollport. */
+@media(max-width:800px){
+  body.brasta-shell-locked .hand .card.selected,
+  body.brasta-shell-locked .hand .card.compact-staged,
+  body.brasta-shell-locked .hand .card.selection-v2-selected{
+    transform:none!important;
+    outline:0!important;
+    border-color:#e8c85f!important;
+    box-shadow:0 4px 10px #0005,inset 0 0 0 3px #f3d878!important;
+  }
+}
+
+/* Fit the complete round breakdown and its controls inside the locked mobile
+   viewport. Desktop keeps the roomier score card. */
+@media(max-width:800px){
+  body.brasta-shell-locked .round-end{
+    width:100%;
+    margin:4px auto;
+    padding:12px 14px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border-radius:14px;
+  }
+
+  body.brasta-shell-locked .round-end h2{
+    margin:0 0 4px;
+    font-size:clamp(21px,3.2vh,28px);
+    line-height:1.08;
+  }
+
+  body.brasta-shell-locked .round-end>p{
+    margin:0 0 6px;
+    font-size:clamp(12px,1.8vh,15px);
+    line-height:1.2;
+  }
+
+  body.brasta-shell-locked .round-end table{
+    width:100%;
+    table-layout:fixed;
+    margin:4px 0 6px;
+    font-size:clamp(11px,1.75vh,14px);
+    line-height:1.12;
+  }
+
+  body.brasta-shell-locked .round-end th,
+  body.brasta-shell-locked .round-end td{
+    padding:clamp(2px,.48vh,4px) 5px;
+  }
+
+  body.brasta-shell-locked .round-end th:first-child,
+  body.brasta-shell-locked .round-end td:first-child{
+    width:52%;
+    white-space:nowrap;
+  }
+
+  body.brasta-shell-locked .round-end>.button-row{
+    width:100%;
+    margin-top:auto;
+    padding-top:3px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:7px;
+    flex-wrap:nowrap;
+  }
+
+  body.brasta-shell-locked .round-end>.button-row>button{
+    width:100%;
+    min-height:38px;
+    padding:7px 9px;
+  }
+}
+
+@media(max-width:800px) and (max-height:760px){
+  body.brasta-shell-locked .round-end{
+    padding:8px 11px;
+  }
+
+  body.brasta-shell-locked .round-end h2{
+    font-size:20px;
+    margin-bottom:2px;
+  }
+
+  body.brasta-shell-locked .round-end>p{
+    margin-bottom:3px;
+    font-size:11px;
+  }
+
+  body.brasta-shell-locked .round-end table{
+    margin:2px 0 3px;
+    font-size:11px;
+  }
+
+  body.brasta-shell-locked .round-end th,
+  body.brasta-shell-locked .round-end td{
+    padding:2px 4px;
+  }
+
+  body.brasta-shell-locked .round-end>.button-row>button{
+    min-height:34px;
+    padding:5px 7px;
+  }
 }
 
 /* Pull-to-refresh feedback for the viewport-locked shell. The browser's native

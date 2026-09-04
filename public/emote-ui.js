@@ -15,6 +15,8 @@
   ];
   const byId = new Map(EMOTES.map((item) => [item.id, item]));
   const bubbleTimers = new Map();
+  const activeBubbles = new Map();
+  let trayOpen = false;
   let attachedSocket = null;
   let humanSocket = null;
   let lastSentAt = 0;
@@ -95,32 +97,68 @@
     showBubble(seat, item, String(payload.name || ''));
   }
 
-  function showBubble(seat, item, name) {
+  function renderActiveBubble(seat) {
+    const active = activeBubbles.get(seat);
+    if (!active) return;
+
+    const remaining = active.expiresAt - Date.now();
+    if (remaining <= 0) {
+      activeBubbles.delete(seat);
+      const timer = bubbleTimers.get(seat);
+      if (timer) window.clearTimeout(timer);
+      bubbleTimers.delete(seat);
+      document.querySelectorAll(`.player-chip[data-seat="${seat}"] .player-emote-bubble`).forEach((node) => node.remove());
+      return;
+    }
+
     const player = document.querySelector(`.player-chip[data-seat="${seat}"]`);
     if (!(player instanceof HTMLElement)) return;
 
-    const old = player.querySelector('.player-emote-bubble');
-    old?.remove();
+    let bubble = player.querySelector('.player-emote-bubble');
+    if (!(bubble instanceof HTMLElement) || bubble.dataset.emote !== active.item.id) {
+      bubble?.remove();
+      bubble = document.createElement('div');
+      bubble.className = 'player-emote-bubble';
+      bubble.dataset.emote = active.item.id;
+      bubble.setAttribute('aria-label', `${active.name || 'Player'}: ${active.item.label}`);
+      bubble.innerHTML = `<span class="player-emote-glyph" aria-hidden="true">${active.item.glyph}</span><span class="player-emote-label">${active.item.label}</span>`;
+      player.appendChild(bubble);
+      requestAnimationFrame(() => bubble?.classList.add('show'));
+    } else if (!bubble.classList.contains('show')) {
+      bubble.classList.add('show');
+    }
+  }
+
+  function showBubble(seat, item, name) {
     const previousTimer = bubbleTimers.get(seat);
     if (previousTimer) window.clearTimeout(previousTimer);
 
-    const bubble = document.createElement('div');
-    bubble.className = 'player-emote-bubble';
-    bubble.setAttribute('aria-label', `${name || 'Player'}: ${item.label}`);
-    bubble.innerHTML = `<span class="player-emote-glyph" aria-hidden="true">${item.glyph}</span><span class="player-emote-label">${item.label}</span>`;
-    player.appendChild(bubble);
+    activeBubbles.set(seat, {
+      item,
+      name,
+      expiresAt: Date.now() + 3200,
+    });
+    renderActiveBubble(seat);
 
-    requestAnimationFrame(() => bubble.classList.add('show'));
     const timer = window.setTimeout(() => {
-      bubble.classList.remove('show');
-      bubble.classList.add('leaving');
-      window.setTimeout(() => bubble.remove(), 220);
+      const playerBubble = document.querySelector(`.player-chip[data-seat="${seat}"] .player-emote-bubble`);
+      if (playerBubble instanceof HTMLElement) {
+        playerBubble.classList.remove('show');
+        playerBubble.classList.add('leaving');
+        window.setTimeout(() => playerBubble.remove(), 220);
+      }
+      activeBubbles.delete(seat);
       bubbleTimers.delete(seat);
-    }, 2800);
+    }, 3200);
     bubbleTimers.set(seat, timer);
   }
 
+  function restoreActiveBubbles() {
+    for (const seat of activeBubbles.keys()) renderActiveBubble(seat);
+  }
+
   function closeTray() {
+    trayOpen = false;
     document.querySelectorAll('.emote-tray.open').forEach((tray) => tray.classList.remove('open'));
     document.querySelectorAll('.emote-trigger[aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
   }
@@ -143,11 +181,11 @@
     trigger.type = 'button';
     trigger.className = 'emote-trigger';
     trigger.setAttribute('aria-label', 'Send emote');
-    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-expanded', trayOpen ? 'true' : 'false');
     trigger.innerHTML = '<span aria-hidden="true">☺</span>';
 
     const tray = document.createElement('div');
-    tray.className = 'emote-tray';
+    tray.className = trayOpen ? 'emote-tray open' : 'emote-tray';
     tray.setAttribute('role', 'menu');
     tray.setAttribute('aria-label', 'Brasta emotes');
 
@@ -169,8 +207,9 @@
 
     trigger.onclick = (event) => {
       event.stopPropagation();
-      const next = !tray.classList.contains('open');
+      const next = !trayOpen;
       closeTray();
+      trayOpen = next;
       tray.classList.toggle('open', next);
       trigger.setAttribute('aria-expanded', next ? 'true' : 'false');
     };
@@ -188,13 +227,22 @@
   function enhance() {
     queued = false;
     socket();
+    restoreActiveBubbles();
 
     const row = document.querySelector('[data-game-action-row]');
     if (!row || !shouldShow()) {
       document.querySelectorAll('.emote-control').forEach((node) => node.remove());
       return;
     }
-    if (row.querySelector('.emote-control')) return;
+
+    const existing = row.querySelector('.emote-control');
+    if (existing) {
+      const tray = existing.querySelector('.emote-tray');
+      const trigger = existing.querySelector('.emote-trigger');
+      tray?.classList.toggle('open', trayOpen);
+      trigger?.setAttribute('aria-expanded', trayOpen ? 'true' : 'false');
+      return;
+    }
 
     const control = buildControl();
     const panel = row.querySelector('.action-panel');

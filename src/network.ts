@@ -1,6 +1,7 @@
 namespace BrastaNet {
   export type SessionRole = 'player' | 'spectator';
-  export interface RoomPlayer { seat: Brasta.Seat; name: string; connected: boolean; occupied: boolean; rankName?: string | null; }
+  export interface PlayerExperienceSummary { level: number; title: string; progressPercent: number; progressLabel: string; }
+  export interface RoomPlayer { seat: Brasta.Seat; name: string; connected: boolean; occupied: boolean; rankName?: string | null; experience?: PlayerExperienceSummary | null; }
   export interface RoomSpectator { name: string; connected: boolean; }
   export interface RoomSnapshot {
     code: string;
@@ -13,6 +14,13 @@ namespace BrastaNet {
     spectators: RoomSpectator[];
     spectatorCount: number;
     full: boolean;
+    botMatch?: boolean;
+    ranked?: {
+      serverNow: number;
+      turnSeat: Brasta.Seat | null;
+      turnDeadlineAt: number | null;
+      roundAdvanceAt: number | null;
+    } | null;
   }
   export interface SessionInfo {
     code: string;
@@ -31,6 +39,7 @@ namespace BrastaNet {
     | { type: 'status'; status: 'connecting' | 'connected' | 'disconnected' }
     | { type: 'session'; session: SessionInfo }
     | { type: 'room'; update: RoomUpdate }
+    | { type: 'roomClosed'; message: string }
     | { type: 'error'; message: string }
     | { type: 'notice'; message: string };
   type EventHandler = (event: ClientEvent) => void;
@@ -236,7 +245,7 @@ namespace BrastaNet {
               code: this.resume.code,
               name: this.resume.name,
               token: this.resume.token,
-              accessToken: this.resume.role === 'player' ? authAccessToken() || undefined : undefined,
+              accessToken: authAccessToken() || undefined,
             });
           }
           resolve();
@@ -370,9 +379,59 @@ namespace BrastaNet {
         this.handler({ type: 'session', session });
       }
       else if (message.type === 'ROOM_STATE') this.handler({ type: 'room', update: message.update as RoomUpdate });
+      else if (message.type === 'ROOM_CLOSED') {
+        const code = normalizeCode(String(message.code || this.resume?.code || ''));
+        if (code) clearSession(code);
+        this.resume = null;
+        this.handler({ type: 'roomClosed', message: String(message.message || 'The private match was abandoned.') });
+      }
       else if (message.type === 'EMOTE') {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('brasta-emote-received', { detail: message.event }));
+        }
+      }
+      else if (message.type === 'CHAT_HISTORY') {
+        if (typeof window !== 'undefined') {
+          const detail = {
+            roomCode: normalizeCode(String(message.roomCode || '')),
+            messages: Array.isArray(message.messages) ? message.messages : [],
+          };
+          (window as any).__BRASTA_CHAT_HISTORY__ = detail;
+          window.dispatchEvent(new CustomEvent('brasta-chat-history', { detail }));
+        }
+      }
+      else if (message.type === 'CHAT_MESSAGE') {
+        if (typeof window !== 'undefined' && message.event) {
+          window.dispatchEvent(new CustomEvent('brasta-chat-message', { detail: message.event }));
+        }
+      }
+      else if (message.type === 'CHAT_ERROR') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-error', {
+            detail: { message: String(message.message || 'Could not send that message.') },
+          }));
+        }
+      }
+      else if (message.type === 'CHAT_CAPABILITIES') {
+        if (typeof window !== 'undefined') {
+          const detail = message.capabilities || {};
+          (window as any).__BRASTA_CHAT_CAPABILITIES__ = detail;
+          window.dispatchEvent(new CustomEvent('brasta-chat-capabilities', { detail }));
+        }
+      }
+      else if (message.type === 'CHAT_REPORT_RESULT') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-report-result', { detail: message }));
+        }
+      }
+      else if (message.type === 'CHAT_BLOCK_RESULT') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-block-result', { detail: message }));
+        }
+      }
+      else if (message.type === 'CHAT_MESSAGE_REMOVED') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brasta-chat-message-removed', { detail: message }));
         }
       }
       else if (message.type === 'ERROR') this.handler({ type: 'error', message: String(message.message || 'Server rejected the request.') });
@@ -407,18 +466,24 @@ namespace BrastaNet {
       const normalized = normalizeCode(code);
       this.resume = token ? { code: normalized, name: name.trim(), token, role: 'spectator' } : null;
       await this.connect();
-      this.send({ type: 'SPECTATE_ROOM', code: normalized, name: name.trim(), token: token || undefined });
+      this.send({ type: 'SPECTATE_ROOM', code: normalized, name: name.trim(), token: token || undefined, accessToken: authAccessToken() || undefined });
     }
     startGame(): void { this.send({ type: 'START_GAME' }); }
     openingChoice(choice: 'keep' | 'put'): void { this.send({ type: 'OPENING_CHOICE', choice }); }
     emote(emote: string): void { this.send({ type: 'EMOTE', emote }); }
+    chat(text: string): void { this.send({ type: 'CHAT_SEND', text }); }
+    acceptChatPolicy(): void { this.send({ type: 'CHAT_ACCEPT_POLICY' }); }
+    reportChat(messageId: string, reason: string, details = ''): void { this.send({ type: 'CHAT_REPORT', messageId, reason, details }); }
+    blockChatUser(messageId: string): void { this.send({ type: 'CHAT_BLOCK', messageId }); }
     claimAccount(accessToken?: string): void {
       const token = accessToken || authAccessToken();
       if (token) this.send({ type: 'CLAIM_ACCOUNT', accessToken: token });
     }
     command(command: Brasta.Command): void { this.send({ type: 'COMMAND', command }); }
+    rankedTurnTimeout(): void { this.send({ type: 'RANKED_TURN_TIMEOUT' }); }
     nextRound(): void { this.send({ type: 'NEXT_ROUND' }); }
     endMatch(): void { this.send({ type: 'END_MATCH' }); }
+    abandonMatch(): void { this.send({ type: 'ABANDON_MATCH' }); }
     leaveRoom(): void { this.resume = null; this.send({ type: 'LEAVE_ROOM' }); }
     close(): void {
       this.stopped = true;

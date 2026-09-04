@@ -124,7 +124,7 @@
 
   function cleanInactive() {
     document.body.classList.remove('brasta-mobile-merged-header');
-    document.querySelectorAll('.mobile-header-menu,.mobile-connection-overlay,.mobile-score-round-pill').forEach((node) => node.remove());
+    document.querySelectorAll('.mobile-header-menu,.mobile-header-chat,.mobile-connection-overlay,.mobile-score-round-pill').forEach((node) => node.remove());
     if (connectedTimer) {
       window.clearTimeout(connectedTimer);
       connectedTimer = 0;

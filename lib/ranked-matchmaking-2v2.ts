@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis } from './redis';
+import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
+import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
+import { rankedSearchAllows, rankedSearchWindow } from './ranked-search-window';
 import {
   competitiveBackendReady,
   getCompetitiveStatus,
@@ -17,8 +20,7 @@ const QUEUE_TTL_SECONDS = 120;
 const PARTY_TTL_SECONDS = 15 * 60;
 const ASSIGNMENT_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_STALE_MS = 90_000;
-const PRESENCE_MS = 45_000;
-const ROUND_SCORE_PAUSE_MS = 4_000;
+const ROUND_SCORE_PAUSE_MS = 10_000;
 const ROOM_EVENT_CHANNEL = 'brasta:room-events';
 const QUEUE_KEY = 'brasta:ranked:queue:2v2';
 const QUEUE_LOCK_KEY = 'brasta:ranked:queue:2v2:lock';
@@ -82,6 +84,7 @@ type RankedParticipant = {
   lastSeen: number;
   authUserId: string;
   rankName: string;
+  experience: PlayerExperienceSummary;
 };
 
 type RankedRoom = {
@@ -104,6 +107,9 @@ type RankedRoom = {
     finalized: boolean;
     finalizing: boolean;
     result: RankedFinalizeResult | null;
+    roundEndedAt?: number;
+    turnStartedAt?: number;
+    turnSeat?: Brasta.Seat;
   };
 };
 
@@ -390,10 +396,6 @@ export async function ranked2v2PartyAction(
   }
 }
 
-function searchWindow(waitMs: number): number {
-  return Math.min(18, 3 + Math.floor(Math.max(0, waitMs) / 10_000) * 2);
-}
-
 async function cleanAndLoadCandidates(): Promise<QueueEntry[]> {
   const r = await requireRedis();
   const now = Date.now();
@@ -484,15 +486,18 @@ function chooseMatchGroup(current: QueueEntry, entries: QueueEntry[]): [QueueEnt
   // Array.find() narrowing for currentUnit inside those closures.
   const anchorUnit: QueueUnit = currentUnit;
   const now = Date.now();
-  const currentWindow = searchWindow(now - anchorUnit.joinedAt);
   const eligible = units
     .filter((unit) => unit.key !== anchorUnit.key)
     .map((unit) => ({
       unit,
       gap: Math.abs(unit.ordinal - anchorUnit.ordinal),
-      allowed: Math.max(currentWindow, searchWindow(now - unit.joinedAt)),
+      allowed: rankedSearchAllows(
+        unit.ordinal - anchorUnit.ordinal,
+        now - anchorUnit.joinedAt,
+        now - unit.joinedAt,
+      ),
     }))
-    .filter(({ gap, allowed }) => gap <= allowed)
+    .filter(({ allowed }) => allowed)
     .sort((a, b) => a.gap - b.gap || a.unit.joinedAt - b.unit.joinedAt)
     .slice(0, 24)
     .map(({ unit }) => unit);
@@ -551,6 +556,7 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
   ];
   const now = Date.now();
   const tokens = new Map(seated.map(({ entry }) => [entry.userId, makeToken()]));
+  const experience = await getExperienceSummariesForPlayers(entries.map((entry) => entry.userId));
 
   const room: RankedRoom = {
     code,
@@ -569,6 +575,7 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
       lastSeen: 0,
       authUserId: entry.userId,
       rankName: entry.rankName,
+      experience: experience[entry.userId],
     }])) as Record<string, RankedParticipant>,
     spectators: {},
     gameState: null,
@@ -686,7 +693,7 @@ function queuePayload(
       competitive: status,
       queuedAt: entry.joinedAt,
       waitSeconds: Math.max(0, Math.floor((Date.now() - entry.joinedAt) / 1000)),
-      searchRange: searchWindow(Date.now() - entry.joinedAt),
+      searchRange: rankedSearchWindow(Date.now() - entry.joinedAt),
       queueType: entry.partyId ? 'duo' as const : 'solo' as const,
       partnerName: entry.partyId ? partner?.username || null : null,
       playersNeeded: entry.partyId ? 2 : 3,
@@ -839,7 +846,7 @@ function allPlayersConnected(room: RankedRoom): boolean {
   const now = Date.now();
   return ['1','2','3','4'].every((seat) => {
     const p = room.seats[seat];
-    return Boolean(p?.connectionId && now - p.lastSeen < PRESENCE_MS);
+    return Boolean(p?.connectionId && roomPresenceLeaseIsFresh(p.lastSeen, now));
   });
 }
 
@@ -876,6 +883,8 @@ export async function monitorRanked2v2Room(request: Request, roomCode: string) {
     if (!room.gameState) {
       if (allPlayersConnected(room)) {
         room.gameState = Brasta.startMatch('2v2', crypto.randomInt(1, 0x7fffffff), 110);
+        delete room.ranked.turnStartedAt;
+        delete room.ranked.turnSeat;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
@@ -885,11 +894,21 @@ export async function monitorRanked2v2Room(request: Request, roomCode: string) {
     }
 
     if (room.gameState.phase === 'roundEnd') {
-      const remaining = ROUND_SCORE_PAUSE_MS - (Date.now() - room.lastActivity);
+      // lastActivity is also touched by heartbeats/account claims, so it cannot
+      // represent when the round actually ended. Persist a dedicated timestamp
+      // that remains stable while players are sitting on the score screen.
+      if (!room.ranked.roundEndedAt) {
+        room.ranked.roundEndedAt = Date.now();
+        await saveRankedRoom(room, false);
+      }
+      const remaining = ROUND_SCORE_PAUSE_MS - (Date.now() - room.ranked.roundEndedAt);
       if (remaining <= 0) {
         const next = Brasta.nextRound(room.gameState);
         if (!next.ok) throw new Error(next.error || 'Could not advance the ranked round.');
         room.gameState = next.state;
+        delete room.ranked.roundEndedAt;
+        delete room.ranked.turnStartedAt;
+        delete room.ranked.turnSeat;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);

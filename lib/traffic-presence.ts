@@ -62,6 +62,7 @@ export type TrafficPresence = {
   pixelRatio: number | null;
   firstSeen: number;
   lastSeen: number;
+  visitorDay?: string;
 };
 
 export type TrafficSnapshot = {
@@ -254,6 +255,7 @@ export async function recordTrafficPresence(args: {
   if (!sessionId) return { ok: false };
 
   const now = Date.now();
+  const day = dayKey();
   const key = sessionKey(sessionId);
   const path = cleanPath(args.path);
   const pageKey = cleanPageKey(args.pageKey, path);
@@ -306,16 +308,18 @@ export async function recordTrafficPresence(args: {
     pixelRatio: cleanNumber(client.pixelRatio, 0.1, 20),
     firstSeen: previous?.firstSeen || now,
     lastSeen: now,
+    visitorDay: day,
   };
 
-  const day = dayKey();
   const pipeline = redis.pipeline();
   pipeline.set(key, JSON.stringify(record), 'EX', SESSION_TTL_SECONDS);
   pipeline.zadd(PRESENCE_INDEX, now, sessionId);
   pipeline.expire(PRESENCE_INDEX, SESSION_TTL_SECONDS * 2);
-  pipeline.sadd(visitorsKey(day), sessionId);
-  pipeline.expire(visitorsKey(day), DAILY_TTL_SECONDS);
-  if (!previous || previous.pageKey !== pageKey) {
+  if (!previous || previous.visitorDay !== day) {
+    pipeline.sadd(visitorsKey(day), sessionId);
+    pipeline.expire(visitorsKey(day), DAILY_TTL_SECONDS);
+  }
+  if (!previous || previous.pageKey !== pageKey || previous.visitorDay !== day) {
     pipeline.incr(pageviewsKey(day));
     pipeline.expire(pageviewsKey(day), DAILY_TTL_SECONDS);
   }

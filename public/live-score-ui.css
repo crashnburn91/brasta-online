@@ -1,4 +1,4 @@
-/* Live match + current-round score strip. */
+/* Match-total strip. Current-round running score stays hidden until round end. */
 .topbar.live-score-enabled{
   gap:14px;
 }
@@ -29,22 +29,11 @@
   font-weight:900;
   letter-spacing:.16em;
 }
-.live-team{
-  font-size:12px;
-  font-weight:800;
-}
-.live-team b{
-  margin-left:0;
-  font-size:15px;
-}
+.live-team{font-size:12px;font-weight:800}
+.live-team b{font-size:15px}
 .team-a-live,.team-a-live b{color:#5eb8ff}
 .team-b-live,.team-b-live b{color:#ff6f67}
 .live-score-dash{color:#71877b}
-.live-score-divider{
-  width:1px;
-  height:24px;
-  background:#ffffff20;
-}
 .live-score-target{
   padding-left:2px;
   color:#d8b75e;
@@ -84,21 +73,10 @@
     gap:9px;
     border-top:1px solid #ffffff12;
   }
-  .live-score-group{
-    gap:5px;
-  }
-  .live-score-group small{
-    font-size:7px;
-  }
-  .live-team{
-    font-size:11px;
-  }
-  .live-team b{
-    font-size:14px;
-  }
-  .live-score-divider{
-    height:20px;
-  }
+  .live-score-group{gap:5px}
+  .live-score-group small{font-size:7px}
+  .live-team{font-size:11px}
+  .live-team b{font-size:14px}
   .live-score-target{
     font-size:9px;
   }
@@ -117,9 +95,7 @@
     padding-left:2px;
     padding-right:2px;
   }
-  .live-score-group small{
-    letter-spacing:.10em;
-  }
+  .live-score-group small{letter-spacing:.10em}
   .live-score-target{
     margin-left:auto;
   }

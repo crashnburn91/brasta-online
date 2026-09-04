@@ -1,24 +1,22 @@
 (() => {
   if (window.BrastaRankBadge) return;
 
-  let emblemSequence = 0;
-
   const esc = (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (char) => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
   })[char]);
 
   function parse(rank) {
     const raw = String(rank || 'Unranked').trim();
-    if (!raw || /^unranked$/i.test(raw)) return { raw: 'Unranked', tier: 'unranked', division: 0 };
+    if (!raw || /^unranked$/i.test(raw)) return { raw: 'Unranked', tier: 'unranked', division: '' };
     const match = raw.match(/^(Bronze|Silver|Gold|Platinum|Diamond)(?:\s+(III|II|I))?$/i);
     if (match) {
       const tier = match[1].toLowerCase();
-      const division = match[2] === 'I' ? 3 : match[2] === 'II' ? 2 : match[2] === 'III' ? 1 : 0;
+      const division = String(match[2] || '').toUpperCase();
       return { raw, tier, division };
     }
-    if (/^grandmaster$/i.test(raw)) return { raw: 'Grandmaster', tier: 'grandmaster', division: 0 };
-    if (/^master$/i.test(raw)) return { raw: 'Master', tier: 'master', division: 0 };
-    return { raw, tier: 'unranked', division: 0 };
+    if (/^grandmaster$/i.test(raw)) return { raw: 'Grandmaster', tier: 'grandmaster', division: '' };
+    if (/^master$/i.test(raw)) return { raw: 'Master', tier: 'master', division: '' };
+    return { raw, tier: 'unranked', division: '' };
   }
 
   function rankClass(rank) {
@@ -27,6 +25,10 @@
 
   function suitText(symbol) {
     return `<text class="rank-emblem-symbol" x="32" y="35.5" text-anchor="middle" dominant-baseline="central">${symbol}</text>`;
+  }
+
+  function divisionText(division) {
+    return `<text class="rank-division-symbol" x="32" y="37.5" text-anchor="middle">${division}</text>`;
   }
 
   function symbolFor(tier) {
@@ -56,33 +58,17 @@
     return suitText('♠');
   }
 
-  function divisionMarks(division) {
-    if (!division) return '';
-    const width = 4.5;
-    const gap = 2.8;
-    const total = (division * width) + ((division - 1) * gap);
-    const start = 32 - (total / 2);
-    return Array.from({ length: division }, (_, index) => {
-      const x = start + (index * (width + gap));
-      return `<rect class="rank-division-mark" x="${x.toFixed(2)}" y="57.5" width="${width}" height="2.4" rx="1.2"/>`;
-    }).join('');
+  function centralMark(info) {
+    if (info.division === 'III' || info.division === 'II') return divisionText(info.division);
+    return symbolFor(info.tier);
   }
 
   function emblem(rank, size = 'medium') {
     const info = parse(rank);
-    const gradientId = `rank-metal-${info.tier}-${++emblemSequence}`;
     return `<svg class="rank-emblem rank-emblem-${esc(size)} rank-tier-${info.tier}" viewBox="0 0 64 70" role="img" aria-label="${esc(info.raw)} rank badge">
-      <defs>
-        <linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="var(--rank-light)"/>
-          <stop offset="46%" stop-color="var(--rank-color)"/>
-          <stop offset="100%" stop-color="var(--rank-dark)"/>
-        </linearGradient>
-      </defs>
-      <path class="rank-shield" style="--rank-metal:url(#${gradientId})" d="M32 5 52 13.5v25.8c0 10.7-7.4 19.4-20 25.6-12.6-6.2-20-14.9-20-25.6V13.5Z"/>
+      <path class="rank-shield" d="M32 5 52 13.5v25.8c0 10.7-7.4 19.4-20 25.6-12.6-6.2-20-14.9-20-25.6V13.5Z"/>
       <path class="rank-shield-inner" d="M32 10 47.2 16.5v21.9c0 7.9-5.5 14.7-15.2 20-9.7-5.3-15.2-12.1-15.2-20V16.5Z"/>
-      <g class="rank-symbol-wrap" style="--rank-metal:url(#${gradientId})">${symbolFor(info.tier)}</g>
-      ${divisionMarks(info.division)}
+      <g class="rank-symbol-wrap">${centralMark(info)}</g>
     </svg>`;
   }
 

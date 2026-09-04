@@ -152,6 +152,7 @@ namespace BrastaTests {
     assert(r.ok, r.error || 'last move failed');
     assert(r.state.score.A >= 220, `expected Team A to reach at least 220, got ${r.state.score.A}`);
     assert(r.state.phase === 'matchEnd', `expected matchEnd, got ${r.state.phase}`);
+    assert((r.state.lastMove || '').includes('played 2♠ loose'), `final match move was not preserved: ${r.state.lastMove}`);
   });
 
   test('a tie at the target continues to another round', () => {
@@ -167,26 +168,42 @@ namespace BrastaTests {
     assert(r.ok, r.error || 'last move failed');
     assert(r.state.score.A === 110 && r.state.score.B === 110, 'scores did not tie at 110');
     assert(r.state.phase === 'roundEnd', `tie should continue, got ${r.state.phase}`);
+    assert((r.state.lastMove || '').includes('played 2♠ loose'), `final round move was not preserved: ${r.state.lastMove}`);
   });
 
   test('capturing Big 2 produces a special announcement and last-move note', () => {
-    const s = Brasta.createLabState('1v1');
+    const s = Brasta.scenario('big2');
     s.players[0].name = 'Alice';
-    s.players[0].hand = [card(s, '2', 'hearts')];
-    s.loose = [card(s, '2', 'clubs')];
     const r = Brasta.applyCommand(s, { type: 'CAPTURE_LOOSE', seat: 1, cardId: card(s, '2', 'hearts'), looseIds: [card(s, '2', 'clubs')] });
     assert(r.ok, r.error || 'capture failed');
     assert((r.state.event || '').includes('BIG 2!'), `missing Big 2 event: ${r.state.event}`);
     assert((r.state.lastMove || '').includes('Alice captured'), `missing last move: ${r.state.lastMove}`);
+    assert(!(r.state.event || '').includes('BRASTA!'), `standalone Big 2 incorrectly triggered Brasta: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('LAST PICKUP!'), `standalone Big 2 incorrectly triggered Last Pickup: ${r.state.event}`);
+    assert(r.state.loose.includes(card(s, 'A', 'diamonds')), 'Big 2 lab capture did not leave the non-captured table card in place');
   });
 
   test('capturing Big 10 produces a special announcement', () => {
-    const s = Brasta.createLabState('1v1');
-    s.players[0].hand = [card(s, '10', 'hearts')];
-    s.loose = [card(s, '10', 'diamonds')];
+    const s = Brasta.scenario('big10');
     const r = Brasta.applyCommand(s, { type: 'CAPTURE_LOOSE', seat: 1, cardId: card(s, '10', 'hearts'), looseIds: [card(s, '10', 'diamonds')] });
     assert(r.ok, r.error || 'capture failed');
     assert((r.state.event || '').includes('BIG 10!'), `missing Big 10 event: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('BRASTA!'), `standalone Big 10 incorrectly triggered Brasta: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('LAST PICKUP!'), `standalone Big 10 incorrectly triggered Last Pickup: ${r.state.event}`);
+    assert(r.state.loose.includes(card(s, 'A', 'clubs')), 'Big 10 lab capture did not leave the non-captured table card in place');
+  });
+
+  test('capturing Big 2 and Big 10 together produces one combined announcement', () => {
+    const s = Brasta.scenario('big2big10');
+    const r = Brasta.applyCommand(s, {
+      type: 'CAPTURE_LOOSE', seat: 1, cardId: card(s, '10', 'hearts'),
+      looseIds: [card(s, '10', 'diamonds'), card(s, '2', 'clubs'), card(s, '8', 'spades')]
+    });
+    assert(r.ok, r.error || 'combined capture failed');
+    assert((r.state.event || '').includes('BIG 2 + BIG 10!'), `missing combined special event: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('BRASTA!'), `Power Pair test incorrectly triggered Brasta: ${r.state.event}`);
+    assert(!(r.state.event || '').includes('LAST PICKUP!'), `Power Pair test incorrectly triggered Last Pickup: ${r.state.event}`);
+    assert(r.state.loose.includes(card(s, 'A', 'hearts')), 'Power Pair lab capture did not leave the non-captured table card in place');
   });
 
   test('build action records a readable last move', () => {

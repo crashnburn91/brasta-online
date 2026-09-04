@@ -449,6 +449,11 @@ namespace BrastaBot {
       return;
     }
 
+    if (message.type === 'ROOM_CLOSED') {
+      disconnectBot(true);
+      return;
+    }
+
     if (message.type === 'ERROR') {
       console.warn('[Brasta bot]', String(message.message || 'Bot request rejected.'));
       lastActionKey = '';
@@ -480,7 +485,7 @@ namespace BrastaBot {
     ws.onopen = () => {
       if (socket !== ws) return;
       startPing();
-      send({ type: 'JOIN_ROOM', code, name: BOT_NAME, token: saved?.token || undefined });
+      send({ type: 'JOIN_ROOM', code, name: BOT_NAME, token: saved?.token || undefined, bot: true });
     };
     ws.onmessage = (event) => {
       try { handleMessage(JSON.parse(String(event.data))); }

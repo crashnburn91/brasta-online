@@ -149,17 +149,37 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
       setLoaded(false);
       return;
     }
+
+    let alive = true;
+    let timer = 0;
+    const schedule = () => {
+      if (!alive) return;
+      const inActiveGame = Boolean(document.querySelector('.lobby, .table, .round-end, .players'));
+      const delay = open ? 12_000 : inActiveGame ? 60_000 : 30_000;
+      timer = window.setTimeout(async () => {
+        if (document.visibilityState === 'visible') await refresh(true);
+        schedule();
+      }, delay);
+    };
+
     void refresh(true);
-    const timer = window.setInterval(() => void refresh(true), 12_000);
+    schedule();
     const onVisibility = () => {
       if (document.visibilityState === 'visible') void refresh(true);
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      window.clearInterval(timer);
+      alive = false;
+      window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [accessToken, refresh]);
+  }, [accessToken, open, refresh]);
+
+  useEffect(() => {
+    const onExternalUpdate = () => void refresh(true);
+    window.addEventListener('brasta-friends-updated', onExternalUpdate);
+    return () => window.removeEventListener('brasta-friends-updated', onExternalUpdate);
+  }, [refresh]);
 
   async function mutate(action: string, extra: Record<string, unknown>, success?: string) {
     if (busy) return;
@@ -351,7 +371,7 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
 
   return (
     <>
-      <button className="friends-dock" type="button" onClick={() => { setOpen(true); void refresh(true); }} aria-label="Open friends list">
+      <button className="friends-dock" type="button" onClick={() => setOpen(true)} aria-label="Open friends list">
         <span className="friends-dock-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
             <path d="M8.25 11.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm7.5-1.25a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM2.75 18.5c0-3.05 2.46-5.5 5.5-5.5s5.5 2.45 5.5 5.5v.75h-11v-.75Zm11.7.75v-.75c0-1.73-.6-3.33-1.6-4.58.86-.57 1.9-.92 3.02-.92 2.98 0 5.38 2.41 5.38 5.38v.87h-6.8Z" />

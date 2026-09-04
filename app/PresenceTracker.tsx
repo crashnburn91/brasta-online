@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 import { BRASTA_AUTH_TOKEN_KEY } from '../lib/supabase-browser';
 
 const VISITOR_SESSION_KEY = 'brasta-visitor-session-id';
-const HEARTBEAT_MS = 20_000;
+const HEARTBEAT_MS = 60_000;
+const MIN_HEARTBEAT_GAP_MS = 5_000;
 
 function visitorSessionId(): string {
   try {
@@ -132,6 +133,9 @@ export default function PresenceTracker() {
     const sessionId = visitorSessionId();
     let stopped = false;
     let inFlight = false;
+    let lastAttemptAt = 0;
+    let lastSentAt = 0;
+    let lastSignature = '';
     let cachedDetails: ClientDetails | null = null;
 
     const getDetails = async () => {
@@ -145,12 +149,33 @@ export default function PresenceTracker() {
       };
     };
 
-    const heartbeat = async () => {
+    const heartbeat = async (force = false) => {
       if (stopped || inFlight) return;
-      inFlight = true;
+      if (!force && document.visibilityState !== 'visible') return;
+
+      const now = Date.now();
+      if (now - lastAttemptAt < MIN_HEARTBEAT_GAP_MS) return;
+
+      const currentActivity = activity();
+      const currentRoomCode = roomCodeFromUrl() || null;
+      const currentPageKey = pageKey();
+      const visible = document.visibilityState === 'visible';
       const token = authToken();
+      const signature = [
+        location.pathname,
+        currentPageKey,
+        currentActivity,
+        currentRoomCode || '',
+        visible ? 'visible' : 'hidden',
+        token ? 'signed-in' : 'guest',
+      ].join('|');
+
+      if (!force && signature === lastSignature && now - lastSentAt < HEARTBEAT_MS) return;
+
+      inFlight = true;
+      lastAttemptAt = now;
       try {
-        await fetch('/api/presence', {
+        const response = await fetch('/api/presence', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -158,16 +183,20 @@ export default function PresenceTracker() {
           },
           body: JSON.stringify({
             sessionId,
-            activity: activity(),
-            roomCode: roomCodeFromUrl() || null,
+            activity: currentActivity,
+            roomCode: currentRoomCode,
             path: location.pathname,
-            pageKey: pageKey(),
-            visible: document.visibilityState === 'visible',
+            pageKey: currentPageKey,
+            visible,
             client: await getDetails(),
           }),
           cache: 'no-store',
           keepalive: true,
         });
+        if (response.ok) {
+          lastSentAt = Date.now();
+          lastSignature = signature;
+        }
       } catch {
         // Presence is best-effort and must never interfere with gameplay.
       } finally {
@@ -177,8 +206,8 @@ export default function PresenceTracker() {
 
     const onVisible = () => { if (document.visibilityState === 'visible') void heartbeat(); };
     const onFocus = () => void heartbeat();
-    const onAuth = () => void heartbeat();
-    const onNavigation = () => void heartbeat();
+    const onAuth = () => void heartbeat(true);
+    const onNavigation = () => void heartbeat(true);
     const onResize = () => {
       cachedDetails = cachedDetails ? {
         ...cachedDetails,
@@ -187,6 +216,9 @@ export default function PresenceTracker() {
       } : null;
     };
 
+    // The game redraws #app after every move. Signature deduplication lets a
+    // real home/lobby/match transition report immediately without treating
+    // ordinary card-table rerenders as new presence heartbeats.
     const observer = new MutationObserver(() => void heartbeat());
     const app = document.getElementById('app');
     if (app) observer.observe(app, { childList: true, subtree: false });

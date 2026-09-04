@@ -10,6 +10,19 @@ export type ActiveMatchRef = {
 const memory = new Map<string, ActiveMatchRef>();
 const TTL_SECONDS = 24 * 60 * 60;
 const keyFor = (userId: string) => `brasta:account-active-match:${userId}`;
+const ranked1v1KeyFor = (userId: string) => `brasta:ranked:assignment:${userId}`;
+const ranked2v2KeyFor = (userId: string) => `brasta:ranked:assignment:2v2:${userId}`;
+
+export async function hasAnyActiveMatchReference(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  if (!redis) return memory.has(userId);
+  const references = await redis.mget(
+    keyFor(userId),
+    ranked1v1KeyFor(userId),
+    ranked2v2KeyFor(userId),
+  );
+  return references.some(Boolean);
+}
 
 export async function setActiveMatch(userId: string, ref: ActiveMatchRef): Promise<void> {
   if (!userId) return;

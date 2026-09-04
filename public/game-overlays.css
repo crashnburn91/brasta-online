@@ -49,6 +49,28 @@
   color:#dce7e0;
 }
 
+.round-end > .round-last-move{
+  max-width:100%;
+  margin:10px 0 4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.round-end > .round-last-move span{
+  flex:0 0 auto;
+  margin:0;
+}
+
+.round-end > .round-last-move b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:500;
+}
+
 .transient-event-overlay{
   z-index:32;
   pointer-events:none;
@@ -107,6 +129,18 @@
   .table > .board-last-move span{
     font-size:9px;
     letter-spacing:.12em;
+  }
+
+  .round-end > .round-last-move{
+    margin:2px 0 3px;
+    padding:5px 8px;
+    font-size:11px;
+    line-height:1.15;
+  }
+
+  .round-end > .round-last-move span{
+    font-size:8px;
+    letter-spacing:.11em;
   }
 
   .table > .board-last-move b{

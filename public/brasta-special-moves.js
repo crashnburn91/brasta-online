@@ -1,0 +1,630 @@
+(() => {
+  'use strict';
+  if (window.__BRASTA_SPECIAL_MOVE_EFFECTS__) return;
+  window.__BRASTA_SPECIAL_MOVE_EFFECTS__ = true;
+
+  const EFFECT_SHOW_MS = 2800;
+  const BIG2_SHOW_MS = 1900;
+  const BIG10_SHOW_MS = 1900;
+  const POWER_PAIR_SHOW_MS = 2200;
+  const BURNED_JACK_SHOW_MS = 2000;
+  const JACK_SWEEP_SHOW_MS = 1400;
+  const EFFECT_FADE_MS = 220;
+  const hapticKeys = new Set();
+  const presentedKeys = new Set();
+  const effectQueue = [];
+  let activeEffect = null;
+  let syncQueued = false;
+
+  const flightSuits = ['♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
+  const burstSuits = ['♠', '♦', '♣', '♥', '♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
+  const big10RushSuits = ['♠', '♥', '♣', '♦', '♣', '♥'];
+  const burnedJackEmbers = [
+    [-184, -82, -18, 4, 0], [-148, 94, 23, 5, 55], [-104, -132, -34, 3, 115],
+    [-66, 126, 31, 4, 30], [-24, -154, -12, 6, 85], [28, 142, 19, 3, 140],
+    [72, -128, 27, 5, 18], [112, 112, -25, 4, 105], [158, -88, 36, 5, 65],
+    [188, 54, -31, 3, 130], [-204, 18, 17, 4, 92], [206, -18, -14, 6, 42],
+    [-118, -24, 28, 3, 165], [132, 18, -22, 4, 155], [-42, 76, 35, 5, 70],
+    [48, -64, -27, 3, 122],
+  ];
+  const scoringBonuses = Object.freeze([
+    { name: 'a Brasta', label: 'BRASTA', pattern: /\bBRASTA!/i },
+    { name: 'Big 2', label: 'BIG 2', pattern: /\bBIG\s*2\b/i },
+    { name: 'Big 10', label: 'BIG 10', pattern: /\bBIG\s*10\b/i },
+    { name: 'Last Pickup', label: 'LAST PICKUP', pattern: /\bLAST\s+PICKUP!/i },
+  ]);
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    })[character]);
+  }
+
+  function eventTeam(banner, text) {
+    const stored = String(banner.dataset.eventTeam || banner.dataset.brastaEventTeam || '').toUpperCase();
+    if (stored === 'A' || stored === 'B') return stored;
+    const match = String(text || '').match(/\bTeam\s+([AB])\b/i);
+    return match ? match[1].toUpperCase() : '';
+  }
+
+  function playerNames() {
+    return Array.from(document.querySelectorAll('.player-chip .player-name'))
+      .map((node) => String(node.textContent || '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .sort((left, right) => right.length - left.length);
+  }
+
+  function eventActor(team) {
+    const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const normalizedMove = lastMove.toLowerCase();
+
+    for (const name of playerNames()) {
+      const normalizedName = name.toLowerCase();
+      if (normalizedMove.startsWith(`${normalizedName} `) || normalizedMove.includes(`${normalizedName} called burn`)) {
+        return name;
+      }
+    }
+
+    const actionMatch = lastMove.match(/^(.+?)\s+(?:captured|called burn|swept|burned)\b/i);
+    if (actionMatch?.[1]) return actionMatch[1].trim();
+    return team === 'A' ? 'Blue Team' : team === 'B' ? 'Red Team' : 'Brasta';
+  }
+
+  function flightCardsMarkup() {
+    return flightSuits.map((suit) => {
+      const red = suit === '♦' || suit === '♥' ? ' red' : '';
+      return `<span class="brasta-flight-card${red}"><b>${suit}</b></span>`;
+    }).join('');
+  }
+
+  function burstMarkup() {
+    return burstSuits.map((suit) => {
+      const red = suit === '♦' || suit === '♥' ? ' red' : '';
+      return `<i class="brasta-suit-particle${red}">${suit}</i>`;
+    }).join('');
+  }
+
+  function big10FlightMarkup() {
+    return big10RushSuits.map((suit) => {
+      const red = suit === '♦' || suit === '♥' ? ' red' : '';
+      return `<i class="big10-rush-card${red}"><b>${suit}</b></i>`;
+    }).join('');
+  }
+
+  function diamondBurstMarkup() {
+    return Array.from({ length: 12 }, () => '<i>♦</i>').join('');
+  }
+
+  function burnedJackEmbersMarkup() {
+    return burnedJackEmbers.map(([x, y, rotation, size, delay]) =>
+      `<i style="--burn-x:${x}px;--burn-y:${y}px;--burn-r:${rotation}deg;--burn-size:${size}px;--burn-delay:${delay}ms"></i>`
+    ).join('');
+  }
+
+  const sweepCardPositions = [
+    [-126, -6, -10, 148, -22, -14, 0], [-78, 13, 6, 166, 12, 12, 42],
+    [-25, -10, -3, 184, -34, -2, 84], [28, 12, 8, 202, 18, 14, 126],
+    [78, -7, -7, 216, -28, -17, 168], [126, 15, 11, 232, 10, 18, 210],
+  ];
+  const sweepCardFaces = [
+    ['4', '♣'], ['7', '♦'], ['3', '♥'], ['A', '♠'], ['5', '♣'], ['8', '♦'],
+  ];
+
+  function sweptLooseCount() {
+    const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const count = Number(lastMove.match(/\bswept\s+(\d+)\s+loose\s+cards?/i)?.[1] || 0);
+    return Math.min(6, Math.max(1, count || 3));
+  }
+
+  function sweptJackSuit() {
+    const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return lastMove.match(/\b(?:with|burned)\s+J\s*([♠♦♣♥])/i)?.[1] || '♠';
+  }
+
+  function sweepLooseCardsMarkup(count) {
+    return sweepCardPositions.slice(0, count).map(([x, y, rotation, toX, toY, toRotation, delay], index) => {
+      const [rank, suit] = sweepCardFaces[index % sweepCardFaces.length];
+      const red = suit === '♦' || suit === '♥' ? ' red' : '';
+      return `<span class="jack-sweep-loose-card${red}" style="--sweep-card-x:${x}px;--sweep-card-y:${y}px;--sweep-card-r:${rotation}deg;--sweep-to-x:${toX}px;--sweep-to-y:${toY}px;--sweep-to-r:${toRotation}deg;--sweep-delay:${delay}ms"><span class="jack-sweep-card-corner">${rank}<i>${suit}</i></span><strong>${suit}</strong></span>`;
+    }).join('');
+  }
+
+  function burnedJackSuit() {
+    return sweptJackSuit();
+  }
+
+  function clubBurstMarkup() {
+    return Array.from({ length: 12 }, () => '<i>♣</i>').join('');
+  }
+
+  function matchingBonuses(text) {
+    const value = String(text || '');
+    return scoringBonuses.filter((bonus) => bonus.pattern.test(value));
+  }
+
+  function eventPoints(text) {
+    return Math.max(10, matchingBonuses(text).length * 10);
+  }
+
+  function naturalList(items) {
+    if (items.length < 2) return items[0] || '';
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+  }
+
+  function bonusBadgesMarkup(text, primaryLabels) {
+    const excluded = new Set(Array.isArray(primaryLabels) ? primaryLabels : [primaryLabels]);
+    const badges = matchingBonuses(text)
+      .filter((bonus) => !excluded.has(bonus.label))
+      .map((bonus) => `<span class="brasta-combo-medallion">${bonus.label}</span>`);
+    return badges.join('');
+  }
+
+  function scheduleHaptic(banner) {
+    const kind = banner.dataset.specialMoveKind || 'special';
+    const key = `${banner.dataset.eventSeq || ''}|${kind}`;
+    if (!key || hapticKeys.has(key)) return;
+    hapticKeys.add(key);
+    while (hapticKeys.size > 80) hapticKeys.delete(hapticKeys.values().next().value);
+
+    const reducedMotion = document.documentElement.dataset.brastaMotion === 'reduced';
+    if (reducedMotion || typeof navigator.vibrate !== 'function') return;
+    window.setTimeout(() => {
+      if (!banner.isConnected || document.visibilityState !== 'visible') return;
+      const patterns = {
+        big2: [36, 45, 68],
+        big10: [18, 32, 46],
+        'burned-jack': [22, 34, 76],
+        'jack-sweep': [16, 26, 58],
+        'power-pair': [36, 32, 56, 28, 24],
+      };
+      const pattern = patterns[kind] || 42;
+      try { navigator.vibrate(pattern); } catch {}
+    }, 480);
+  }
+
+  function rememberEffect(key) {
+    presentedKeys.add(key);
+    while (presentedKeys.size > 80) presentedKeys.delete(presentedKeys.values().next().value);
+  }
+
+  function playNextEffect() {
+    if (activeEffect || !effectQueue.length) return;
+    const next = effectQueue.shift();
+    if (!next?.layer) return;
+
+    activeEffect = next;
+    document.body.append(next.layer);
+    scheduleHaptic(next.layer);
+
+    window.setTimeout(() => {
+      next.layer.classList.add('brasta-event-leaving');
+      window.setTimeout(() => {
+        next.layer.remove();
+        if (activeEffect?.key === next.key) activeEffect = null;
+        playNextEffect();
+      }, EFFECT_FADE_MS);
+    }, next.showMs || EFFECT_SHOW_MS);
+  }
+
+  function decorateBrasta(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'brasta') return;
+    const key = `${banner.dataset.eventSeq || ''}|brasta`;
+    banner.dataset.brastaEffectKind = 'brasta';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+
+    const layer = document.createElement('div');
+    layer.className = 'event brasta-crest-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'brasta';
+    if (team) layer.dataset.eventTeam = team;
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="brasta-crest-vignette" aria-hidden="true"></span>
+      <span class="brasta-card-storm" aria-hidden="true">${flightCardsMarkup()}</span>
+      <span class="brasta-crest-shockwave" aria-hidden="true"></span>
+      <span class="brasta-suit-burst" aria-hidden="true">${burstMarkup()}</span>
+      <span class="brasta-crest-seal" aria-hidden="true">
+        <span class="brasta-crest-player">${escapeHtml(actor)}</span>
+        <span class="brasta-crest-suits"><i>♠</i><i>♦</i><i>♣</i><i>♥</i></span>
+        <strong class="brasta-crest-title">BRASTA<em>!</em></strong>
+        <span class="brasta-crest-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+        <span class="brasta-crest-footer">${bonusBadgesMarkup(rawText, 'BRASTA') || '<span>Board cleared</span>'}</span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer });
+    playNextEffect();
+  }
+
+  function decorateBig2(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'big2') return;
+    const key = `${banner.dataset.eventSeq || ''}|big2`;
+    banner.dataset.brastaEffectKind = 'big2';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+    const companionBonuses = bonuses.filter((bonus) => bonus.label !== 'BIG 2');
+    const prizeLabel = companionBonuses.length === 0 ? 'CLUB CAPTURED' : 'DOUBLE PRIZE';
+
+    const layer = document.createElement('div');
+    layer.className = 'event big2-crush-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'big2';
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="big2-crush-vignette" aria-hidden="true"></span>
+      <span class="big2-crush-floor" aria-hidden="true"></span>
+      <span class="big2-club-pincers" aria-hidden="true"><i>♣</i><i>♣</i></span>
+      <span class="big2-club-shockwave" aria-hidden="true">♣</span>
+      <span class="big2-club-burst" aria-hidden="true">${clubBurstMarkup()}</span>
+      <span class="big2-crush-lockup" aria-hidden="true">
+        <span class="big2-prize-card">
+          <span class="big2-card-corner">2<i>♣</i></span>
+          <strong>♣</strong>
+          <span class="big2-card-corner bottom">2<i>♣</i></span>
+        </span>
+        <span class="big2-crush-copy">
+          <span class="big2-crush-player">${escapeHtml(actor)}</span>
+          <strong class="big2-crush-title">BIG <em>2</em></strong>
+          <span class="big2-crush-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="big2-crush-footer">
+            <small>${prizeLabel}</small>
+            <span class="big2-combo-badges">${bonusBadgesMarkup(rawText, 'BIG 2')}</span>
+          </span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: BIG2_SHOW_MS });
+    playNextEffect();
+  }
+
+  function decoratePowerPair(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'power-pair') return;
+    const key = `${banner.dataset.eventSeq || ''}|power-pair`;
+    banner.dataset.brastaEffectKind = 'power-pair';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+
+    const layer = document.createElement('div');
+    layer.className = 'event power-pair-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'power-pair';
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="power-pair-vignette" aria-hidden="true"></span>
+      <span class="power-pair-club-impact" aria-hidden="true">♣</span>
+      <span class="power-pair-diamond-cut" aria-hidden="true"></span>
+      <span class="power-pair-shockwave" aria-hidden="true"></span>
+      <span class="big2-club-burst power-pair-clubs" aria-hidden="true">${clubBurstMarkup()}</span>
+      <span class="big10-diamond-burst power-pair-diamonds" aria-hidden="true">${diamondBurstMarkup()}</span>
+      <span class="power-pair-lockup" aria-hidden="true">
+        <span class="power-pair-cards">
+          <span class="power-pair-card power-pair-card-big2">
+            <span class="power-pair-card-corner">2<i>♣</i></span><strong>♣</strong>
+            <span class="power-pair-card-corner bottom">2<i>♣</i></span>
+          </span>
+          <span class="power-pair-card power-pair-card-big10">
+            <span class="power-pair-card-corner">10<i>♦</i></span><strong>♦</strong>
+            <span class="power-pair-card-corner bottom">10<i>♦</i></span>
+          </span>
+        </span>
+        <span class="power-pair-copy">
+          <span class="power-pair-player">${escapeHtml(actor)}</span>
+          <strong class="power-pair-title"><span>BIG <em>2</em></span><i>+</i><span>BIG <em>10</em></span></strong>
+          <span class="power-pair-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="power-pair-footer">
+            <small>POWER PAIR</small>
+            <span class="power-pair-badges">${bonusBadgesMarkup(rawText, ['BIG 2', 'BIG 10'])}</span>
+          </span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: POWER_PAIR_SHOW_MS });
+    playNextEffect();
+  }
+
+  function decorateBig10(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'big10') return;
+    const key = `${banner.dataset.eventSeq || ''}|big10`;
+    banner.dataset.brastaEffectKind = 'big10';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const bonuses = matchingBonuses(rawText);
+    const totalPoints = eventPoints(rawText);
+    const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
+    const companionBonuses = bonuses.filter((bonus) => bonus.label !== 'BIG 10');
+    const prizeLabel = companionBonuses.length === 0
+      ? 'DIAMOND CAPTURED'
+      : companionBonuses.length === 1
+        ? 'DOUBLE PRIZE'
+        : 'TRIPLE PRIZE';
+
+    const layer = document.createElement('div');
+    layer.className = 'event big10-strike-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'big10';
+    layer.dataset.brastaTotalPoints = String(totalPoints);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
+    layer.innerHTML = `
+      <span class="big10-strike-vignette" aria-hidden="true"></span>
+      <span class="big10-strike-beam" aria-hidden="true"></span>
+      <span class="big10-card-rush" aria-hidden="true">${big10FlightMarkup()}</span>
+      <span class="big10-diamond-shockwave" aria-hidden="true"></span>
+      <span class="big10-diamond-burst" aria-hidden="true">${diamondBurstMarkup()}</span>
+      <span class="big10-strike-lockup" aria-hidden="true">
+        <span class="big10-prize-card">
+          <span class="big10-card-corner">10<i>♦</i></span>
+          <strong>♦</strong>
+          <span class="big10-card-corner bottom">10<i>♦</i></span>
+        </span>
+        <span class="big10-strike-copy">
+          <span class="big10-strike-player">${escapeHtml(actor)}</span>
+          <strong class="big10-strike-title">BIG <em>10</em></strong>
+          <span class="big10-strike-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="big10-strike-footer">
+            <small>${prizeLabel}</small>
+            <span class="big10-combo-badges">${bonusBadgesMarkup(rawText, 'BIG 10')}</span>
+          </span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: BIG10_SHOW_MS });
+    playNextEffect();
+  }
+
+  function decorateBurnedJack(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'burned-jack') return;
+    const key = `${banner.dataset.eventSeq || ''}|burned-jack`;
+    banner.dataset.brastaEffectKind = 'burned-jack';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const suit = burnedJackSuit();
+    const redSuit = suit === '♦' || suit === '♥';
+    const teamLabel = team ? `Team ${team}` : actor;
+
+    const layer = document.createElement('div');
+    layer.className = 'event burned-jack-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'burned-jack';
+    layer.dataset.brastaTotalPoints = '-10';
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} burned the Jack. ${teamLabel} loses 10 points.`);
+    layer.innerHTML = `
+      <span class="burned-jack-vignette" aria-hidden="true"></span>
+      <span class="burned-jack-lockup" aria-hidden="true">
+        <span class="burned-jack-card-stage">
+          <span class="burned-jack-heat-ring"></span>
+          <span class="burned-jack-embers">${burnedJackEmbersMarkup()}</span>
+          <span class="burned-jack-card${redSuit ? ' red' : ''}">
+            <span class="burned-jack-card-corner">J<i>${suit}</i></span>
+            <strong class="burned-jack-face">J</strong>
+            <i class="burned-jack-card-suit">${suit}</i>
+            <span class="burned-jack-card-corner bottom">J<i>${suit}</i></span>
+            <span class="burned-jack-char"></span>
+            <strong class="burned-jack-brand">BURNED</strong>
+          </span>
+        </span>
+        <span class="burned-jack-copy">
+          <span class="burned-jack-player">${escapeHtml(actor)}</span>
+          <strong class="burned-jack-title"><span>JACK</span> BURNED</strong>
+          <span class="burned-jack-score"><b>−10</b><small>POINTS</small></span>
+          <span class="burned-jack-footer">JACK LEFT LOOSE</span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: BURNED_JACK_SHOW_MS });
+    playNextEffect();
+  }
+
+  function decorateJackSweep(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'jack-sweep') return;
+    const table = banner.closest('.table');
+    if (!table) return;
+
+    const key = `${banner.dataset.eventSeq || ''}|jack-sweep`;
+    banner.dataset.brastaEffectKind = 'jack-sweep';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const suit = sweptJackSuit();
+    const count = sweptLooseCount();
+    const redSuit = suit === '♦' || suit === '♥';
+    const frame = table.getBoundingClientRect();
+
+    const layer = document.createElement('div');
+    layer.className = 'event jack-sweep-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    if (frame.width > 0 && frame.height > 0) {
+      layer.style.setProperty('--jack-sweep-left', `${Math.round(frame.left)}px`);
+      layer.style.setProperty('--jack-sweep-top', `${Math.round(frame.top)}px`);
+      layer.style.setProperty('--jack-sweep-width', `${Math.round(frame.width)}px`);
+      layer.style.setProperty('--jack-sweep-height', `${Math.round(frame.height)}px`);
+    }
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'jack-sweep';
+    layer.dataset.sweptCards = String(count);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} swept ${count} loose card${count === 1 ? '' : 's'} with the Jack.`);
+    layer.innerHTML = `
+      <span class="jack-sweep-felt-glow" aria-hidden="true"></span>
+      <span class="jack-sweep-trail" aria-hidden="true"></span>
+      <span class="jack-sweep-loose-cards" aria-hidden="true">${sweepLooseCardsMarkup(count)}</span>
+      <span class="jack-sweep-jack${redSuit ? ' red' : ''}" aria-hidden="true">
+        <span class="jack-sweep-jack-corner">J<i>${suit}</i></span>
+        <strong>J</strong>
+        <i>${suit}</i>
+        <span class="jack-sweep-jack-corner bottom">J<i>${suit}</i></span>
+      </span>
+      <span class="jack-sweep-caption" aria-hidden="true">JACK SWEEP</span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: JACK_SWEEP_SHOW_MS });
+    playNextEffect();
+  }
+
+  const renderers = [
+    {
+      name: 'jack-sweep',
+      matches: (text) => /\bJack sweep\b/i.test(text),
+      decorate: decorateJackSweep,
+    },
+    {
+      name: 'burned-jack',
+      matches: (text) => /\bBURNED\s+JACK!/i.test(text),
+      decorate: decorateBurnedJack,
+    },
+    {
+      name: 'brasta',
+      matches: (text) => /\bBRASTA!/i.test(text),
+      decorate: decorateBrasta,
+    },
+    {
+      name: 'power-pair',
+      matches: (text) => /\bBIG\s*2\b/i.test(text) && /\bBIG\s*10\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      decorate: decoratePowerPair,
+    },
+    {
+      name: 'big2',
+      matches: (text) => /\bBIG\s*2\b/i.test(text) && !/\bBIG\s*10\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      decorate: decorateBig2,
+    },
+    {
+      name: 'big10',
+      matches: (text) => /\bBIG\s*10\b/i.test(text) && !/\bBIG\s*2\b/i.test(text) && !/\bBRASTA!/i.test(text),
+      decorate: decorateBig10,
+    },
+  ];
+
+  function enhanceBanner(banner) {
+    if (!(banner instanceof HTMLElement)) return;
+    const rawText = String(banner.dataset.eventText || banner.dataset.brastaRawEvent || banner.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!rawText) return;
+
+    const renderer = renderers.find((candidate) => candidate.matches(rawText));
+    if (renderer) renderer.decorate(banner, rawText);
+  }
+
+  function sync() {
+    syncQueued = false;
+    document.querySelectorAll('.transient-event-overlay[data-event-seq]').forEach(enhanceBanner);
+  }
+
+  function queueSync() {
+    if (syncQueued) return;
+    syncQueued = true;
+    window.requestAnimationFrame(sync);
+  }
+
+  function boot() {
+    new MutationObserver(queueSync).observe(document.body, { childList: true, subtree: true });
+    queueSync();
+  }
+
+  window.BrastaSpecialMoves = Object.freeze({
+    refresh: queueSync,
+    pointsForEvent: eventPoints,
+    motionPreference: () => document.documentElement.dataset.brastaMotion === 'reduced' ? 'reduced' : 'full',
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
+})();

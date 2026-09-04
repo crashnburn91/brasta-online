@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis } from './redis';
+import { roomPresenceLeaseIsFresh } from './room-presence';
 import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
+import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
+import { rankedSearchAllows, rankedSearchWindow } from './ranked-search-window';
 import {
   competitiveBackendReady,
   createRankedMatchRecord,
@@ -17,8 +20,7 @@ const ROOM_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_TTL_SECONDS = 120;
 const ASSIGNMENT_TTL_SECONDS = 24 * 60 * 60;
 const QUEUE_STALE_MS = 90_000;
-const PRESENCE_MS = 45_000;
-const ROUND_SCORE_PAUSE_MS = 4_000;
+const ROUND_SCORE_PAUSE_MS = 10_000;
 const ROOM_EVENT_CHANNEL = 'brasta:room-events';
 const QUEUE_KEY = 'brasta:ranked:queue:1v1';
 const QUEUE_LOCK_KEY = 'brasta:ranked:queue:1v1:lock';
@@ -52,6 +54,7 @@ type RankedParticipant = {
   lastSeen: number;
   authUserId: string;
   rankName: string;
+  experience: PlayerExperienceSummary;
 };
 
 type RankedRoom = {
@@ -73,6 +76,9 @@ type RankedRoom = {
     finalized: boolean;
     finalizing: boolean;
     result: RankedFinalizeResult | null;
+    roundEndedAt?: number;
+    turnStartedAt?: number;
+    turnSeat?: Brasta.Seat;
   };
 };
 
@@ -153,10 +159,6 @@ async function makeRoomCode(): Promise<string> {
   throw new Error('Could not allocate a ranked room code.');
 }
 
-function searchWindow(waitMs: number): number {
-  return Math.min(18, 3 + Math.floor(Math.max(0, waitMs) / 10_000) * 2);
-}
-
 async function cleanAndLoadCandidates(excludeUserId: string): Promise<QueueEntry[]> {
   const r = await requireRedis();
   const now = Date.now();
@@ -192,6 +194,7 @@ async function createMatch(entry1: QueueEntry, entry2: QueueEntry): Promise<Reco
   const seat1Token = makeToken();
   const seat2Token = makeToken();
   const now = Date.now();
+  const experience = await getExperienceSummariesForPlayers([entry1.userId, entry2.userId]);
 
   // Mark the room started so ordinary room-leave logic cannot remove ranked seats.
   // gameState remains null until both assigned players have connected.
@@ -205,8 +208,8 @@ async function createMatch(entry1: QueueEntry, entry2: QueueEntry): Promise<Reco
     revision: 0,
     hostToken: `ranked-system-${makeToken()}`,
     seats: {
-      '1': { seat: 1, name: seat1Entry.username, token: seat1Token, connectionId: '', lastSeen: 0, authUserId: seat1Entry.userId, rankName: seat1Entry.rankName },
-      '2': { seat: 2, name: seat2Entry.username, token: seat2Token, connectionId: '', lastSeen: 0, authUserId: seat2Entry.userId, rankName: seat2Entry.rankName },
+      '1': { seat: 1, name: seat1Entry.username, token: seat1Token, connectionId: '', lastSeen: 0, authUserId: seat1Entry.userId, rankName: seat1Entry.rankName, experience: experience[seat1Entry.userId] },
+      '2': { seat: 2, name: seat2Entry.username, token: seat2Token, connectionId: '', lastSeen: 0, authUserId: seat2Entry.userId, rankName: seat2Entry.rankName, experience: experience[seat2Entry.userId] },
     },
     spectators: {},
     gameState: null,
@@ -262,14 +265,17 @@ async function tryMatch(entry: QueueEntry): Promise<RankedAssignment | null> {
     await writeQueueEntry(current);
 
     const candidates = await cleanAndLoadCandidates(entry.userId);
-    const currentWindow = searchWindow(now - current.joinedAt);
     const eligible = candidates
       .map((candidate) => ({
         candidate,
         gap: Math.abs(candidate.ordinal - current.ordinal),
-        allowed: Math.max(currentWindow, searchWindow(now - candidate.joinedAt)),
+        allowed: rankedSearchAllows(
+          candidate.ordinal - current.ordinal,
+          now - current.joinedAt,
+          now - candidate.joinedAt,
+        ),
       }))
-      .filter(({ gap, allowed }) => gap <= allowed)
+      .filter(({ allowed }) => allowed)
       .sort((a, b) => a.gap - b.gap || a.candidate.joinedAt - b.candidate.joinedAt);
     const best = eligible[0]?.candidate;
     if (!best) return null;
@@ -300,7 +306,7 @@ function queuePayload(status: CompetitiveStatus, entry: QueueEntry | null, assig
     competitive: status,
     queuedAt: entry.joinedAt,
     waitSeconds: Math.max(0, Math.floor((Date.now() - entry.joinedAt) / 1000)),
-    searchRange: searchWindow(Date.now() - entry.joinedAt),
+    searchRange: rankedSearchWindow(Date.now() - entry.joinedAt),
   };
   return { state: 'idle' as const, competitive: status };
 }
@@ -396,7 +402,7 @@ function bothPlayersConnected(room: RankedRoom): boolean {
   const now = Date.now();
   return ['1','2'].every((seat) => {
     const p = room.seats[seat];
-    return Boolean(p?.connectionId && now - p.lastSeen < PRESENCE_MS);
+    return Boolean(p?.connectionId && roomPresenceLeaseIsFresh(p.lastSeen, now));
   });
 }
 
@@ -428,6 +434,8 @@ export async function monitorRankedRoom(request: Request, roomCode: string) {
     if (!room.gameState) {
       if (bothPlayersConnected(room)) {
         room.gameState = Brasta.startMatch('1v1', crypto.randomInt(1, 0x7fffffff), 110);
+        delete room.ranked.turnStartedAt;
+        delete room.ranked.turnSeat;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
@@ -437,11 +445,21 @@ export async function monitorRankedRoom(request: Request, roomCode: string) {
     }
 
     if (room.gameState.phase === 'roundEnd') {
-      const remaining = ROUND_SCORE_PAUSE_MS - (Date.now() - room.lastActivity);
+      // lastActivity is also touched by heartbeats/account claims, so it cannot
+      // represent when the round actually ended. Persist a dedicated timestamp
+      // that remains stable while players are sitting on the score screen.
+      if (!room.ranked.roundEndedAt) {
+        room.ranked.roundEndedAt = Date.now();
+        await saveRankedRoom(room, false);
+      }
+      const remaining = ROUND_SCORE_PAUSE_MS - (Date.now() - room.ranked.roundEndedAt);
       if (remaining <= 0) {
         const next = Brasta.nextRound(room.gameState);
         if (!next.ok) throw new Error(next.error || 'Could not advance the ranked round.');
         room.gameState = next.state;
+        delete room.ranked.roundEndedAt;
+        delete room.ranked.turnStartedAt;
+        delete room.ranked.turnSeat;
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);

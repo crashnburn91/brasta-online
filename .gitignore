@@ -4,3 +4,8 @@ node_modules/
 .env.local
 .vercel/
 .DS_Store
+.realtime-dist/
+.server-test-dist/
+public/dist/
+lib/game-engine.ts
+tsconfig.tsbuildinfo

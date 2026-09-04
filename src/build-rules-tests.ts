@@ -77,5 +77,39 @@ namespace BrastaBuildRulesTests {
     assert(legal.includes('PLAY_LOOSE'), 'one 7 may be played away when another 7 is retained for BUILD 7');
   }
 
-  console.log('4 build ownership regression tests passed');
+  {
+    const s = Brasta.createLabState('1v1');
+    const played8 = id(s, '8', 'hearts');
+    const retained10 = id(s, '10', 'clubs');
+    const loose2 = id(s, '2', 'hearts');
+    const build3 = id(s, '3', 'clubs');
+    const build5 = id(s, '5', 'diamonds');
+    s.players[0].hand = [played8, retained10];
+    s.loose = [loose2];
+    s.builds = [{ id: 'owned-b8', kind: 'numeric', declaredValue: 8, groups: [[build3, build5]], modifiers: [], ownerSeat: 1 } as any];
+
+    const legal = Brasta.legalActionsForCard(s, 1, played8).map((action) => action.type);
+    assert(!legal.includes('MAKE_BUILD'), 'last retained 8 must not be offered for a separate BUILD 10');
+    const rejected = Brasta.applyCommand(s, { type: 'MAKE_BUILD', seat: 1, cardId: played8, declaredValue: 10, looseIds: [loose2] });
+    assert(!rejected.ok, 'engine must reject creating BUILD 10 when that abandons an owned BUILD 8');
+  }
+
+  {
+    const s = Brasta.createLabState('1v1');
+    const played8 = id(s, '8', 'hearts');
+    const retained8 = id(s, '8', 'spades');
+    const retained10 = id(s, '10', 'clubs');
+    const loose2 = id(s, '2', 'hearts');
+    const build3 = id(s, '3', 'clubs');
+    const build5 = id(s, '5', 'diamonds');
+    s.players[0].hand = [played8, retained8, retained10];
+    s.loose = [loose2];
+    s.builds = [{ id: 'owned-b8', kind: 'numeric', declaredValue: 8, groups: [[build3, build5]], modifiers: [], ownerSeat: 1 } as any];
+
+    const made = Brasta.applyCommand(s, { type: 'MAKE_BUILD', seat: 1, cardId: played8, declaredValue: 10, looseIds: [loose2] });
+    assert(made.ok, made.error || 'separately backed BUILD 8 and BUILD 10 should be legal');
+    assert(made.state.builds.length === 2, `expected two separately backed builds, got ${made.state.builds.length}`);
+  }
+
+  console.log('6 build ownership regression tests passed');
 }

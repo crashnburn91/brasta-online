@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+const RESUME_POLL_MS = 15_000;
+
 type ActiveMatch = {
   kind: 'private' | 'ranked_1v1' | 'ranked_2v2';
   roomCode: string;
@@ -32,7 +34,10 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
     let timer = 0;
 
     const currentRenderedRoomCode = () => {
-      if (!document.querySelector('.lobby, .table')) return '';
+      // Round-end screens do not render .table, but they are still the current
+      // live room. Treat any in-match shell as current so Resume Match never
+      // appears on top of the match the player is already in.
+      if (!document.querySelector('.lobby, .table, .round-end, .players')) return '';
       try {
         return String(new URLSearchParams(location.search).get('room') || '')
           .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -56,11 +61,19 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
       }
     };
 
+    let claimedSessionKey = '';
+
     const claimCurrentSeat = async () => {
       const current = currentPlayerSession();
       if (!current) return;
+
+      // Claiming the exact same seat every five seconds needlessly rewrites the
+      // room in Redis. Claim once per browser session/token; reconnects that
+      // rotate the player token naturally produce a new key and claim again.
+      const key = `${current.roomCode}:${current.playerToken}`;
+      if (key === claimedSessionKey) return;
       try {
-        await fetch('/api/active-match', {
+        const response = await fetch('/api/active-match', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -69,12 +82,24 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
           body: JSON.stringify({ action: 'claim', ...current }),
           cache: 'no-store',
         });
+        if (response.ok) claimedSessionKey = key;
       } catch {}
     };
 
     const refresh = async () => {
       if (!alive) return;
       await claimCurrentSeat();
+
+      // The current WebSocket already owns this room and keeps it alive. A
+      // resume lookup cannot reveal anything useful while this match is on
+      // screen, so avoid polling Redis until the player returns home.
+      const renderedCode = currentRenderedRoomCode();
+      const currentSession = currentPlayerSession();
+      if (renderedCode && currentSession?.roomCode === renderedCode) {
+        setMatch(null);
+        return;
+      }
+
       try {
         const response = await fetch('/api/active-match', {
           method: 'POST',
@@ -85,14 +110,15 @@ export default function ResumeMatchBridge({ accessToken }: { accessToken: string
         if (!alive) return;
         if (response.ok) {
           const nextMatch = (data.match || null) as ActiveMatch | null;
-          const currentCode = currentRenderedRoomCode();
+          const latestSession = currentPlayerSession();
+          const currentCode = latestSession?.roomCode || currentRenderedRoomCode();
           setMatch(nextMatch && currentCode && currentCode === nextMatch.roomCode ? null : nextMatch);
         }
       } catch {}
     };
 
     void refresh();
-    timer = window.setInterval(() => void refresh(), 5_000);
+    timer = window.setInterval(() => void refresh(), RESUME_POLL_MS);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
     const onAuthChanged = () => void refresh();
     const onPlayerSession = () => void refresh();

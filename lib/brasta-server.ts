@@ -2,27 +2,82 @@ import crypto from 'node:crypto';
 import * as Brasta from './game-engine';
 import { redis, duplicateRedis } from './redis';
 import { verifyBrastaAccessToken } from './supabase-auth';
+import type { BrastaAuthIdentity } from './supabase-auth';
 import { clearActiveMatch, getActiveMatch, setActiveMatch } from './account-active-match';
+import { ROOM_PRESENCE_LEASE_REFRESH_MS, roomPresenceLeaseIsFresh } from './room-presence';
+import {
+  CHAT_MESSAGE_RETENTION_DAYS,
+  CHAT_POLICY_VERSION,
+  acceptCurrentChatPolicy,
+  activeChatRestriction,
+  blockChatPeer,
+  blockedChatPeers,
+  hasCurrentChatConsent,
+  loadPersistedChatHistory,
+  moderateChatText,
+  persistChatMessage,
+  persistedChatMessageSender,
+  recordChatSafetyEvent,
+  registerChatRoomMember,
+  reportChatMessage,
+  safeChatAvatarUrl,
+} from './chat-moderation';
 
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
-const PRESENCE_MS = 45_000;
 const EVENT_CHANNEL = 'brasta:room-events';
 const EMOTE_CHANNEL = 'brasta:room-emotes';
 const EMOTE_RATE_MS = 2_000;
 const ALLOWED_EMOTES = new Set(['wink','nod','thumbs_up','thumbs_down','eyebrow','laugh','wow','thinking']);
+const CHAT_CHANNEL = 'brasta:room-chat';
+const CHAT_RATE_MS = 1_000;
+const CHAT_MESSAGE_MAX_CHARS = 180;
+const CHAT_HISTORY_LIMIT = 50;
 const BURN_CLAIM_MS = 30_000;
+const RANKED_TURN_MS = 30_000;
+const RANKED_ROUND_PAUSE_MS = 10_000;
+const REDIS_HEALTH_CACHE_MS = 30_000;
+const REALTIME_INSTANCE_ID = crypto.randomUUID();
 const memoryRooms = new Map<string, StoredRoom>();
 const localConnections = new Set<Connection>();
 let subscriberStarted = false;
+let presenceLeaseTimer: ReturnType<typeof setInterval> | null = null;
+let presenceLeaseRefreshInFlight: Promise<number> | null = null;
+let redisHealthCheckedAt = 0;
+let cachedRedisHealth = false;
+let redisHealthCheckInFlight: Promise<boolean> | null = null;
+const runtimeMetrics = {
+  heartbeatPongs: 0,
+  roomReads: 0,
+  roomWrites: 0,
+  presenceLeaseRoomWrites: 0,
+  roomEventPublishes: 0,
+  ignoredSelfRoomEvents: 0,
+  chatMessages: 0,
+  chatHistoryReads: 0,
+  chatHistoryWrites: 0,
+  chatEventPublishes: 0,
+  ignoredSelfChatEvents: 0,
+};
 
 export type WireSocket = {
   send(data: string): void;
   close(code?: number, reason?: string): void;
 };
 
-type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; accountId?: string };
+type PlayerExperienceSummary = { level: number; title: string; progressPercent: number; progressLabel: string };
+type Participant = { seat: Brasta.Seat; name: string; token: string; connectionId: string; lastSeen: number; rankName?: string; experience?: PlayerExperienceSummary; accountId?: string; isBot?: boolean };
 type Spectator = { name: string; token: string; connectionId: string; lastSeen: number };
+type ChatMessage = {
+  id: string;
+  roomCode: string;
+  seat: Brasta.Seat;
+  senderId: string;
+  name: string;
+  avatarUrl: string | null;
+  text: string;
+  at: number;
+};
 type BurnPickupOption = {
   id: string;
   label: string;
@@ -61,25 +116,79 @@ export type Connection = {
   id: string;
   ws: WireSocket;
   closed: boolean;
+  cleanupStarted: boolean;
   roomCode: string | null;
   seat: Brasta.Seat | null;
   token: string | null;
   role: ConnectionRole;
+  name: string | null;
+  accountId: string | null;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  chatRoomId: string | null;
+  chatRoomKind: 'private' | 'ranked' | null;
+  chatMode: Brasta.Mode | null;
+  chatActive: boolean;
+  chatBotMatch: boolean;
+  chatConsented: boolean;
+  chatBackendAvailable: boolean;
+  blockedAccountIds: Set<string>;
   lastEmoteAt: number;
+  lastChatAt: number;
+  lastHeartbeatAt: number;
 };
 
 const cleanName = (v: unknown) => String(v || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
+const cleanChatText = (v: unknown) => Array.from(String(v || '')
+  .replace(/[\u0000-\u001f\u007f]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim())
+  .slice(0, CHAT_MESSAGE_MAX_CHARS)
+  .join('');
 const cleanCode = (v: unknown) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const makeToken = () => crypto.randomBytes(24).toString('hex');
 const roomKey = (code: string) => `brasta:room:${code}`;
 const lockKey = (code: string) => `brasta:lock:${code}`;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+const chatRoomId = (room: StoredRoom) => `room:${room.code}:${room.createdAt}`;
+const chatRoomKind = (room: StoredRoom): 'private' | 'ranked' => rankedMeta(room) ? 'ranked' : 'private';
 
 function normalizeRoom(room: StoredRoom): StoredRoom {
   if (!room.spectators) room.spectators = {};
   if (room.callableBurn === undefined) room.callableBurn = null;
   return room;
+}
+type RankedRuntimeMeta = {
+  roundEndedAt?: number;
+  turnStartedAt?: number;
+  turnSeat?: Brasta.Seat;
+};
+
+function rankedMeta(room: StoredRoom): RankedRuntimeMeta | null {
+  const ranked = (room as StoredRoom & { ranked?: RankedRuntimeMeta }).ranked;
+  return ranked && typeof ranked === 'object' ? ranked : null;
+}
+
+function syncRankedTurnClock(room: StoredRoom): boolean {
+  const ranked = rankedMeta(room);
+  if (!ranked) return false;
+
+  const state = room.gameState;
+  if (!state || state.phase !== 'play') {
+    const changed = ranked.turnStartedAt != null || ranked.turnSeat != null;
+    delete ranked.turnStartedAt;
+    delete ranked.turnSeat;
+    return changed;
+  }
+
+  if (!ranked.turnStartedAt || ranked.turnSeat !== state.currentSeat) {
+    ranked.turnStartedAt = Date.now();
+    ranked.turnSeat = state.currentSeat;
+    return true;
+  }
+  return false;
 }
 function activeSeats(room: StoredRoom): Brasta.Seat[] { return Brasta.activeSeats(room.mode); }
 function participantForToken(room: StoredRoom, token: string): Participant | null {
@@ -92,6 +201,41 @@ function spectatorForToken(room: StoredRoom, token: string): Spectator | null {
   return room.spectators?.[token] || null;
 }
 function hostParticipant(room: StoredRoom): Participant | null { return participantForToken(room, room.hostToken); }
+function roomHasBot(room: StoredRoom): boolean {
+  return Object.values(room.seats).some((participant) => participant.isBot === true
+    || (participant.name === 'Brasta Bot' && !participant.accountId));
+}
+function hasAttachedPlayerSocket(room: StoredRoom, participant: Participant): boolean {
+  for (const conn of localConnections) {
+    if (
+      !conn.closed
+      && conn.role === 'player'
+      && conn.roomCode === room.code
+      && conn.seat === participant.seat
+      && conn.token === participant.token
+      && conn.id === participant.connectionId
+    ) return true;
+  }
+  return false;
+}
+function hasAttachedSpectatorSocket(room: StoredRoom, spectator: Spectator): boolean {
+  for (const conn of localConnections) {
+    if (
+      !conn.closed
+      && conn.role === 'spectator'
+      && conn.roomCode === room.code
+      && conn.token === spectator.token
+      && conn.id === spectator.connectionId
+    ) return true;
+  }
+  return false;
+}
+function participantIsConnected(room: StoredRoom, participant: Participant, now = Date.now()): boolean {
+  return hasAttachedPlayerSocket(room, participant) || roomPresenceLeaseIsFresh(participant.lastSeen, now);
+}
+function spectatorIsConnected(room: StoredRoom, spectator: Spectator, now = Date.now()): boolean {
+  return hasAttachedSpectatorSocket(room, spectator) || roomPresenceLeaseIsFresh(spectator.lastSeen, now);
+}
 function visibleStateForSeat(gameState: Brasta.GameState, seat: Brasta.Seat): Brasta.GameState {
   const view = clone(gameState);
   view.deck = gameState.deck.map((_, i) => `hidden-deck-${i}`);
@@ -112,11 +256,11 @@ function roomSnapshot(room: StoredRoom) {
   const players = seats.map((seat) => {
     const p = room.seats[String(seat)];
     return p
-      ? { seat, name: p.name, connected: now - p.lastSeen < PRESENCE_MS, occupied: true, rankName: p.rankName || null }
-      : { seat, name: '', connected: false, occupied: false, rankName: null };
+      ? { seat, name: p.name, connected: participantIsConnected(room, p, now), occupied: true, rankName: p.rankName || null, experience: p.experience || null }
+      : { seat, name: '', connected: false, occupied: false, rankName: null, experience: null };
   });
   const spectators = Object.values(room.spectators)
-    .map((s) => ({ name: s.name, connected: now - s.lastSeen < PRESENCE_MS }))
+    .map((s) => ({ name: s.name, connected: spectatorIsConnected(room, s, now) }))
     .filter((s) => s.connected);
   return {
     code: room.code,
@@ -129,6 +273,17 @@ function roomSnapshot(room: StoredRoom) {
     spectators,
     spectatorCount: spectators.length,
     full: seats.every((s) => !!room.seats[String(s)]),
+    botMatch: roomHasBot(room),
+    ranked: (() => {
+      const ranked = rankedMeta(room);
+      if (!ranked) return null;
+      return {
+        serverNow: now,
+        turnSeat: room.gameState?.phase === 'play' ? room.gameState.currentSeat : null,
+        turnDeadlineAt: ranked.turnStartedAt ? ranked.turnStartedAt + RANKED_TURN_MS : null,
+        roundAdvanceAt: ranked.roundEndedAt ? ranked.roundEndedAt + RANKED_ROUND_PAUSE_MS : null,
+      };
+    })(),
   };
 }
 function applyNames(room: StoredRoom) {
@@ -351,6 +506,7 @@ function resolveBurn(room: StoredRoom, burn: CallableBurn, callerSeat: Brasta.Se
 }
 
 async function loadRoom(code: string): Promise<StoredRoom | null> {
+  runtimeMetrics.roomReads++;
   if (!redis) {
     const room = memoryRooms.get(code) || null;
     return room ? normalizeRoom(room) : null;
@@ -362,8 +518,9 @@ async function loadRoom(code: string): Promise<StoredRoom | null> {
 async function saveRoom(room: StoredRoom): Promise<void> {
   normalizeRoom(room);
   room.lastActivity = Date.now();
-  if (!redis) { memoryRooms.set(room.code, clone(room)); return; }
-  await redis.set(roomKey(room.code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
+  if (!redis) memoryRooms.set(room.code, clone(room));
+  else await redis.set(roomKey(room.code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
+  runtimeMetrics.roomWrites++;
 }
 async function createRoomIfAbsent(room: StoredRoom): Promise<boolean> {
   normalizeRoom(room);
@@ -376,7 +533,10 @@ async function createRoomIfAbsent(room: StoredRoom): Promise<boolean> {
   return ok === 'OK';
 }
 async function deleteRoom(code: string): Promise<void> {
-  if (!redis) { memoryRooms.delete(code); return; }
+  if (!redis) {
+    memoryRooms.delete(code);
+    return;
+  }
   await redis.del(roomKey(code));
 }
 
@@ -396,31 +556,138 @@ async function clearRoomActiveMatches(room: StoredRoom): Promise<void> {
     .map((p) => clearActiveMatch(p.accountId!, room.code)));
 }
 
-async function verifiedAccountId(accessToken: unknown): Promise<string | null> {
-  if (typeof accessToken !== 'string' || accessToken.length < 20) return null;
-  const identity = await verifyBrastaAccessToken(accessToken);
-  return identity?.userId || null;
+function clearChatIdentity(conn: Connection): void {
+  conn.accountId = null;
+  conn.username = null;
+  conn.displayName = null;
+  conn.avatarUrl = null;
+  conn.chatConsented = false;
+  conn.chatBackendAvailable = true;
+  conn.blockedAccountIds.clear();
 }
+
+function syncChatRoomContext(conn: Connection, room: StoredRoom): void {
+  conn.chatRoomId = chatRoomId(room);
+  conn.chatRoomKind = chatRoomKind(room);
+  conn.chatMode = room.mode;
+  conn.chatBotMatch = roomHasBot(room);
+  conn.chatActive = Boolean(room.started && room.gameState && !conn.chatBotMatch);
+}
+
+function clearChatRoomContext(conn: Connection): void {
+  conn.chatRoomId = null;
+  conn.chatRoomKind = null;
+  conn.chatMode = null;
+  conn.chatActive = false;
+  conn.chatBotMatch = false;
+}
+
+function chatRestrictionMessage(restriction: Awaited<ReturnType<typeof activeChatRestriction>>): string | null {
+  if (!restriction) return null;
+  const label = restriction.action_type === 'ban' ? 'banned from chat' : 'temporarily restricted from chat';
+  if (!restriction.expires_at) return `This account is ${label}.`;
+  return `This account is ${label} until ${new Date(restriction.expires_at).toISOString()}.`;
+}
+
+function sendChatCapabilities(
+  conn: Connection,
+  restriction: Awaited<ReturnType<typeof activeChatRestriction>> = null,
+): void {
+  const signedIn = Boolean(conn.accountId);
+  const restrictionMessage = chatRestrictionMessage(restriction);
+  sendJson(conn, {
+    type: 'CHAT_CAPABILITIES',
+    capabilities: {
+      policyVersion: CHAT_POLICY_VERSION,
+      signedIn,
+      userId: conn.accountId,
+      consented: conn.chatConsented,
+      backendAvailable: conn.chatBackendAvailable,
+      canSend: signedIn && conn.chatConsented && conn.chatBackendAvailable && !restrictionMessage,
+      restriction: restrictionMessage,
+    },
+  });
+}
+
+async function applyVerifiedChatIdentity(conn: Connection, identity: BrastaAuthIdentity): Promise<void> {
+  conn.accountId = identity.userId;
+  conn.username = cleanName(identity.username) || null;
+  conn.displayName = cleanName(identity.displayName) || null;
+  conn.avatarUrl = safeChatAvatarUrl(identity.avatarUrl);
+  try {
+    const [consented, restriction, blocked] = await Promise.all([
+      hasCurrentChatConsent(identity.userId),
+      activeChatRestriction(identity.userId),
+      blockedChatPeers(identity.userId),
+    ]);
+    conn.chatConsented = consented;
+    conn.chatBackendAvailable = true;
+    conn.blockedAccountIds = blocked;
+    sendChatCapabilities(conn, restriction);
+  } catch (error) {
+    console.error('[brasta chat identity]', error);
+    conn.chatConsented = false;
+    conn.chatBackendAvailable = false;
+    conn.blockedAccountIds.clear();
+    sendChatCapabilities(conn);
+  }
+}
+
 async function bindVerifiedAccountToSeat(
   roomCode: string,
   seat: Brasta.Seat,
   seatToken: string,
   accessToken: unknown,
+  conn?: Connection,
 ): Promise<void> {
-  const accountId = await verifiedAccountId(accessToken);
-  if (!accountId) return;
+  if (typeof accessToken !== 'string' || accessToken.length < 20) {
+    if (conn) sendChatCapabilities(conn);
+    return;
+  }
+  const identity = await verifyBrastaAccessToken(accessToken);
+  if (!identity?.userId) {
+    if (conn) sendChatCapabilities(conn);
+    return;
+  }
+  const accountId = identity.userId;
+  const publicUsername = cleanName(identity.username);
 
   const changed = await mutateRoom(roomCode, (room) => {
     const p = room.seats[String(seat)];
     if (!p || p.token !== seatToken) return null;
     if (p.accountId && p.accountId !== accountId) return null;
     p.accountId = accountId;
+    if (publicUsername) {
+      p.name = publicUsername;
+      applyNames(room);
+    }
     return p;
   }, false);
 
   if (changed?.result) {
     await bindParticipantActiveMatch(changed.room, changed.result);
-    await publishRoom(changed.room.code);
+    if (conn && conn.roomCode === roomCode && conn.seat === seat && conn.token === seatToken) {
+      conn.name = changed.result.name;
+      await applyVerifiedChatIdentity(conn, identity);
+    }
+    try {
+      await registerChatRoomMember({
+        roomId: chatRoomId(changed.room),
+        roomCode: changed.room.code,
+        userId: accountId,
+        seat: changed.result.seat,
+        mode: changed.room.mode,
+        roomKind: chatRoomKind(changed.room),
+        expiresAt: new Date(Date.now() + ROOM_TTL_SECONDS * 1000).toISOString(),
+      });
+    } catch (error) {
+      console.error('[brasta chat room membership]', error);
+      if (conn) {
+        conn.chatBackendAvailable = false;
+        sendChatCapabilities(conn);
+      }
+    }
+    await publishRoom(changed.room.code, changed.room);
   }
 }
 
@@ -446,6 +713,20 @@ export async function claimActiveMatchForAccount(userId: string, roomCode: strin
   const code = cleanCode(roomCode);
   if (!userId || !code || !playerToken) return null;
 
+  const existingRef = await getActiveMatch(userId);
+  if (existingRef?.roomCode === code) {
+    const room = await loadRoom(code);
+    const participant = room?.seats[String(existingRef.seat)];
+    if (room && participant?.accountId === userId && participant.token === playerToken) {
+      return {
+        roomCode: room.code,
+        mode: room.mode,
+        seat: participant.seat,
+        started: room.started,
+      };
+    }
+  }
+
   const changed = await mutateRoom(code, (room) => {
     const p = participantForToken(room, playerToken);
     if (!p) return null;
@@ -456,7 +737,7 @@ export async function claimActiveMatchForAccount(userId: string, roomCode: strin
 
   if (!changed?.result) return null;
   await bindParticipantActiveMatch(changed.room, changed.result);
-  await publishRoom(changed.room.code);
+  await publishRoom(changed.room.code, changed.room);
 
   return {
     roomCode: changed.room.code,
@@ -488,7 +769,7 @@ export async function getActiveMatchForAccount(userId: string) {
     mode: room.mode,
     seat: p.seat,
     started: room.started,
-    connected: Date.now() - p.lastSeen < PRESENCE_MS,
+    connected: participantIsConnected(room, p),
     updatedAt: ref.updatedAt,
   };
 }
@@ -515,9 +796,101 @@ async function mutateRoom<T>(code: string, fn: (room: StoredRoom) => Promise<T> 
     if (!room) return null;
     const result = await fn(room);
     await saveRoom(room);
-    if (publish) await publishRoom(code);
+    if (publish) await publishRoom(code, room);
     return { room, result };
   } finally { await releaseLock(code, token); }
+}
+
+function liveConnectionsByRoom(): Map<string, Connection[]> {
+  const byRoom = new Map<string, Connection[]>();
+  for (const conn of localConnections) {
+    if (conn.closed || !conn.roomCode || !conn.token || !conn.role) continue;
+    const roomConnections = byRoom.get(conn.roomCode) || [];
+    roomConnections.push(conn);
+    byRoom.set(conn.roomCode, roomConnections);
+  }
+  return byRoom;
+}
+
+async function refreshPresenceLeaseForRoom(code: string, connections: Connection[], now: number, force: boolean): Promise<boolean> {
+  const lockToken = await acquireLock(code);
+  if (!lockToken) throw new Error('Room is busy. Try again.');
+  try {
+    const room = await loadRoom(code);
+    if (!room) return false;
+    let changed = false;
+
+    for (const conn of connections) {
+      if (conn.closed || conn.roomCode !== code || !conn.token || !conn.role) continue;
+      if (conn.role === 'spectator') {
+        const spectator = spectatorForToken(room, conn.token);
+        if (
+          spectator
+          && spectator.connectionId === conn.id
+          && (force || now - spectator.lastSeen >= ROOM_PRESENCE_LEASE_REFRESH_MS / 2)
+        ) {
+          spectator.lastSeen = now;
+          changed = true;
+        }
+        continue;
+      }
+
+      if (!conn.seat) continue;
+      const participant = room.seats[String(conn.seat)];
+      if (
+        participant
+        && participant.token === conn.token
+        && participant.connectionId === conn.id
+        && (force || now - participant.lastSeen >= ROOM_PRESENCE_LEASE_REFRESH_MS / 2)
+      ) {
+        participant.lastSeen = now;
+        changed = true;
+      }
+    }
+
+    if (!changed) return false;
+    await saveRoom(room);
+    runtimeMetrics.presenceLeaseRoomWrites++;
+    return true;
+  } finally {
+    await releaseLock(code, lockToken);
+  }
+}
+
+export async function refreshRoomPresenceLeases(force = false): Promise<number> {
+  if (presenceLeaseRefreshInFlight) return presenceLeaseRefreshInFlight;
+  presenceLeaseRefreshInFlight = (async () => {
+    const byRoom = liveConnectionsByRoom();
+    const now = Date.now();
+    let writes = 0;
+    for (const [code, connections] of byRoom) {
+      try {
+        if (await refreshPresenceLeaseForRoom(code, connections, now, force)) writes++;
+      } catch (error) {
+        console.error('[brasta presence lease]', code, error);
+      }
+    }
+    return writes;
+  })();
+  try {
+    return await presenceLeaseRefreshInFlight;
+  } finally {
+    presenceLeaseRefreshInFlight = null;
+  }
+}
+
+function ensurePresenceLeaseTimer(): void {
+  if (presenceLeaseTimer) return;
+  presenceLeaseTimer = setInterval(() => {
+    void refreshRoomPresenceLeases();
+  }, ROOM_PRESENCE_LEASE_REFRESH_MS);
+  presenceLeaseTimer.unref?.();
+}
+
+function stopPresenceLeaseTimerIfIdle(): void {
+  if (!presenceLeaseTimer || [...localConnections].some((conn) => !conn.closed)) return;
+  clearInterval(presenceLeaseTimer);
+  presenceLeaseTimer = null;
 }
 
 function sendJson(conn: Connection, msg: unknown) {
@@ -525,9 +898,10 @@ function sendJson(conn: Connection, msg: unknown) {
   try { conn.ws.send(JSON.stringify(msg)); } catch { conn.closed = true; }
 }
 const sendError = (conn: Connection, message: string) => sendJson(conn, { type: 'ERROR', message });
+const sendChatError = (conn: Connection, message: string) => sendJson(conn, { type: 'CHAT_ERROR', message });
 
-async function broadcastLocalRoom(code: string): Promise<void> {
-  const room = await loadRoom(code);
+async function broadcastLocalRoom(code: string, suppliedRoom?: StoredRoom): Promise<void> {
+  const room = suppliedRoom || await loadRoom(code);
   for (const conn of localConnections) {
     if (conn.closed || conn.roomCode !== code || !conn.token || !conn.role) continue;
     if (!room) { sendError(conn, 'That room no longer exists.'); continue; }
@@ -543,6 +917,7 @@ async function broadcastLocalRoom(code: string): Promise<void> {
         try { conn.ws.close(4001, 'Resumed on another device'); } catch {}
         continue;
       }
+      syncChatRoomContext(conn, room);
       sendJson(conn, {
         type: 'ROOM_STATE',
         update: {
@@ -556,6 +931,7 @@ async function broadcastLocalRoom(code: string): Promise<void> {
 
     const spectator = spectatorForToken(room, conn.token);
     if (!spectator || spectator.connectionId !== conn.id) continue;
+    syncChatRoomContext(conn, room);
     sendJson(conn, {
       type: 'ROOM_STATE',
       update: {
@@ -567,6 +943,24 @@ async function broadcastLocalRoom(code: string): Promise<void> {
   }
 }
 
+function clearConnectionRoom(conn: Connection): void {
+  conn.roomCode = null;
+  conn.seat = null;
+  conn.token = null;
+  conn.role = null;
+  conn.name = null;
+  clearChatRoomContext(conn);
+  clearChatIdentity(conn);
+}
+
+function broadcastLocalRoomClosed(code: string, message: string): void {
+  for (const conn of localConnections) {
+    if (conn.closed || conn.roomCode !== code) continue;
+    sendJson(conn, { type: 'ROOM_CLOSED', code, message });
+    clearConnectionRoom(conn);
+  }
+}
+
 type EmoteEvent = {
   id: string;
   roomCode: string;
@@ -575,6 +969,115 @@ type EmoteEvent = {
   emote: string;
   at: number;
 };
+
+function normalizedChatMessage(value: unknown, code: string): ChatMessage | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<ChatMessage>;
+  const roomCode = cleanCode(candidate.roomCode);
+  const seat = Number(candidate.seat) as Brasta.Seat;
+  const text = cleanChatText(candidate.text);
+  const name = cleanName(candidate.name);
+  const senderId = String(candidate.senderId || '').trim().slice(0, 80);
+  const avatarUrl = safeChatAvatarUrl(candidate.avatarUrl);
+  const at = Number(candidate.at);
+  const id = String(candidate.id || '').slice(0, 80);
+  if (!id || !senderId || roomCode !== code || ![1, 2, 3, 4].includes(seat) || !name || !text || !Number.isFinite(at) || at < 0 || at > 8_640_000_000_000_000) return null;
+  return { id, roomCode, seat, senderId, name, avatarUrl, text, at };
+}
+
+async function loadChatHistory(roomId: string, code: string): Promise<ChatMessage[]> {
+  runtimeMetrics.chatHistoryReads++;
+  const history = await loadPersistedChatHistory(roomId, code, CHAT_HISTORY_LIMIT);
+  return history
+    .map((message) => normalizedChatMessage(message, code))
+    .filter((message): message is ChatMessage => !!message);
+}
+
+function broadcastLocalChat(event: ChatMessage): void {
+  for (const conn of localConnections) {
+    if (conn.closed || conn.roomCode !== event.roomCode || !conn.role) continue;
+    if (conn.blockedAccountIds.has(event.senderId)) continue;
+    sendJson(conn, { type: 'CHAT_MESSAGE', event });
+  }
+}
+
+async function publishChat(event: ChatMessage): Promise<void> {
+  broadcastLocalChat(event);
+  if (!redis) return;
+  runtimeMetrics.chatEventPublishes++;
+  try {
+    await redis.publish(CHAT_CHANNEL, JSON.stringify({
+      source: REALTIME_INSTANCE_ID,
+      kind: 'message',
+      event,
+    }));
+  } catch (error) {
+    // The sender and all users on this instance already received the message.
+    // Keep gameplay isolated from a transient cross-instance chat failure.
+    console.error('[brasta room chat publish]', error);
+  }
+}
+
+function broadcastLocalChatRemoval(roomCode: string, messageId: string): void {
+  for (const conn of localConnections) {
+    if (conn.closed || conn.roomCode !== roomCode || !conn.role) continue;
+    sendJson(conn, { type: 'CHAT_MESSAGE_REMOVED', roomCode, messageId });
+  }
+}
+
+async function publishChatRemoval(roomCode: string, messageId: string): Promise<void> {
+  broadcastLocalChatRemoval(roomCode, messageId);
+  if (!redis) return;
+  await redis.publish(CHAT_CHANNEL, JSON.stringify({
+    source: REALTIME_INSTANCE_ID,
+    kind: 'remove',
+    roomCode,
+    messageId,
+  }));
+}
+
+function applyLocalChatBlock(blockerId: string, blockedId: string): void {
+  for (const conn of localConnections) {
+    if (conn.accountId === blockerId) {
+      conn.blockedAccountIds.add(blockedId);
+      sendJson(conn, { type: 'CHAT_BLOCK_RESULT', blockedUserId: blockedId });
+    }
+    if (conn.accountId === blockedId) conn.blockedAccountIds.add(blockerId);
+  }
+}
+
+async function publishChatBlock(blockerId: string, blockedId: string): Promise<void> {
+  applyLocalChatBlock(blockerId, blockedId);
+  if (!redis) return;
+  await redis.publish(CHAT_CHANNEL, JSON.stringify({
+    source: REALTIME_INSTANCE_ID,
+    kind: 'block',
+    blockerId,
+    blockedId,
+  }));
+}
+
+export async function removeChatMessageFromRuntime(roomId: string, messageId: string): Promise<void> {
+  const match = /^room:([A-Z0-9]{4,6}):\d+$/.exec(String(roomId || ''));
+  if (!match) return;
+  await publishChatRemoval(cleanCode(match[1]), String(messageId || '').slice(0, 80));
+}
+
+async function sendChatHistory(conn: Connection, room?: StoredRoom): Promise<void> {
+  if (room) syncChatRoomContext(conn, room);
+  if (!conn.chatActive || !conn.chatRoomId || !conn.roomCode) return;
+  const roomCode = conn.roomCode;
+  try {
+    const messages = (await loadChatHistory(conn.chatRoomId, roomCode))
+      .filter((message) => !conn.blockedAccountIds.has(message.senderId));
+    sendJson(conn, { type: 'CHAT_HISTORY', roomCode, messages });
+  } catch (error) {
+    // History is optional reconnect context; never let it block joining the
+    // authoritative gameplay session when the chat store has a transient fault.
+    console.error('[brasta room chat history]', error);
+    sendJson(conn, { type: 'CHAT_HISTORY', roomCode, messages: [] });
+  }
+}
 
 function broadcastLocalEmote(event: EmoteEvent): void {
   for (const conn of localConnections) {
@@ -598,7 +1101,31 @@ async function ensureSubscriber(): Promise<void> {
   if (!sub) return;
   sub.on('message', (channel: string, payload: string) => {
     if (channel === EVENT_CHANNEL) {
-      void broadcastLocalRoom(payload);
+      let code = payload;
+      let source = '';
+      let kind = '';
+      let message = '';
+      try {
+        const event = JSON.parse(payload) as { code?: unknown; source?: unknown; kind?: unknown; message?: unknown };
+        code = cleanCode(event?.code);
+        source = String(event?.source || '');
+        kind = String(event?.kind || '');
+        message = String(event?.message || '')
+          .replace(/[\u0000-\u001f\u007f]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 160) || 'The private match was abandoned.';
+      } catch {}
+      if (!code) return;
+      if (source && source === REALTIME_INSTANCE_ID) {
+        runtimeMetrics.ignoredSelfRoomEvents++;
+        return;
+      }
+      if (kind === 'closed') {
+        broadcastLocalRoomClosed(code, message);
+        return;
+      }
+      void broadcastLocalRoom(code);
       return;
     }
     if (channel === EMOTE_CHANNEL) {
@@ -606,14 +1133,66 @@ async function ensureSubscriber(): Promise<void> {
         const event = JSON.parse(payload) as EmoteEvent;
         if (event?.roomCode && event?.seat && event?.emote) broadcastLocalEmote(event);
       } catch {}
+      return;
+    }
+    if (channel === CHAT_CHANNEL) {
+      try {
+        const envelope = JSON.parse(payload) as {
+          source?: unknown;
+          kind?: unknown;
+          event?: unknown;
+          roomCode?: unknown;
+          messageId?: unknown;
+          blockerId?: unknown;
+          blockedId?: unknown;
+        };
+        if (String(envelope?.source || '') === REALTIME_INSTANCE_ID) {
+          runtimeMetrics.ignoredSelfChatEvents++;
+          return;
+        }
+        if (envelope.kind === 'remove') {
+          const roomCode = cleanCode(envelope.roomCode);
+          const messageId = String(envelope.messageId || '').slice(0, 80);
+          if (roomCode && messageId) broadcastLocalChatRemoval(roomCode, messageId);
+          return;
+        }
+        if (envelope.kind === 'block') {
+          const blockerId = String(envelope.blockerId || '').slice(0, 80);
+          const blockedId = String(envelope.blockedId || '').slice(0, 80);
+          if (blockerId && blockedId) applyLocalChatBlock(blockerId, blockedId);
+          return;
+        }
+        const code = cleanCode((envelope?.event as Partial<ChatMessage> | undefined)?.roomCode);
+        if (!code) return;
+        const event = normalizedChatMessage(envelope.event, code);
+        if (event) broadcastLocalChat(event);
+      } catch {}
     }
   });
   sub.on('error', (err: unknown) => console.error('[brasta redis subscriber]', err));
-  await sub.subscribe(EVENT_CHANNEL, EMOTE_CHANNEL);
+  await sub.subscribe(EVENT_CHANNEL, EMOTE_CHANNEL, CHAT_CHANNEL);
 }
-async function publishRoom(code: string): Promise<void> {
-  await broadcastLocalRoom(code);
-  if (redis) await redis.publish(EVENT_CHANNEL, code);
+async function publishRoom(code: string, room?: StoredRoom): Promise<void> {
+  await broadcastLocalRoom(code, room);
+  if (redis) {
+    runtimeMetrics.roomEventPublishes++;
+    await redis.publish(EVENT_CHANNEL, JSON.stringify({
+      code,
+      source: REALTIME_INSTANCE_ID,
+    }));
+  }
+}
+
+async function publishRoomClosed(code: string, message: string): Promise<void> {
+  broadcastLocalRoomClosed(code, message);
+  if (!redis) return;
+  runtimeMetrics.roomEventPublishes++;
+  await redis.publish(EVENT_CHANNEL, JSON.stringify({
+    code,
+    source: REALTIME_INSTANCE_ID,
+    kind: 'closed',
+    message,
+  }));
 }
 
 async function makeRoomCode(): Promise<string> {
@@ -651,7 +1230,11 @@ async function attachPlayer(conn: Connection, room: StoredRoom, p: Participant):
   conn.seat = p.seat;
   conn.token = p.token;
   conn.role = 'player';
+  conn.name = p.name;
+  syncChatRoomContext(conn, room);
+  clearChatIdentity(conn);
   sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: p.seat, token: p.token, name: p.name, isHost: p.token === room.hostToken, role: 'player' } });
+  sendChatCapabilities(conn);
 }
 async function attachSpectator(conn: Connection, room: StoredRoom, spectator: Spectator): Promise<void> {
   await supersedeLocalSocket(conn, room.code, spectator.token, 'spectator');
@@ -661,7 +1244,11 @@ async function attachSpectator(conn: Connection, room: StoredRoom, spectator: Sp
   conn.seat = null;
   conn.token = spectator.token;
   conn.role = 'spectator';
+  conn.name = spectator.name;
+  syncChatRoomContext(conn, room);
+  clearChatIdentity(conn);
   sendJson(conn, { type: 'SESSION', session: { code: room.code, seat: null, token: spectator.token, name: spectator.name, isHost: false, role: 'spectator' } });
+  sendChatCapabilities(conn);
 }
 
 async function detach(conn: Connection, intentional = false): Promise<void> {
@@ -670,7 +1257,7 @@ async function detach(conn: Connection, intentional = false): Promise<void> {
   const token = conn.token;
   const role = conn.role;
   let removedAccountId: string | null = null;
-  conn.roomCode = null; conn.seat = null; conn.token = null; conn.role = null;
+  conn.roomCode = null; conn.seat = null; conn.token = null; conn.role = null; conn.name = null; clearChatRoomContext(conn); clearChatIdentity(conn);
   if (!code || !token || !role) return;
 
   const updated = await mutateRoom(code, (room) => {
@@ -713,25 +1300,26 @@ async function requirePlayerSession(conn: Connection): Promise<{ room: StoredRoo
   return { room, p };
 }
 
+function requirePlayerRoomCode(conn: Connection): string | null {
+  if (conn.role === 'spectator') {
+    sendError(conn, 'Spectators can watch the game but cannot make moves.');
+    return null;
+  }
+  if (!conn.roomCode || !conn.seat || !conn.token || conn.role !== 'player') {
+    sendError(conn, 'Join or create a room first.');
+    return null;
+  }
+  return conn.roomCode;
+}
+
 export async function handleMessage(conn: Connection, raw: string): Promise<void> {
   let msg: any;
   try { msg = JSON.parse(raw); } catch { sendError(conn, 'Message must be valid JSON.'); return; }
   if (!msg || typeof msg.type !== 'string') { sendError(conn, 'Message type is required.'); return; }
   try {
     if (msg.type === 'PING') {
-      if (conn.roomCode && conn.token && conn.role) {
-        await mutateRoom(conn.roomCode, (room) => {
-          if (conn.role === 'spectator') {
-            const s = spectatorForToken(room, conn.token!);
-            if (s && s.connectionId === conn.id) s.lastSeen = Date.now();
-            return;
-          }
-          if (conn.seat) {
-            const p = room.seats[String(conn.seat)];
-            if (p && p.token === conn.token && p.connectionId === conn.id) p.lastSeen = Date.now();
-          }
-        }, false);
-      }
+      conn.lastHeartbeatAt = Date.now();
+      runtimeMetrics.heartbeatPongs++;
       sendJson(conn, { type: 'PONG' });
       return;
     }
@@ -740,7 +1328,9 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const session = await requirePlayerSession(conn);
       if (!session) return;
       try {
-        await bindVerifiedAccountToSeat(session.room.code, session.p.seat, session.p.token, msg.accessToken);
+        await bindVerifiedAccountToSeat(session.room.code, session.p.seat, session.p.token, msg.accessToken, conn);
+        const refreshedRoom = await loadRoom(session.room.code);
+        if (refreshedRoom) await sendChatHistory(conn, refreshedRoom);
       } catch (error) {
         console.error('[brasta account seat claim]', error);
       }
@@ -767,6 +1357,178 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       return;
     }
 
+    if (msg.type === 'CHAT_ACCEPT_POLICY') {
+      if (!conn.accountId) return sendChatError(conn, 'Sign in to accept the chat rules.');
+      if (conn.role !== 'player') return sendChatError(conn, 'Spectators can read and report chat without posting.');
+      try {
+        await acceptCurrentChatPolicy(conn.accountId);
+        conn.chatConsented = true;
+        conn.chatBackendAvailable = true;
+        sendChatCapabilities(conn, await activeChatRestriction(conn.accountId));
+      } catch (error) {
+        console.error('[brasta chat consent]', error);
+        conn.chatBackendAvailable = false;
+        sendChatCapabilities(conn);
+        sendChatError(conn, 'Could not save your chat agreement. Try again.');
+      }
+      return;
+    }
+
+    if (msg.type === 'CHAT_REPORT') {
+      if (!conn.accountId) return sendChatError(conn, 'Sign in to report a chat message.');
+      if (!conn.roomCode || !conn.chatRoomId || !conn.role) return sendChatError(conn, 'Join the room before reporting chat.');
+      const messageId = String(msg.messageId || '').slice(0, 80);
+      try {
+        const result = await reportChatMessage({
+          reporterId: conn.accountId,
+          messageId,
+          currentRoomId: conn.chatRoomId,
+          reason: msg.reason,
+          details: msg.details,
+        });
+        if (result.autoHidden) await publishChatRemoval(conn.roomCode, messageId);
+        sendJson(conn, { type: 'CHAT_REPORT_RESULT', messageId, reportId: result.reportId });
+      } catch (error) {
+        console.error('[brasta chat report]', error);
+        sendChatError(conn, error instanceof Error ? error.message : 'Could not submit that report.');
+      }
+      return;
+    }
+
+    if (msg.type === 'CHAT_BLOCK') {
+      if (!conn.accountId) return sendChatError(conn, 'Sign in to block a player.');
+      if (!conn.roomCode || !conn.chatRoomId || !conn.role) return sendChatError(conn, 'Join the room before blocking a player.');
+      const messageId = String(msg.messageId || '').slice(0, 80);
+      try {
+        const targetId = await persistedChatMessageSender(messageId, conn.chatRoomId);
+        if (!targetId) throw new Error('That message is no longer available.');
+        if (targetId === conn.accountId) throw new Error('You cannot block yourself.');
+        await blockChatPeer(conn.accountId, targetId);
+        await publishChatBlock(conn.accountId, targetId);
+        await sendChatHistory(conn);
+      } catch (error) {
+        console.error('[brasta chat block]', error);
+        sendChatError(conn, error instanceof Error ? error.message : 'Could not block that player.');
+      }
+      return;
+    }
+
+    if (msg.type === 'CHAT_SEND') {
+      if (conn.role === 'spectator') return sendChatError(conn, 'Spectators can read match chat but cannot send messages.');
+      if (!conn.roomCode || !conn.seat || !conn.token || conn.role !== 'player' || !conn.name) {
+        return sendChatError(conn, 'Join a room before using match chat.');
+      }
+      if (conn.chatBotMatch) return sendChatError(conn, 'Match chat is disabled for bot matches.');
+      if (!conn.accountId) return sendChatError(conn, 'Sign in to send match-chat messages.');
+      if (!conn.chatBackendAvailable) return sendChatError(conn, 'Match chat moderation is temporarily unavailable. Try again.');
+      if (!conn.chatConsented) return sendChatError(conn, 'Accept the Community Guidelines before sending messages.');
+      if (!conn.chatActive || !conn.chatRoomId || !conn.chatRoomKind || !conn.chatMode) {
+        return sendChatError(conn, 'Match chat opens when the game starts.');
+      }
+      const chatSession = {
+        accountId: conn.accountId,
+        roomId: conn.chatRoomId,
+        roomCode: conn.roomCode,
+        roomKind: conn.chatRoomKind,
+        mode: conn.chatMode,
+        seat: conn.seat,
+      };
+
+      const normalizedInput = String(msg.text || '')
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!normalizedInput) return sendChatError(conn, 'Enter a message first.');
+      if (Array.from(normalizedInput).length > CHAT_MESSAGE_MAX_CHARS) {
+        return sendChatError(conn, `Messages can be up to ${CHAT_MESSAGE_MAX_CHARS} characters.`);
+      }
+
+      const now = Date.now();
+      if (now - conn.lastChatAt < CHAT_RATE_MS) return sendChatError(conn, 'Wait a moment before sending another message.');
+
+      let restriction: Awaited<ReturnType<typeof activeChatRestriction>>;
+      try {
+        restriction = await activeChatRestriction(chatSession.accountId);
+      } catch (error) {
+        console.error('[brasta chat restriction]', error);
+        conn.chatBackendAvailable = false;
+        sendChatCapabilities(conn);
+        return sendChatError(conn, 'Match chat moderation is temporarily unavailable. Try again.');
+      }
+      if (restriction) {
+        sendChatCapabilities(conn, restriction);
+        return sendChatError(conn, chatRestrictionMessage(restriction) || 'This account cannot use match chat.');
+      }
+
+      const moderation = moderateChatText(normalizedInput);
+      if (!moderation.allowed) {
+        try {
+          await recordChatSafetyEvent({
+            userId: chatSession.accountId,
+            roomId: chatSession.roomId,
+            reasonCode: moderation.reasonCode,
+            content: normalizedInput,
+          });
+        } catch (error) {
+          console.error('[brasta chat safety event]', error);
+        }
+        return sendChatError(conn, moderation.message);
+      }
+
+      if (
+        conn.closed
+        || conn.role !== 'player'
+        || conn.accountId !== chatSession.accountId
+        || conn.roomCode !== chatSession.roomCode
+        || conn.chatRoomId !== chatSession.roomId
+        || conn.seat !== chatSession.seat
+        || !conn.chatActive
+      ) return sendChatError(conn, 'Your room session is no longer valid.');
+
+      const acceptedAt = Date.now();
+      if (acceptedAt - conn.lastChatAt < CHAT_RATE_MS) return sendChatError(conn, 'Wait a moment before sending another message.');
+      const previousChatAt = conn.lastChatAt;
+      conn.lastChatAt = acceptedAt;
+      const event: ChatMessage = {
+        id: crypto.randomUUID(),
+        roomCode: chatSession.roomCode,
+        seat: chatSession.seat,
+        senderId: chatSession.accountId,
+        name: conn.username || conn.name,
+        avatarUrl: conn.avatarUrl,
+        text: moderation.text,
+        at: acceptedAt,
+      };
+      const createdAt = new Date(acceptedAt).toISOString();
+      try {
+        await persistChatMessage({
+          id: event.id,
+          roomId: chatSession.roomId,
+          roomCode: chatSession.roomCode,
+          roomKind: chatSession.roomKind,
+          mode: chatSession.mode,
+          senderId: chatSession.accountId,
+          senderSeat: chatSession.seat,
+          senderTeam: chatSession.seat % 2 === 1 ? 'A' : 'B',
+          senderUsername: conn.username || conn.name,
+          senderDisplayName: null,
+          senderAvatarUrl: conn.avatarUrl,
+          content: event.text,
+          createdAt,
+          expiresAt: new Date(acceptedAt + CHAT_MESSAGE_RETENTION_DAYS * 24 * 60 * 60_000).toISOString(),
+        });
+      } catch (error) {
+        if (conn.lastChatAt === acceptedAt) conn.lastChatAt = previousChatAt;
+        console.error('[brasta room chat persist]', error);
+        return sendChatError(conn, 'Match chat is temporarily unavailable. Try again.');
+      }
+
+      runtimeMetrics.chatHistoryWrites++;
+      runtimeMetrics.chatMessages++;
+      await publishChat(event);
+      return;
+    }
+
     if (msg.type === 'CREATE_ROOM') {
       await detach(conn, true);
       const name = cleanName(msg.name);
@@ -786,15 +1548,16 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       const p = room.seats['1'];
       await attachPlayer(conn, room, p);
       await saveRoom(room);
-      await publishRoom(room.code);
+      await publishRoom(room.code, room);
       // The lobby is already visible before this verification begins because
       // SESSION/ROOM_STATE were sent above. Await the binding here so the
       // cross-device resume registry is guaranteed to be durable.
       try {
-        await bindVerifiedAccountToSeat(room.code, p.seat, p.token, msg.accessToken);
+        await bindVerifiedAccountToSeat(room.code, p.seat, p.token, msg.accessToken, conn);
       } catch (error) {
         console.error('[brasta account seat bind]', error);
       }
+      await sendChatHistory(conn, room);
       return;
     }
 
@@ -810,7 +1573,10 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (reconnectToken) {
           const existing = participantForToken(room, reconnectToken);
           if (existing) {
-            if (name) existing.name = name;
+            // Once a seat belongs to an account, its public name is the
+            // verified Brasta username. A reconnect payload must not replace
+            // it with a provider display name or stale local preference.
+            if (name && !existing.accountId) existing.name = name;
             applyNames(room);
             existing.connectionId = conn.id;
             existing.lastSeen = Date.now();
@@ -821,7 +1587,8 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (!name) throw new Error('Enter a display name.');
         const seat = activeSeats(room).find((s) => !room.seats[String(s)]);
         if (!seat) throw new Error('That room is full. You can still spectate it.');
-        const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now() };
+        const isBot = msg.bot === true && name === 'Brasta Bot';
+        const p: Participant = { seat, name, token: makeToken(), connectionId: conn.id, lastSeen: Date.now(), ...(isBot ? { isBot: true } : {}) };
         room.seats[String(seat)] = p;
         return p;
       }, false);
@@ -830,12 +1597,13 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       await attachPlayer(conn, changed.room, changed.result);
       // Publish the join immediately, then finish the account binding before
       // this message handler returns so another device can discover the match.
-      await publishRoom(changed.room.code);
+      await publishRoom(changed.room.code, changed.room);
       try {
-        await bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken);
+        await bindVerifiedAccountToSeat(changed.room.code, changed.result.seat, changed.result.token, msg.accessToken, conn);
       } catch (error) {
         console.error('[brasta account seat bind]', error);
       }
+      await sendChatHistory(conn, changed.room);
       return;
     }
 
@@ -851,6 +1619,11 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         if (!existing) throw new Error('Your saved match seat is no longer available.');
         if (room.gameState?.phase === 'matchEnd') throw new Error('That match has already ended.');
         const wasHost = existing.token === room.hostToken;
+        const publicUsername = cleanName(identity.username);
+        if (publicUsername) {
+          existing.name = publicUsername;
+          applyNames(room);
+        }
         existing.token = makeToken();
         existing.connectionId = conn.id;
         existing.lastSeen = Date.now();
@@ -863,8 +1636,26 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       }
       await supersedeLocalSeat(conn, changed.room.code, changed.result.seat);
       await attachPlayer(conn, changed.room, changed.result);
+      try {
+        await registerChatRoomMember({
+          roomId: chatRoomId(changed.room),
+          roomCode: changed.room.code,
+          userId: identity.userId,
+          seat: changed.result.seat,
+          mode: changed.room.mode,
+          roomKind: chatRoomKind(changed.room),
+          expiresAt: new Date(Date.now() + ROOM_TTL_SECONDS * 1000).toISOString(),
+        });
+        await applyVerifiedChatIdentity(conn, identity);
+      } catch (error) {
+        console.error('[brasta resume chat identity]', error);
+        conn.accountId = identity.userId;
+        conn.chatBackendAvailable = false;
+        sendChatCapabilities(conn);
+      }
+      await sendChatHistory(conn, changed.room);
       await bindParticipantActiveMatch(changed.room, changed.result);
-      await publishRoom(changed.room.code);
+      await publishRoom(changed.room.code, changed.room);
       return;
     }
 
@@ -892,7 +1683,10 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       }, false);
       if (!changed) return sendError(conn, 'Room not found. Check the code and try again.');
       await attachSpectator(conn, changed.room, changed.result);
-      await publishRoom(changed.room.code);
+      const spectatorIdentity = await verifyBrastaAccessToken(typeof msg.accessToken === 'string' ? msg.accessToken : '');
+      if (spectatorIdentity?.userId) await applyVerifiedChatIdentity(conn, spectatorIdentity);
+      await sendChatHistory(conn, changed.room);
+      await publishRoom(changed.room.code, changed.room);
       return;
     }
 
@@ -902,9 +1696,42 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       return;
     }
 
-    const current = await requirePlayerSession(conn);
-    if (!current) return;
-    const code = current.room.code;
+    if (msg.type === 'ABANDON_MATCH') {
+      const code = conn.roomCode;
+      const seat = conn.seat;
+      const token = conn.token;
+      if (!code || !seat || !token || conn.role !== 'player') return sendError(conn, 'Join a private match before abandoning it.');
+
+      const lockToken = await acquireLock(code);
+      if (!lockToken) return sendError(conn, 'Room is busy. Try again.');
+      let closedMessage = '';
+      try {
+        const room = await loadRoom(code);
+        if (!room) return sendError(conn, 'That room no longer exists.');
+        const participant = room.seats[String(seat)];
+        if (!participant || participant.token !== token || participant.connectionId !== conn.id) {
+          return sendError(conn, 'Your room session is no longer valid.');
+        }
+        if (rankedMeta(room)) return sendError(conn, 'Ranked matches must use Forfeit Match.');
+        if (!room.started || !room.gameState || room.gameState.phase === 'matchEnd') {
+          return sendError(conn, 'There is no active private match to abandon.');
+        }
+
+        closedMessage = `${participant.name} abandoned the private match.`;
+        await clearRoomActiveMatches(room);
+        await deleteRoom(code);
+      } finally {
+        await releaseLock(code, lockToken);
+      }
+      if (closedMessage) await publishRoomClosed(code, closedMessage);
+      return;
+    }
+
+    // Validate the authoritative seat inside the locked mutation below. Loading
+    // the room here first only to load it again under the lock doubled reads for
+    // every play, capture, build, burn, and round transition.
+    const code = requirePlayerRoomCode(conn);
+    if (!code) return;
     const changed = await mutateRoom(code, (room) => {
       const p = room.seats[String(conn.seat!)];
       if (!p || p.token !== conn.token || p.connectionId !== conn.id) throw new Error('Your room session is no longer valid.');
@@ -965,8 +1792,72 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
         const result = Brasta.resolveOpening(room.gameState, msg.choice);
         if (!result.ok) throw new Error(result.error || 'Opening choice rejected.');
         room.callableBurn = null;
-        room.gameState = result.state; applyNames(room); room.revision++; return null;
+        room.gameState = result.state;
+        syncRankedTurnClock(room);
+        applyNames(room); room.revision++; return null;
       }
+      if (msg.type === 'RANKED_TURN_TIMEOUT') {
+        const ranked = rankedMeta(room);
+        if (!ranked || room.gameState.phase !== 'play') return null;
+
+        // A client may request timeout resolution, but the server owns the
+        // deadline and decides whether the turn has actually expired.
+        syncRankedTurnClock(room);
+        if (!ranked.turnStartedAt || Date.now() - ranked.turnStartedAt < RANKED_TURN_MS) return null;
+
+        const timedOutSeat = room.gameState.currentSeat;
+        const timedOutPlayer = room.gameState.players.find((player) => player.seat === timedOutSeat);
+        const hand = timedOutPlayer?.hand || [];
+        if (!hand.length) return null;
+
+        // "Loose play" is the timeout penalty. Jacks cannot legally be played
+        // loose, so prefer any non-Jack in hand. If the hand is all Jacks, the
+        // only legal fallback is the normal Jack action.
+        const loosePlayable = hand.filter((cardId) => room.gameState!.cards[cardId]?.rank !== 'J');
+        const pool = loosePlayable.length ? loosePlayable : hand;
+        const cardId = pool[crypto.randomInt(pool.length)];
+        const card = room.gameState.cards[cardId];
+        const safe: Brasta.Command = card.rank === 'J'
+          ? { type: 'JACK_ACTION', seat: timedOutSeat, cardId }
+          : { type: 'PLAY_LOOSE', seat: timedOutSeat, cardId };
+
+        const before = clone(room.gameState);
+        const result = Brasta.applyCommand(room.gameState, safe);
+        if (!result.ok) throw new Error(result.error || 'Could not auto-play the timed-out turn.');
+
+        room.callableBurn = null;
+        if (safe.type === 'PLAY_LOOSE' && result.state.phase === 'play') {
+          const options = burnPickupOptions(before, timedOutSeat, safe.cardId);
+          if (options.length) {
+            room.callableBurn = {
+              id: crypto.randomUUID(),
+              offenderSeat: timedOutSeat,
+              cardId: safe.cardId,
+              options,
+              includePlayedCard: true,
+              claimedBySeat: null,
+              claimedAt: null,
+            };
+          }
+        }
+
+        const timedOutName = timedOutPlayer?.name || `Seat ${timedOutSeat}`;
+        result.state.lastMove = card.rank === 'J'
+          ? `${timedOutName} timed out — ${result.state.lastMove || 'a Jack was auto-played.'}`
+          : `${timedOutName} timed out — ${Brasta.cardLabel(card)} was played loose.`;
+
+        room.gameState = result.state;
+        if (room.gameState.phase === 'roundEnd') {
+          ranked.roundEndedAt = Date.now();
+        } else {
+          delete ranked.roundEndedAt;
+        }
+        syncRankedTurnClock(room);
+        applyNames(room);
+        room.revision++;
+        return null;
+      }
+
       if (msg.type === 'COMMAND') {
         if (!msg.command || typeof msg.command.type !== 'string') throw new Error('A game command is required.');
         if (room.callableBurn?.claimedBySeat && room.callableBurn.claimedAt && Date.now() - room.callableBurn.claimedAt < BURN_CLAIM_MS) {
@@ -1004,14 +1895,29 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
             };
           }
         }
-        room.gameState = result.state; applyNames(room); room.revision++; return null;
+        const previousPhase = room.gameState.phase;
+        room.gameState = result.state;
+        const ranked = rankedMeta(room);
+        if (ranked) {
+          if (result.state.phase === 'roundEnd' && previousPhase !== 'roundEnd') ranked.roundEndedAt = Date.now();
+          else if (result.state.phase !== 'roundEnd') delete ranked.roundEndedAt;
+        }
+        syncRankedTurnClock(room);
+        applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'NEXT_ROUND') {
         requireHost();
         const result = Brasta.nextRound(room.gameState);
         if (!result.ok) throw new Error(result.error || 'Unable to start next round.');
         room.callableBurn = null;
-        room.gameState = result.state; applyNames(room); room.revision++; return null;
+        room.gameState = result.state;
+        const ranked = rankedMeta(room);
+        if (ranked) {
+          delete ranked.roundEndedAt;
+          delete ranked.turnStartedAt;
+          delete ranked.turnSeat;
+        }
+        applyNames(room); room.revision++; return null;
       }
       if (msg.type === 'END_MATCH') {
         requireHost(); room.callableBurn = null; room.gameState = Brasta.endMatch(room.gameState); room.revision++; return null;
@@ -1032,22 +1938,78 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
 
 export async function registerSocket(ws: WireSocket): Promise<Connection> {
   await ensureSubscriber();
-  const conn: Connection = { id: crypto.randomUUID(), ws, closed: false, roomCode: null, seat: null, token: null, role: null, lastEmoteAt: 0 };
+  const conn: Connection = {
+    id: crypto.randomUUID(),
+    ws,
+    closed: false,
+    cleanupStarted: false,
+    roomCode: null,
+    seat: null,
+    token: null,
+    role: null,
+    name: null,
+    accountId: null,
+    username: null,
+    displayName: null,
+    avatarUrl: null,
+    chatRoomId: null,
+    chatRoomKind: null,
+    chatMode: null,
+    chatActive: false,
+    chatBotMatch: false,
+    chatConsented: false,
+    chatBackendAvailable: true,
+    blockedAccountIds: new Set<string>(),
+    lastEmoteAt: 0,
+    lastChatAt: 0,
+    lastHeartbeatAt: Date.now(),
+  };
   localConnections.add(conn);
+  ensurePresenceLeaseTimer();
   sendJson(conn, { type: 'NOTICE', message: redis ? 'Connected to Brasta.' : 'Connected to Brasta (local memory mode).' });
   return conn;
 }
 export async function unregisterSocket(conn: Connection): Promise<void> {
-  if (conn.closed) return;
+  if (conn.cleanupStarted) return;
+  conn.cleanupStarted = true;
   conn.closed = true;
   localConnections.delete(conn);
+  stopPresenceLeaseTimerIfIdle();
   await detach(conn, false);
 }
 
 export async function health() {
-  let redisOk = false;
-  if (redis) {
-    try { redisOk = (await redis.ping()) === 'PONG'; } catch { redisOk = false; }
+  let redisOk = cachedRedisHealth;
+  const now = Date.now();
+  if (redis && now - redisHealthCheckedAt >= REDIS_HEALTH_CACHE_MS) {
+    if (!redisHealthCheckInFlight) {
+      redisHealthCheckInFlight = (async () => {
+        try { return (await redis.ping()) === 'PONG'; } catch { return false; }
+      })();
+    }
+    try {
+      redisOk = await redisHealthCheckInFlight;
+      cachedRedisHealth = redisOk;
+      redisHealthCheckedAt = Date.now();
+    } finally {
+      redisHealthCheckInFlight = null;
+    }
   }
-  return { ok: true, redisConfigured: !!redis, redisOk, localConnections: [...localConnections].filter((c) => !c.closed).length };
+  return {
+    ok: true,
+    redisConfigured: !!redis,
+    redisOk,
+    localConnections: [...localConnections].filter((c) => !c.closed).length,
+    heartbeatPongs: runtimeMetrics.heartbeatPongs,
+    roomReads: runtimeMetrics.roomReads,
+    roomWrites: runtimeMetrics.roomWrites,
+    presenceLeaseRoomWrites: runtimeMetrics.presenceLeaseRoomWrites,
+    roomEventPublishes: runtimeMetrics.roomEventPublishes,
+    ignoredSelfRoomEvents: runtimeMetrics.ignoredSelfRoomEvents,
+    chatMessages: runtimeMetrics.chatMessages,
+    chatHistoryReads: runtimeMetrics.chatHistoryReads,
+    chatHistoryWrites: runtimeMetrics.chatHistoryWrites,
+    chatEventPublishes: runtimeMetrics.chatEventPublishes,
+    ignoredSelfChatEvents: runtimeMetrics.ignoredSelfChatEvents,
+  };
 }

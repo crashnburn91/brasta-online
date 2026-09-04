@@ -86,6 +86,29 @@
 .topbar .match-menu-panel .match-menu-item:hover{
   background:#ffffff0f!important;
 }
+.topbar .match-menu-panel .match-menu-motion-button{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.match-menu-motion-state{
+  min-width:34px;
+  padding:3px 7px;
+  border:1px solid #ffffff20;
+  border-radius:999px;
+  background:#ffffff08;
+  color:#9eafa6;
+  font-size:9px;
+  line-height:1.1;
+  text-align:center;
+  text-transform:uppercase;
+}
+.match-menu-motion-button[aria-checked="true"] .match-menu-motion-state{
+  border-color:#d8b75e66;
+  background:#d8b75e1c;
+  color:#f1d987;
+}
 .match-menu-danger{
   margin-top:8px;
   padding-top:8px;
@@ -98,6 +121,69 @@
   background:rgba(137,43,48,.22)!important;
   color:#ffd4cf!important;
 }
+.topbar .match-menu-panel .private-abandon-menu-button{
+  color:#ffaaa3!important;
+}
+.topbar .match-menu-panel .private-abandon-menu-button:hover{
+  background:rgba(137,43,48,.22)!important;
+  color:#ffd4cf!important;
+}
+.private-abandon-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:1800;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(2,12,8,.76);
+}
+.private-abandon-card{
+  width:min(430px,100%);
+  padding:22px;
+  border:1px solid rgba(225,105,105,.34);
+  border-radius:18px;
+  background:linear-gradient(160deg,#102c22,#071b14 72%);
+  color:#f7f1e3;
+  box-shadow:0 28px 90px rgba(0,0,0,.68);
+}
+.private-abandon-eyebrow{
+  color:#e99992;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.16em;
+}
+.private-abandon-card h2{margin:6px 0 8px;font-size:23px}
+.private-abandon-card p{margin:0;color:#bdcbc3;font-size:13px;line-height:1.5}
+.private-abandon-warning{
+  margin:15px 0;
+  padding:11px 12px;
+  border:1px solid rgba(225,105,105,.22);
+  border-radius:10px;
+  background:rgba(137,43,48,.14);
+  color:#e4c6c2;
+  font-size:11px;
+  line-height:1.45;
+}
+.private-abandon-actions{display:flex;justify-content:flex-end;gap:9px}
+.private-abandon-actions button{
+  min-height:40px;
+  padding:9px 13px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:9px;
+  background:rgba(255,255,255,.05);
+  color:#f5eee2;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.private-abandon-actions .private-abandon-confirm{
+  border-color:#d76767;
+  background:#9f343b;
+  color:#fff5f3;
+}
+.private-abandon-actions button:disabled{opacity:.58;cursor:wait}
+.private-abandon-card small{display:block;min-height:14px;margin-top:10px;color:#ffaaa3;font-size:10px;text-align:right}
 
 @media(max-width:800px){
   .topbar .match-menu-trigger{

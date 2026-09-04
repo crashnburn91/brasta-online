@@ -1,5 +1,5 @@
 /* Test-build mobile gameplay header: merge branding/status/menu into one app bar,
-   leaving the legacy topbar as a compact scoreboard-only strip. */
+   leaving the legacy topbar as a compact, scoreless match-status strip. */
 @media(max-width:700px){
   body.brasta-mobile-merged-header{
     --brasta-site-nav-base:50px;
@@ -62,9 +62,36 @@
 
   body.brasta-mobile-merged-header .account-nav-controls{
     top:5px;
-    right:max(54px,calc(env(safe-area-inset-right) + 54px));
+    right:max(96px,calc(env(safe-area-inset-right) + 96px));
+    width:40px;
     min-height:40px;
-    max-width:calc(100vw - 118px);
+    max-width:40px;
+    gap:0;
+  }
+
+  /* Social/tournament discovery belongs in the lobby. During a live match,
+     preserve the account entry point as an avatar-sized button and leave the
+     rest of the app bar to the match controls. */
+  body.brasta-mobile-merged-header .friends-dock,
+  body.brasta-mobile-merged-header .tournament-dock{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .account-dock{
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px;
+    min-height:40px;
+    padding:5px!important;
+    justify-content:center;
+  }
+  body.brasta-mobile-merged-header .account-dock-copy{
+    display:none!important;
+  }
+  body.brasta-mobile-merged-header .account-dock img,
+  body.brasta-mobile-merged-header .account-dock .account-avatar-fallback{
+    width:30px;
+    height:30px;
   }
 
   body.brasta-mobile-merged-header .brasta-site-nav-account-space{
@@ -133,12 +160,6 @@
     margin:0!important;
     padding:0 78px!important;
     border-top:0!important;
-  }
-  body.brasta-mobile-merged-header .live-score-group{
-    gap:3px;
-  }
-  body.brasta-mobile-merged-header .live-score-divider{
-    height:18px;
   }
   body.brasta-mobile-merged-header .mobile-score-round-pill{
     position:absolute;
@@ -239,9 +260,6 @@
     font-size:18px!important;
   }
   body.brasta-mobile-merged-header .live-score-strip{gap:7px;padding-left:68px!important;padding-right:68px!important}
-  body.brasta-mobile-merged-header .live-score-group small{font-size:6.5px}
-  body.brasta-mobile-merged-header .live-team{font-size:10px}
-  body.brasta-mobile-merged-header .live-team b{font-size:13px}
   body.brasta-mobile-merged-header .mobile-score-round-pill{
     min-height:22px;
     padding:2px 6px;
