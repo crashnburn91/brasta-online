@@ -1429,8 +1429,9 @@
 .burned-jack-copy{
   position:relative;
   width:clamp(260px,42vw,360px);
+  min-width:0;
   min-height:205px;
-  padding:23px 28px 21px;
+  padding:23px 24px 21px;
   display:flex;
   flex-direction:column;
   align-items:flex-start;
@@ -1476,8 +1477,8 @@
   z-index:1;
   margin-top:8px;
   color:#ff7a43;
-  font:950 clamp(34px,6.2vw,57px)/.88 var(--font-brasta-display),Georgia,serif;
-  letter-spacing:.015em;
+  font:950 clamp(30px,5vw,44px)/.88 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:-.02em;
   text-shadow:0 3px 0 #711708,0 0 18px #ff4d1f66,0 8px 20px #000d;
   white-space:nowrap;
 }
@@ -1887,7 +1888,7 @@
   .burned-jack-card{border-radius:9px}
   .burned-jack-brand{font-size:clamp(15px,4.8vw,20px);padding:6px 3px 5px}
   .burned-jack-copy{width:min(61vw,246px);min-height:174px;padding:18px 16px 16px}
-  .burned-jack-title{font-size:clamp(29px,9vw,39px)}
+  .burned-jack-title{font-size:clamp(26px,7.6vw,32px);letter-spacing:-.03em}
   .burned-jack-score{margin-top:10px}
   .burned-jack-score small{font-size:8px}
   .burned-jack-footer{margin-top:9px;font-size:8px}
