@@ -1,7 +1,7 @@
 (() => {
   'use strict';
-  if (window.__BRASTA_PLAYER_PROGRESSION_UI_V2__) return;
-  window.__BRASTA_PLAYER_PROGRESSION_UI_V2__ = true;
+  if (window.__BRASTA_PLAYER_PROGRESSION_UI_V3__) return;
+  window.__BRASTA_PLAYER_PROGRESSION_UI_V3__ = true;
 
   const AUTH_TOKEN_KEY = 'brasta-auth-access-token';
   const esc = (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (char) => ({
@@ -156,20 +156,10 @@
     return `<div class="ppg-achievement-summary"><b>${unlocked}</b><span>of ${items.length} unlocked</span></div><div class="ppg-achievement-list">${items.map(achievementMarkup).join('')}</div>`;
   }
 
-  function wireTabs(modal) {
-    const tabs = [...modal.querySelectorAll('[data-ppg-tab]')];
-    const panels = [...modal.querySelectorAll('[data-ppg-panel]')];
-    tabs.forEach((tab) => {
-      tab.onclick = () => {
-        const key = tab.dataset.ppgTab;
-        tabs.forEach((candidate) => candidate.setAttribute('aria-selected', candidate === tab ? 'true' : 'false'));
-        panels.forEach((panel) => { panel.hidden = panel.dataset.ppgPanel !== key; });
-      };
-    });
-  }
-
-  function wireMatchRows(modal) {
-    modal.querySelectorAll('[data-ppg-match]').forEach((button) => {
+  function wireMatchRows(root) {
+    root.querySelectorAll('[data-ppg-match]').forEach((button) => {
+      if (button.dataset.ppgMatchWired === 'true') return;
+      button.dataset.ppgMatchWired = 'true';
       button.onclick = () => {
         const details = button.closest('.ppg-match')?.querySelector('.ppg-match-details');
         if (!details) return;
@@ -180,49 +170,43 @@
     });
   }
 
-  function attachShell(modal) {
+  async function fetchProfile(username) {
+    const accessToken = token();
+    const response = await fetch('/api/player-profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ username }),
+      cache: 'no-store',
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.profile) throw new Error(data.error || 'Player data could not be loaded.');
+    return data.profile;
+  }
+
+  function attachPlayerShell(modal) {
     if (!(modal instanceof HTMLElement)) return false;
     if (modal.dataset.ppgShell === 'true') return true;
-
     const head = modal.querySelector('.player-profile-head');
     const ranks = modal.querySelector('.player-profile-ranks');
     if (!head || !ranks) return false;
 
     const overview = document.createElement('div');
-    overview.className = 'ppg-panel';
-    overview.dataset.ppgPanel = 'overview';
+    overview.className = 'ppg-panel'; overview.dataset.ppgPanel = 'overview';
     ['.player-profile-ranks', '.player-profile-xp', '.player-profile-social', '.player-profile-message'].forEach((selector) => {
       const node = modal.querySelector(selector);
       if (node) overview.appendChild(node);
     });
 
     const tabs = document.createElement('div');
-    tabs.className = 'ppg-tabs';
-    tabs.setAttribute('role', 'tablist');
-    tabs.setAttribute('aria-label', 'Player profile sections');
-    tabs.innerHTML = `
-      <button type="button" data-ppg-tab="overview" aria-selected="true">Overview</button>
-      <button type="button" data-ppg-tab="stats" aria-selected="false">Stats</button>
-      <button type="button" data-ppg-tab="matches" aria-selected="false">Matches</button>
-      <button type="button" data-ppg-tab="achievements" aria-selected="false">Achievements</button>`;
+    tabs.className = 'ppg-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Player profile sections');
+    tabs.innerHTML = '<button type="button" data-ppg-tab="overview" aria-selected="true">Overview</button><button type="button" data-ppg-tab="stats" aria-selected="false">Stats</button><button type="button" data-ppg-tab="matches" aria-selected="false">Matches</button><button type="button" data-ppg-tab="achievements" aria-selected="false">Achievements</button>';
 
-    const stats = document.createElement('div');
-    stats.className = 'ppg-panel';
-    stats.dataset.ppgPanel = 'stats';
-    stats.hidden = true;
-    stats.innerHTML = loadingMarkup('Stats');
-
-    const matches = document.createElement('div');
-    matches.className = 'ppg-panel';
-    matches.dataset.ppgPanel = 'matches';
-    matches.hidden = true;
-    matches.innerHTML = loadingMarkup('Match History');
-
-    const achievements = document.createElement('div');
-    achievements.className = 'ppg-panel';
-    achievements.dataset.ppgPanel = 'achievements';
-    achievements.hidden = true;
-    achievements.innerHTML = loadingMarkup('Achievements');
+    const stats = document.createElement('div'); stats.className = 'ppg-panel'; stats.dataset.ppgPanel = 'stats'; stats.hidden = true; stats.innerHTML = loadingMarkup('Stats');
+    const matches = document.createElement('div'); matches.className = 'ppg-panel'; matches.dataset.ppgPanel = 'matches'; matches.hidden = true; matches.innerHTML = loadingMarkup('Match History');
+    const achievements = document.createElement('div'); achievements.className = 'ppg-panel'; achievements.dataset.ppgPanel = 'achievements'; achievements.hidden = true; achievements.innerHTML = loadingMarkup('Achievements');
 
     head.insertAdjacentElement('afterend', tabs);
     tabs.insertAdjacentElement('afterend', overview);
@@ -230,14 +214,22 @@
     stats.insertAdjacentElement('afterend', matches);
     matches.insertAdjacentElement('afterend', achievements);
 
+    const buttons = [...tabs.querySelectorAll('[data-ppg-tab]')];
+    const panels = [overview, stats, matches, achievements];
+    buttons.forEach((button) => {
+      button.onclick = () => {
+        const key = button.dataset.ppgTab;
+        buttons.forEach((candidate) => candidate.setAttribute('aria-selected', candidate === button ? 'true' : 'false'));
+        panels.forEach((panel) => { panel.hidden = panel.dataset.ppgPanel !== key; });
+      };
+    });
+
     modal.dataset.ppgShell = 'true';
-    modal.dataset.ppgEnhanced = 'true';
-    wireTabs(modal);
     return true;
   }
 
-  function renderProfileData(modal, profile) {
-    if (!attachShell(modal)) return;
+  function renderPlayerData(modal, profile) {
+    if (!attachPlayerShell(modal)) return;
     const stats = modal.querySelector('[data-ppg-panel="stats"]');
     const matches = modal.querySelector('[data-ppg-panel="matches"]');
     const achievements = modal.querySelector('[data-ppg-panel="achievements"]');
@@ -248,39 +240,18 @@
     modal.dataset.ppgLoaded = 'true';
   }
 
-  async function loadProgression(modal) {
-    if (!attachShell(modal)) return;
-    if (modal.dataset.ppgLoaded === 'true' || modal.dataset.ppgLoading === 'true') return;
-
+  async function loadPlayerProgression(modal) {
+    if (!attachPlayerShell(modal) || modal.dataset.ppgLoaded === 'true' || modal.dataset.ppgLoading === 'true') return;
     const username = String(modal.querySelector('#player-profile-title')?.textContent || '').trim();
     if (!username) return;
-
     modal.dataset.ppgLoading = 'true';
     try {
-      const accessToken = token();
-      const response = await fetch('/api/player-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ username }),
-        cache: 'no-store',
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!modal.isConnected) return;
-      if (response.ok && data.profile) {
-        renderProfileData(modal, data.profile);
-      } else {
-        const message = esc(data.error || 'Player data could not be loaded.');
-        modal.querySelectorAll('[data-ppg-panel]:not([data-ppg-panel="overview"])').forEach((panel) => {
-          panel.innerHTML = `<div class="ppg-empty"><b>Unable to load</b><span>${message}</span></div>`;
-        });
-      }
+      const profile = await fetchProfile(username);
+      if (modal.isConnected) renderPlayerData(modal, profile);
     } catch (error) {
       if (modal.isConnected) {
         modal.querySelectorAll('[data-ppg-panel]:not([data-ppg-panel="overview"])').forEach((panel) => {
-          panel.innerHTML = '<div class="ppg-empty"><b>Unable to load</b><span>Please close and reopen the profile.</span></div>';
+          panel.innerHTML = `<div class="ppg-empty"><b>Unable to load</b><span>${esc(error?.message || 'Please close and reopen the profile.')}</span></div>`;
         });
       }
       console.warn('[brasta player progression]', error);
@@ -289,14 +260,88 @@
     }
   }
 
+  function attachAccountShell(modal) {
+    if (!(modal instanceof HTMLElement)) return false;
+    if (modal.dataset.ppgAccountShell === 'true') return true;
+    const head = modal.querySelector('.account-profile-head');
+    const username = String(head?.querySelector('h2')?.textContent || '').trim();
+    if (!head || !username || !token()) return false;
+
+    const tabs = document.createElement('div');
+    tabs.className = 'ppg-tabs ppg-account-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Account profile sections');
+    tabs.innerHTML = '<button type="button" data-account-ppg-tab="overview" aria-selected="true">Overview</button><button type="button" data-account-ppg-tab="stats" aria-selected="false">Stats</button><button type="button" data-account-ppg-tab="matches" aria-selected="false">Matches</button><button type="button" data-account-ppg-tab="achievements" aria-selected="false">Achievements</button>';
+
+    const stats = document.createElement('div'); stats.className = 'ppg-panel ppg-account-panel'; stats.dataset.accountPpgPanel = 'stats'; stats.hidden = true; stats.innerHTML = loadingMarkup('Stats');
+    const matches = document.createElement('div'); matches.className = 'ppg-panel ppg-account-panel'; matches.dataset.accountPpgPanel = 'matches'; matches.hidden = true; matches.innerHTML = loadingMarkup('Match History');
+    const achievements = document.createElement('div'); achievements.className = 'ppg-panel ppg-account-panel'; achievements.dataset.accountPpgPanel = 'achievements'; achievements.hidden = true; achievements.innerHTML = loadingMarkup('Achievements');
+
+    head.insertAdjacentElement('afterend', tabs);
+    tabs.insertAdjacentElement('afterend', stats);
+    stats.insertAdjacentElement('afterend', matches);
+    matches.insertAdjacentElement('afterend', achievements);
+
+    const overviewSelector = '.account-experience-card,.account-status-card,.account-connections-card,.account-secondary,.account-delete-panel,.account-message,.account-policy-links';
+    const buttons = [...tabs.querySelectorAll('[data-account-ppg-tab]')];
+    const panels = [stats, matches, achievements];
+    const select = (key) => {
+      buttons.forEach((button) => button.setAttribute('aria-selected', button.dataset.accountPpgTab === key ? 'true' : 'false'));
+      modal.querySelectorAll(overviewSelector).forEach((node) => { node.hidden = key !== 'overview'; });
+      panels.forEach((panel) => { panel.hidden = panel.dataset.accountPpgPanel !== key; });
+      modal.dataset.ppgAccountActive = key;
+    };
+    buttons.forEach((button) => { button.onclick = () => select(button.dataset.accountPpgTab || 'overview'); });
+
+    modal.dataset.ppgAccountShell = 'true';
+    select('overview');
+    return true;
+  }
+
+  function renderAccountData(modal, profile) {
+    if (!attachAccountShell(modal)) return;
+    const stats = modal.querySelector('[data-account-ppg-panel="stats"]');
+    const matches = modal.querySelector('[data-account-ppg-panel="matches"]');
+    const achievements = modal.querySelector('[data-account-ppg-panel="achievements"]');
+    if (stats) stats.innerHTML = statsMarkup(profile);
+    if (matches) matches.innerHTML = matchesMarkup(profile);
+    if (achievements) achievements.innerHTML = achievementsMarkup(profile);
+    wireMatchRows(modal);
+    modal.dataset.ppgAccountLoaded = 'true';
+  }
+
+  async function loadAccountProgression(modal) {
+    if (!attachAccountShell(modal) || modal.dataset.ppgAccountLoaded === 'true' || modal.dataset.ppgAccountLoading === 'true') return;
+    const username = String(modal.querySelector('.account-profile-head h2')?.textContent || '').trim();
+    if (!username) return;
+    modal.dataset.ppgAccountLoading = 'true';
+    try {
+      const profile = await fetchProfile(username);
+      if (modal.isConnected) renderAccountData(modal, profile);
+    } catch (error) {
+      if (modal.isConnected) {
+        modal.querySelectorAll('[data-account-ppg-panel]').forEach((panel) => {
+          panel.innerHTML = `<div class="ppg-empty"><b>Unable to load</b><span>${esc(error?.message || 'Please close and reopen your account.')}</span></div>`;
+        });
+      }
+      console.warn('[brasta account progression]', error);
+    } finally {
+      delete modal.dataset.ppgAccountLoading;
+    }
+  }
+
   function scan() {
     document.querySelectorAll('.player-profile-modal').forEach((modal) => {
-      if (attachShell(modal)) void loadProgression(modal);
+      if (attachPlayerShell(modal)) void loadPlayerProgression(modal);
+    });
+    document.querySelectorAll('.account-modal').forEach((modal) => {
+      if (attachAccountShell(modal)) void loadAccountProgression(modal);
     });
   }
 
   const observer = new MutationObserver(scan);
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('brasta-player-profile-loaded', scan);
+  document.addEventListener('click', (event) => {
+    if (event.target?.closest?.('.account-dock')) window.setTimeout(scan, 0);
+  });
   scan();
 })();
