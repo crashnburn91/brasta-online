@@ -4,7 +4,7 @@
   "private": true,
   "description": "Server-authoritative online Brasta with a Vercel frontend, standalone realtime server, and Redis",
   "scripts": {
-    "sync:engine": "node scripts/sync-server-engine.mjs && node scripts/patch-burn-detection.mjs",
+    "sync:engine": "node scripts/sync-server-engine.mjs && node scripts/patch-burn-detection.mjs && node scripts/patch-match-history.mjs",
     "build:client": "tsc -p tsconfig.client.json && tsc -p tsconfig.tests.json && tsc -p tsconfig.release-tests.json && tsc -p tsconfig.bot-tests.json",
     "build:server-tests": "tsc -p tsconfig.server-tests.json",
     "compile:realtime": "tsc -p tsconfig.realtime.json",
