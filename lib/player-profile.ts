@@ -1,5 +1,6 @@
 import { baseRankName, type CompetitiveMode } from './competitive';
 import { experienceStatusFromGames, type ExperienceStatus } from './experience';
+import { blankPlayerProgression, getPlayerProgression, type PlayerProgression } from './match-history';
 import { verifyBrastaAccessToken } from './supabase-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fhdrywazfmmvgswkdpdb.supabase.co';
@@ -61,6 +62,7 @@ export type PublicPlayerProfile = {
   memberSince: string | null;
   ranks: Record<CompetitiveMode, PublicPlayerRank>;
   experience: ExperienceStatus;
+  progression: PlayerProgression;
   relationship: PlayerProfileRelationship;
 };
 
@@ -157,7 +159,7 @@ export async function getPublicPlayerProfile(usernameValue: unknown, accessToken
   const profile = profiles[0];
   if (!profile?.id || !profile.username) return null;
 
-  const [ratings, experienceRows, viewer] = await Promise.all([
+  const [ratings, experienceRows, viewer, progression] = await Promise.all([
     rest<RatingRow[]>(
       `player_ratings?player_id=eq.${profile.id}&select=mode,ordinal,games_played,wins,losses,current_streak,best_streak`,
       'Could not load player ranks',
@@ -167,6 +169,10 @@ export async function getPublicPlayerProfile(usernameValue: unknown, accessToken
       'Could not load player experience',
     ).catch(() => []),
     accessToken ? verifyBrastaAccessToken(accessToken) : Promise.resolve(null),
+    getPlayerProgression(profile.id, 10).catch((error) => {
+      console.error('[brasta player progression]', error);
+      return blankPlayerProgression();
+    }),
   ]);
 
   const one = ratings.find((row) => row.mode === '1v1');
@@ -182,6 +188,7 @@ export async function getPublicPlayerProfile(usernameValue: unknown, accessToken
       '2v2': publicRank('2v2', two),
     },
     experience: experienceStatusFromGames(experienceRows[0]?.games_played || 0),
+    progression,
     relationship: await relationshipFor(viewer?.userId || null, profile.id),
   };
 }
