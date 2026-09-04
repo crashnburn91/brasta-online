@@ -1210,6 +1210,194 @@
 .power-pair-footer{animation-delay:1170ms}
 .power-pair-badges .brasta-combo-medallion{animation-delay:1270ms}
 
+/* Jack Sweep — a compact table-local pickup. The table frame is captured by
+   the controller before the board re-renders, so this survives the next turn
+   replacing the game DOM without dimming or blocking the rest of the match. */
+.event.jack-sweep-event{
+  --jack-sweep-left:0px;
+  --jack-sweep-top:0px;
+  --jack-sweep-width:100vw;
+  --jack-sweep-height:100vh;
+  position:fixed!important;
+  z-index:35;
+  top:var(--jack-sweep-top)!important;
+  left:var(--jack-sweep-left)!important;
+  width:var(--jack-sweep-width)!important;
+  height:var(--jack-sweep-height)!important;
+  min-width:0;
+  max-width:none!important;
+  min-height:0;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible;
+  pointer-events:none;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#f6e3ad!important;
+  box-shadow:none!important;
+  text-transform:none;
+  transform:none;
+  isolation:isolate;
+  animation:jack-sweep-overlay-in 120ms ease-out both;
+}
+
+.event.jack-sweep-event.brasta-event-leaving{opacity:0}
+
+.jack-sweep-felt-glow{
+  position:absolute;
+  z-index:0;
+  left:11%;
+  top:37%;
+  width:78%;
+  height:42%;
+  border-radius:50%;
+  background:radial-gradient(ellipse,#d8b75e28 0,#6d522013 38%,transparent 72%);
+  opacity:0;
+  filter:blur(4px);
+  animation:jack-sweep-glow 1150ms 70ms ease-out both;
+}
+
+.jack-sweep-trail{
+  position:absolute;
+  z-index:2;
+  left:5%;
+  top:58%;
+  width:90%;
+  height:5px;
+  border-top:2px solid #f3d47c;
+  border-radius:50%;
+  box-shadow:0 0 8px #ffe8a8,0 0 18px #d8b75e88;
+  opacity:0;
+  transform:rotate(-7deg) scaleX(.02);
+  transform-origin:left center;
+  animation:jack-sweep-trail-draw 920ms 150ms cubic-bezier(.18,.78,.2,1) both;
+}
+
+.jack-sweep-loose-cards{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+}
+
+.jack-sweep-loose-card{
+  position:absolute;
+  left:50%;
+  top:57%;
+  width:48px;
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+  border:1px solid #d8c99d;
+  border-radius:6px;
+  background:linear-gradient(145deg,#fffdf0,#d9d0ba);
+  color:#171513;
+  box-shadow:0 8px 14px #0009,0 0 0 2px #fff3;
+  opacity:0;
+  transform:translate(-50%,-50%) translate(var(--sweep-card-x),var(--sweep-card-y)) rotate(var(--sweep-card-r)) scale(.8);
+  animation:jack-sweep-loose-card 760ms calc(210ms + var(--sweep-delay)) cubic-bezier(.18,.72,.2,1) both;
+}
+
+.jack-sweep-loose-card.red{color:#a32831}
+
+.jack-sweep-loose-card::after{
+  content:"";
+  position:absolute;
+  inset:3px;
+  border:1px solid #806f4733;
+  border-radius:4px;
+}
+
+.jack-sweep-loose-card strong{
+  position:relative;
+  z-index:1;
+  font:700 27px/1 Georgia,"Times New Roman",serif;
+}
+
+.jack-sweep-card-corner{
+  position:absolute;
+  z-index:2;
+  top:4px;
+  left:5px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font:800 9px/.85 Georgia,"Times New Roman",serif;
+}
+
+.jack-sweep-card-corner i{font-size:.76em;font-style:normal;margin-top:2px}
+
+.jack-sweep-jack{
+  position:absolute;
+  z-index:5;
+  left:-9%;
+  top:57%;
+  width:66px;
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+  border:2px solid #e2ca82;
+  border-radius:8px;
+  background:radial-gradient(circle at 50% 44%,#fffdf3 0,#ebe1ca 70%,#c4b388 100%);
+  color:#151311;
+  box-shadow:0 15px 25px #000b,0 0 0 3px #352516,0 0 18px #f0cc6e88;
+  opacity:0;
+  transform:translate(-50%,-50%) rotate(-18deg) scale(.82);
+  animation:jack-sweep-jack-run 1000ms 120ms cubic-bezier(.2,.68,.18,1) both;
+}
+
+.jack-sweep-jack.red{color:#a5222d}
+
+.jack-sweep-jack>strong{
+  position:relative;
+  z-index:1;
+  margin-top:-10%;
+  font:800 39px/1 Georgia,"Times New Roman",serif;
+  text-shadow:0 3px 0 #9f8f6b55;
+}
+
+.jack-sweep-jack>i{
+  position:absolute;
+  z-index:1;
+  top:59%;
+  left:50%;
+  font:700 19px/1 Georgia,"Times New Roman",serif;
+  font-style:normal;
+  transform:translate(-50%,-50%);
+}
+
+.jack-sweep-jack-corner{
+  position:absolute;
+  z-index:2;
+  top:5px;
+  left:6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font:800 11px/.85 Georgia,"Times New Roman",serif;
+}
+
+.jack-sweep-jack-corner i{font-size:.75em;font-style:normal;margin-top:2px}
+.jack-sweep-jack-corner.bottom{top:auto;right:6px;bottom:5px;left:auto;transform:rotate(180deg)}
+
+.jack-sweep-caption{
+  position:absolute;
+  z-index:6;
+  left:50%;
+  bottom:12px;
+  padding:4px 8px;
+  border:1px solid #d8b75e55;
+  border-radius:999px;
+  background:#07150f99;
+  color:#eedb9f;
+  font:850 9px/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.17em;
+  opacity:0;
+  transform:translateX(-50%) translateY(4px);
+  animation:jack-sweep-caption-in 360ms 670ms ease-out both;
+}
+
 /* Burned Jack — Brand the Jack. This is a penalty beat rather than a reward:
    the card snaps down, receives a hot diagonal brand, then chars under it. */
 .event.burned-jack-event{
@@ -1819,6 +2007,45 @@
   to{opacity:1;transform:translateY(0)}
 }
 
+@keyframes jack-sweep-overlay-in{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+@keyframes jack-sweep-glow{
+  0%{opacity:0;transform:scale(.7)}
+  28%{opacity:.9}
+  100%{opacity:0;transform:scale(1.12)}
+}
+
+@keyframes jack-sweep-trail-draw{
+  0%{opacity:0;transform:rotate(-7deg) scaleX(.02)}
+  15%{opacity:.88}
+  78%{opacity:.72;transform:rotate(-7deg) scaleX(1)}
+  100%{opacity:0;transform:rotate(-7deg) scaleX(1)}
+}
+
+@keyframes jack-sweep-loose-card{
+  0%{opacity:0;transform:translate(-50%,-50%) translate(var(--sweep-card-x),var(--sweep-card-y)) rotate(var(--sweep-card-r)) scale(.8)}
+  14%{opacity:1}
+  39%{opacity:1;transform:translate(-50%,-50%) translate(var(--sweep-card-x),calc(var(--sweep-card-y) - 10px)) rotate(calc(var(--sweep-card-r) - 3deg)) scale(1.02)}
+  100%{opacity:0;transform:translate(-50%,-50%) translate(var(--sweep-to-x),var(--sweep-to-y)) rotate(var(--sweep-to-r)) scale(.25)}
+}
+
+@keyframes jack-sweep-jack-run{
+  0%{opacity:0;left:-9%;transform:translate(-50%,-50%) rotate(-18deg) scale(.82)}
+  13%{opacity:1}
+  42%{left:33%;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}
+  68%{left:70%;transform:translate(-50%,-50%) rotate(5deg) scale(1.02)}
+  86%{opacity:.9;left:98%;transform:translate(-50%,-50%) rotate(14deg) scale(.92)}
+  100%{opacity:0;left:114%;transform:translate(-50%,-50%) rotate(22deg) scale(.72)}
+}
+
+@keyframes jack-sweep-caption-in{
+  from{opacity:0;transform:translateX(-50%) translateY(4px)}
+  to{opacity:.72;transform:translateX(-50%) translateY(0)}
+}
+
 @media(max-width:600px){
   .event.brasta-crest-event,
   .event.big10-strike-event,
@@ -1892,6 +2119,12 @@
   .burned-jack-score{margin-top:10px}
   .burned-jack-score small{font-size:8px}
   .burned-jack-footer{margin-top:9px;font-size:8px}
+  .jack-sweep-loose-card{width:40px}
+  .jack-sweep-loose-card strong{font-size:23px}
+  .jack-sweep-jack{width:54px}
+  .jack-sweep-jack>strong{font-size:32px}
+  .jack-sweep-jack>i{font-size:16px}
+  .jack-sweep-caption{bottom:8px;font-size:8px}
 }
 
 @media(max-height:620px){
@@ -1924,6 +2157,9 @@
   .burned-jack-title{font-size:32px}
   .burned-jack-score{margin-top:8px}
   .burned-jack-footer{margin-top:7px}
+  .jack-sweep-jack{width:48px}
+  .jack-sweep-loose-card{width:36px}
+  .jack-sweep-loose-card strong{font-size:20px}
 }
 
 /* Reduced Motion is an explicit Brasta preference instead of inheriting a
@@ -1949,6 +2185,7 @@
   animation:none;
   background:radial-gradient(circle at 50% 50%,#351009ef 0,#080302f8 72%)!important;
 }
+:root[data-brasta-motion="reduced"] .event.jack-sweep-event{animation:none}
 :root[data-brasta-motion="reduced"] :is(
   .brasta-crest-vignette,
   .brasta-card-storm,
@@ -1972,7 +2209,10 @@
   .power-pair-diamonds,
   .burned-jack-vignette,
   .burned-jack-heat-ring,
-  .burned-jack-embers
+  .burned-jack-embers,
+  .jack-sweep-felt-glow,
+  .jack-sweep-trail,
+  .jack-sweep-loose-cards
 ){display:none!important}
 :root[data-brasta-motion="reduced"] :is(
   .brasta-crest-seal,
@@ -1998,9 +2238,17 @@
   .burned-jack-brand,
   .burned-jack-copy,
   .burned-jack-score,
-  .burned-jack-footer
+  .burned-jack-footer,
+  .jack-sweep-caption
 ){
   opacity:1;
   transform:none;
   animation:none;
 }
+:root[data-brasta-motion="reduced"] .jack-sweep-jack{
+  left:50%;
+  opacity:1;
+  transform:translate(-50%,-50%) rotate(0) scale(1);
+  animation:none;
+}
+:root[data-brasta-motion="reduced"] .jack-sweep-caption{transform:translateX(-50%)}

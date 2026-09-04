@@ -8,6 +8,7 @@
   const BIG10_SHOW_MS = 1900;
   const POWER_PAIR_SHOW_MS = 2200;
   const BURNED_JACK_SHOW_MS = 2000;
+  const JACK_SWEEP_SHOW_MS = 1400;
   const EFFECT_FADE_MS = 220;
   const hapticKeys = new Set();
   const presentedKeys = new Set();
@@ -106,11 +107,40 @@
     ).join('');
   }
 
-  function burnedJackSuit() {
+  const sweepCardPositions = [
+    [-126, -6, -10, 148, -22, -14, 0], [-78, 13, 6, 166, 12, 12, 42],
+    [-25, -10, -3, 184, -34, -2, 84], [28, 12, 8, 202, 18, 14, 126],
+    [78, -7, -7, 216, -28, -17, 168], [126, 15, 11, 232, 10, 18, 210],
+  ];
+  const sweepCardFaces = [
+    ['4', '♣'], ['7', '♦'], ['3', '♥'], ['A', '♠'], ['5', '♣'], ['8', '♦'],
+  ];
+
+  function sweptLooseCount() {
     const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
       .replace(/\s+/g, ' ')
       .trim();
-    return lastMove.match(/\bburned\s+J\s*([♠♦♣♥])/i)?.[1] || '♠';
+    const count = Number(lastMove.match(/\bswept\s+(\d+)\s+loose\s+cards?/i)?.[1] || 0);
+    return Math.min(6, Math.max(1, count || 3));
+  }
+
+  function sweptJackSuit() {
+    const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return lastMove.match(/\b(?:with|burned)\s+J\s*([♠♦♣♥])/i)?.[1] || '♠';
+  }
+
+  function sweepLooseCardsMarkup(count) {
+    return sweepCardPositions.slice(0, count).map(([x, y, rotation, toX, toY, toRotation, delay], index) => {
+      const [rank, suit] = sweepCardFaces[index % sweepCardFaces.length];
+      const red = suit === '♦' || suit === '♥' ? ' red' : '';
+      return `<span class="jack-sweep-loose-card${red}" style="--sweep-card-x:${x}px;--sweep-card-y:${y}px;--sweep-card-r:${rotation}deg;--sweep-to-x:${toX}px;--sweep-to-y:${toY}px;--sweep-to-r:${toRotation}deg;--sweep-delay:${delay}ms"><span class="jack-sweep-card-corner">${rank}<i>${suit}</i></span><strong>${suit}</strong></span>`;
+    }).join('');
+  }
+
+  function burnedJackSuit() {
+    return sweptJackSuit();
   }
 
   function clubBurstMarkup() {
@@ -155,6 +185,7 @@
         big2: [36, 45, 68],
         big10: [18, 32, 46],
         'burned-jack': [22, 34, 76],
+        'jack-sweep': [16, 26, 58],
         'power-pair': [36, 32, 56, 28, 24],
       };
       const pattern = patterns[kind] || 42;
@@ -470,7 +501,67 @@
     playNextEffect();
   }
 
+  function decorateJackSweep(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'jack-sweep') return;
+    const table = banner.closest('.table');
+    if (!table) return;
+
+    const key = `${banner.dataset.eventSeq || ''}|jack-sweep`;
+    banner.dataset.brastaEffectKind = 'jack-sweep';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const suit = sweptJackSuit();
+    const count = sweptLooseCount();
+    const redSuit = suit === '♦' || suit === '♥';
+    const frame = table.getBoundingClientRect();
+
+    const layer = document.createElement('div');
+    layer.className = 'event jack-sweep-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    if (frame.width > 0 && frame.height > 0) {
+      layer.style.setProperty('--jack-sweep-left', `${Math.round(frame.left)}px`);
+      layer.style.setProperty('--jack-sweep-top', `${Math.round(frame.top)}px`);
+      layer.style.setProperty('--jack-sweep-width', `${Math.round(frame.width)}px`);
+      layer.style.setProperty('--jack-sweep-height', `${Math.round(frame.height)}px`);
+    }
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'jack-sweep';
+    layer.dataset.sweptCards = String(count);
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} swept ${count} loose card${count === 1 ? '' : 's'} with the Jack.`);
+    layer.innerHTML = `
+      <span class="jack-sweep-felt-glow" aria-hidden="true"></span>
+      <span class="jack-sweep-trail" aria-hidden="true"></span>
+      <span class="jack-sweep-loose-cards" aria-hidden="true">${sweepLooseCardsMarkup(count)}</span>
+      <span class="jack-sweep-jack${redSuit ? ' red' : ''}" aria-hidden="true">
+        <span class="jack-sweep-jack-corner">J<i>${suit}</i></span>
+        <strong>J</strong>
+        <i>${suit}</i>
+        <span class="jack-sweep-jack-corner bottom">J<i>${suit}</i></span>
+      </span>
+      <span class="jack-sweep-caption" aria-hidden="true">JACK SWEEP</span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: JACK_SWEEP_SHOW_MS });
+    playNextEffect();
+  }
+
   const renderers = [
+    {
+      name: 'jack-sweep',
+      matches: (text) => /\bJack sweep\b/i.test(text),
+      decorate: decorateJackSweep,
+    },
     {
       name: 'burned-jack',
       matches: (text) => /\bBURNED\s+JACK!/i.test(text),
