@@ -3,6 +3,7 @@ const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVIC
 
 export type MatchHistoryType = 'ranked' | 'private' | 'bot';
 export type MatchHistoryResult = 'win' | 'loss' | 'draw';
+export type MatchStatsScope = 'all' | MatchHistoryType;
 
 export type MatchHistoryPlayerStats = {
   brastas: number;
@@ -61,6 +62,7 @@ export type PlayerGameStats = MatchHistoryPlayerStats & {
   winRate: number;
   currentWinStreak: number;
   bestWinStreak: number;
+  opponentJackBurns: number;
   trackedSince: string | null;
 };
 
@@ -83,6 +85,7 @@ export type PlayerRecentMatch = {
   bigTwoCaptures: number;
   jackSweeps: number;
   burnCalls: number;
+  opponentJackBurns: number;
   players: Array<{
     seat: number;
     team: 'A' | 'B';
@@ -116,6 +119,7 @@ export type PlayerAchievement = {
 
 export type PlayerProgression = {
   stats: PlayerGameStats;
+  statsByType: Record<MatchStatsScope, PlayerGameStats>;
   matches: PlayerRecentMatch[];
   achievements: PlayerAchievement[];
 };
@@ -138,11 +142,18 @@ export const blankPlayerStats = (): PlayerGameStats => ({
   buildsMade: 0,
   lastPickups: 0,
   cardsCaptured: 0,
+  opponentJackBurns: 0,
   trackedSince: null,
 });
 
 export const blankPlayerProgression = (): PlayerProgression => ({
   stats: blankPlayerStats(),
+  statsByType: {
+    all: blankPlayerStats(),
+    ranked: blankPlayerStats(),
+    private: blankPlayerStats(),
+    bot: blankPlayerStats(),
+  },
   matches: [],
   achievements: [],
 });
@@ -228,6 +239,10 @@ export async function recordCompletedMatch(input: RecordCompletedMatchInput): Pr
   }, 'Could not record completed match');
 }
 
+function mergeStats(value: Partial<PlayerGameStats> | null | undefined): PlayerGameStats {
+  return { ...blankPlayerStats(), ...(value || {}), currentBrastaStreak: 0 };
+}
+
 export async function getPlayerProgression(playerId: string, limit = 10): Promise<PlayerProgression> {
   if (!playerId) return blankPlayerProgression();
   const data = await rpc<PlayerProgression>('brasta_player_progression', {
@@ -235,8 +250,16 @@ export async function getPlayerProgression(playerId: string, limit = 10): Promis
     p_limit: Math.max(1, Math.min(Number(limit) || 10, 25)),
   }, 'Could not load player progression');
   if (!data || typeof data !== 'object') return blankPlayerProgression();
+  const byType = data.statsByType || ({} as Record<MatchStatsScope, PlayerGameStats>);
+  const all = mergeStats(byType.all || data.stats);
   return {
-    stats: { ...blankPlayerStats(), ...(data.stats || {}), currentBrastaStreak: 0 },
+    stats: all,
+    statsByType: {
+      all,
+      ranked: mergeStats(byType.ranked),
+      private: mergeStats(byType.private),
+      bot: mergeStats(byType.bot),
+    },
     matches: Array.isArray(data.matches) ? data.matches : [],
     achievements: Array.isArray(data.achievements) ? data.achievements : [],
   };
