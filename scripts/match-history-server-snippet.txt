@@ -1,6 +1,8 @@
 function blankRuntimeStats(): MatchHistoryPlayerStats {
   return {
     brastas: 0,
+    currentBrastaStreak: 0,
+    bestBrastaStreak: 0,
     bigTenCaptures: 0,
     bigTwoCaptures: 0,
     jackSweeps: 0,
@@ -110,6 +112,8 @@ function recordCommandHistory(room: StoredRoom, before: Brasta.GameState, after:
   ensureRuntimeHistory(room);
   const seat = command.seat;
   const stats = runtimePlayer(room, seat);
+  const brastasBeforeTurn = stats.brastas;
+
   if (command.type === 'MAKE_BUILD') stats.buildsMade += 1;
   if (command.type === 'JACK_ACTION') {
     if (before.loose.length) {
@@ -120,8 +124,27 @@ function recordCommandHistory(room: StoredRoom, before: Brasta.GameState, after:
       addHistoryEvent(room, seat, 'jack_burn', before.round, -10, {});
     }
   }
+
   const capturedIds = directCaptureIds(before, command);
   recordCaptureSpecials(room, before, after, seat, capturedIds);
+
+  // A consecutive Brasta streak is personal: opponent and teammate turns do not
+  // affect it. Only one of this player's own play-phase turns can advance or
+  // reset the streak. Burn callouts happen outside the caller's normal turn and
+  // therefore neither advance nor break the streak.
+  if (before.phase === 'play') {
+    const scoredBrastaThisTurn = stats.brastas > brastasBeforeTurn;
+    if (scoredBrastaThisTurn) {
+      stats.currentBrastaStreak += 1;
+      stats.bestBrastaStreak = Math.max(stats.bestBrastaStreak, stats.currentBrastaStreak);
+      if (stats.currentBrastaStreak >= 2) {
+        addHistoryEvent(room, seat, 'brasta_streak', before.round, 0, { streak: stats.currentBrastaStreak });
+      }
+    } else {
+      stats.currentBrastaStreak = 0;
+    }
+  }
+
   recordRoundFinish(room, before, after, seat, capturedIds.length);
 }
 
