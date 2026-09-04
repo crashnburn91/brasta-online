@@ -82,6 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/player-progression.css?v=0.1.2" />
         <link rel="stylesheet" href="/achievement-filter.css?v=0.1.0" />
+        <link rel="stylesheet" href="/stats-match-filter.css?v=0.1.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
         <link rel="stylesheet" href="/match-menu.css?v=0.13.0" />
         <link rel="stylesheet" href="/ranked-forfeit.css?v=0.11.0" />
@@ -105,6 +106,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/player-profile.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/player-progression.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/achievement-filter.js?v=0.1.1" strategy="afterInteractive" />
+        <Script src="/stats-match-filter.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.8" strategy="afterInteractive" />
