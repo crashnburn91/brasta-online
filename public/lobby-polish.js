@@ -178,6 +178,42 @@
     } catch {}
   }
 
+  function playBurnWhoosh(delay = 0) {
+    if (!audioUnlocked || !audioContext) return;
+    try {
+      const context = audioContext;
+      const duration = 0.62;
+      const length = Math.max(1, Math.floor(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, length, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let index = 0; index < length; index += 1) {
+        const progress = index / length;
+        const envelope = Math.sin(Math.PI * progress) * (1 - progress * 0.28);
+        const crackle = Math.random() < 0.018 ? 1 : 0.28;
+        data[index] = (Math.random() * 2 - 1) * envelope * crackle;
+      }
+
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      const at = context.currentTime + delay;
+      source.buffer = buffer;
+      filter.type = 'bandpass';
+      filter.Q.value = 0.8;
+      filter.frequency.setValueAtTime(320, at);
+      filter.frequency.exponentialRampToValueAtTime(2300, at + duration * 0.54);
+      filter.frequency.exponentialRampToValueAtTime(740, at + duration);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.072, at + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(context.destination);
+      source.start(at);
+      source.stop(at + duration + 0.02);
+    } catch {}
+  }
+
   function playTurnSound() {
     playNotes([
       { frequency: 659.25, offset: 0, duration: 0.15 },
@@ -192,6 +228,17 @@
       { frequency: 587.33, offset: 0.18, duration: 0.2, gain: 0.08 },
     ], delay);
     return 0.4;
+  }
+
+  function playBurnedJackSound(delay = 0) {
+    playCardSnap(delay + 0.06);
+    playBurnWhoosh(delay + 0.2);
+    playBrastaImpact(delay + 0.56);
+    playNotes([
+      { frequency: 311.13, offset: 0.55, duration: 0.2, gain: 0.07 },
+      { frequency: 233.08, offset: 0.7, duration: 0.28, gain: 0.082 },
+    ], delay);
+    return 1.02;
   }
 
   function playBrastaSound(delay = 0) {
@@ -261,6 +308,7 @@
       delay += player(delay) + 0.12;
     };
 
+    if (/BURNED JACK!/i.test(text)) enqueue(playBurnedJackSound);
     if (/Jack sweep/i.test(text)) enqueue(playJackSweepSound);
     if (/BRASTA!/i.test(text)) enqueue(playBrastaSound);
     if (powerPair) enqueue(playPowerPairSound);

@@ -1210,6 +1210,319 @@
 .power-pair-footer{animation-delay:1170ms}
 .power-pair-badges .brasta-combo-medallion{animation-delay:1270ms}
 
+/* Burned Jack — Brand the Jack. This is a penalty beat rather than a reward:
+   the card snaps down, receives a hot diagonal brand, then chars under it. */
+.event.burned-jack-event{
+  --burn-team-accent:#d8b75e;
+  --burn-team-glow:#d8b75e42;
+  position:fixed!important;
+  z-index:1200;
+  top:0!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-width:0;
+  max-width:none!important;
+  min-height:0;
+  margin:0!important;
+  padding:0!important;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  overflow:hidden;
+  border:0!important;
+  border-radius:0!important;
+  background:
+    radial-gradient(circle at 45% 49%,#b83a163d 0,transparent 34%),
+    radial-gradient(circle at 50% 50%,#311008ed 0,#100705f5 58%,#020202fc 100%)!important;
+  color:#fff0d8!important;
+  box-shadow:inset 0 0 110px #000e!important;
+  text-transform:none;
+  transform:none;
+  isolation:isolate;
+  animation:burned-jack-overlay-in 150ms ease-out both;
+}
+
+.event.burned-jack-event.team-event-blue{
+  --burn-team-accent:#5eb8ff;
+  --burn-team-glow:#287fc55c;
+}
+
+.event.burned-jack-event.team-event-red{
+  --burn-team-accent:#ff6f67;
+  --burn-team-glow:#b8313d66;
+}
+
+.event.burned-jack-event.brasta-event-leaving{opacity:0}
+
+.burned-jack-vignette{
+  position:absolute;
+  inset:-10%;
+  z-index:0;
+  background:
+    linear-gradient(110deg,transparent 24%,#ff7a2412 43%,#ffc16b24 50%,#ff6a1710 57%,transparent 76%),
+    repeating-radial-gradient(circle at 44% 50%,transparent 0 28px,#ff7b2108 29px 30px);
+  background-size:230% 100%,auto;
+  opacity:0;
+  animation:burned-jack-vignette-sweep 1600ms 120ms ease-out both;
+}
+
+.burned-jack-heat-ring{
+  position:absolute;
+  z-index:1;
+  left:50%;
+  top:50%;
+  width:clamp(150px,29vw,330px);
+  aspect-ratio:1;
+  border:3px solid #ff7a29;
+  border-radius:50%;
+  background:radial-gradient(circle,transparent 48%,#ff62151f 62%,transparent 70%);
+  box-shadow:0 0 16px #ff8d35,0 0 60px #f23c1588,inset 0 0 30px #ff5a1844;
+  opacity:0;
+  transform:translate(-50%,-50%) scale(.18);
+  animation:burned-jack-heat-wave 780ms 500ms cubic-bezier(.16,.72,.2,1) both;
+}
+
+.burned-jack-embers{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  pointer-events:none;
+}
+
+.burned-jack-embers i{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:var(--burn-size);
+  height:calc(var(--burn-size) + 6px);
+  border-radius:999px 999px 45% 45%;
+  background:linear-gradient(#fff2a1,#ff9a36 42%,#c92a12 78%,transparent);
+  box-shadow:0 0 7px #ff6a1c,0 0 14px #ff371288;
+  opacity:0;
+  transform:translate(-50%,-50%) rotate(var(--burn-r)) scale(.2);
+  animation:burned-jack-ember-burst 820ms calc(610ms + var(--burn-delay)) cubic-bezier(.18,.65,.32,1) both;
+}
+
+.burned-jack-lockup{
+  position:relative;
+  z-index:5;
+  width:min(calc(100% - 34px),690px);
+  min-height:270px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(28px,6vw,62px);
+}
+
+.burned-jack-card-stage{
+  position:relative;
+  flex:0 0 auto;
+  width:clamp(116px,18vw,150px);
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+}
+
+.burned-jack-card{
+  position:relative;
+  z-index:2;
+  width:100%;
+  aspect-ratio:5/7;
+  display:grid;
+  place-items:center;
+  border:2px solid #d9c694;
+  border-radius:12px;
+  background:
+    radial-gradient(circle at 50% 44%,#fffdf3 0,#eee5cf 68%,#c8b78d 100%);
+  color:#11100e;
+  box-shadow:0 30px 52px #000e,0 0 0 5px #120602e8,0 0 0 7px #ff783878;
+  opacity:0;
+  transform:translateY(-68vh) rotate(-14deg) scale(.78);
+  animation:burned-jack-card-snap 1080ms 70ms cubic-bezier(.16,.76,.18,1.08) both;
+}
+
+.burned-jack-card::before{
+  content:"";
+  position:absolute;
+  inset:6px;
+  z-index:0;
+  border:1px solid #755b293f;
+  border-radius:7px;
+  box-shadow:inset 0 0 24px #5d390f14;
+}
+
+.burned-jack-card.red{color:#a5222d}
+
+.burned-jack-face{
+  position:relative;
+  z-index:1;
+  margin-top:-18%;
+  font:800 clamp(62px,10vw,88px)/1 Georgia,"Times New Roman",serif;
+  text-shadow:0 4px 0 #9f8f6b55,0 8px 14px #3c28152b;
+}
+
+.burned-jack-card-suit{
+  position:absolute;
+  z-index:1;
+  left:50%;
+  top:62%;
+  color:currentColor;
+  font:700 clamp(26px,5vw,40px)/1 Georgia,"Times New Roman",serif;
+  font-style:normal;
+  transform:translate(-50%,-50%);
+}
+
+.burned-jack-card-corner{
+  position:absolute;
+  z-index:2;
+  top:9px;
+  left:9px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  color:currentColor;
+  font:800 clamp(17px,2.8vw,23px)/.82 Georgia,"Times New Roman",serif;
+}
+
+.burned-jack-card-corner i{font-size:.72em;font-style:normal;margin-top:3px}
+.burned-jack-card-corner.bottom{top:auto;right:9px;bottom:9px;left:auto;transform:rotate(180deg)}
+
+.burned-jack-char{
+  position:absolute;
+  inset:-2px;
+  z-index:3;
+  overflow:hidden;
+  border-radius:12px;
+  background:
+    radial-gradient(circle at 50% 50%,transparent 0 24%,#5a160f2e 40%,#190605ba 72%,#030101f0 100%),
+    repeating-conic-gradient(from 18deg at 52% 48%,transparent 0 11deg,#2d090746 12deg 15deg,transparent 16deg 29deg);
+  box-shadow:inset 0 0 18px #ff4b1c66,inset 0 0 42px #000e;
+  opacity:0;
+  transform:scale(.72);
+  animation:burned-jack-char-spread 620ms 640ms ease-out both;
+}
+
+.burned-jack-brand{
+  position:absolute;
+  z-index:5;
+  left:-25%;
+  top:50%;
+  width:150%;
+  padding:7px 4px 6px;
+  border:3px double #ff934d;
+  background:linear-gradient(180deg,#481005f2,#180301f7);
+  color:#ffc078;
+  font:950 clamp(18px,3.1vw,27px)/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.13em;
+  text-align:center;
+  text-shadow:0 0 5px #ffcf8c,0 0 13px #ff4b19,0 2px 0 #6d1607;
+  box-shadow:0 0 8px #ff7b35,0 0 26px #f13717aa,inset 0 0 12px #ff652233;
+  opacity:0;
+  transform:translateY(-50%) rotate(-12deg) scale(2.15);
+  animation:burned-jack-brand-slam 430ms 580ms cubic-bezier(.14,.82,.18,1.18) both;
+}
+
+.burned-jack-copy{
+  position:relative;
+  width:clamp(260px,42vw,360px);
+  min-height:205px;
+  padding:23px 28px 21px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  overflow:hidden;
+  border:1px solid #ff814b66;
+  border-left:3px solid var(--burn-team-accent);
+  border-radius:4px 18px 4px 18px;
+  background:
+    linear-gradient(112deg,#180705f3,#270b07ed 62%,#0b0504f5),
+    radial-gradient(circle at 0 50%,var(--burn-team-glow),transparent 58%);
+  box-shadow:0 26px 62px #000d,0 0 34px #ed431b35,0 0 24px var(--burn-team-glow),inset 0 0 42px #0009;
+  opacity:0;
+  transform:translateX(44px) scale(.92);
+  animation:burned-jack-copy-arrive 470ms 720ms cubic-bezier(.18,.84,.22,1) both;
+}
+
+.burned-jack-copy::after{
+  content:"";
+  position:absolute;
+  right:-35px;
+  bottom:-62px;
+  width:150px;
+  aspect-ratio:1;
+  border:1px solid #ff7a2730;
+  border-radius:50%;
+  box-shadow:0 0 0 16px #ff7a2708,0 0 0 38px #ff7a2706;
+}
+
+.burned-jack-player{
+  max-width:100%;
+  overflow:hidden;
+  color:var(--burn-team-accent);
+  font:850 clamp(10px,1.8vw,13px)/1.2 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.15em;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+.burned-jack-title{
+  position:relative;
+  z-index:1;
+  margin-top:8px;
+  color:#ff7a43;
+  font:950 clamp(34px,6.2vw,57px)/.88 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.015em;
+  text-shadow:0 3px 0 #711708,0 0 18px #ff4d1f66,0 8px 20px #000d;
+  white-space:nowrap;
+}
+
+.burned-jack-title span{color:#f2dfbd}
+
+.burned-jack-score{
+  position:relative;
+  z-index:1;
+  margin-top:13px;
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  opacity:0;
+  transform:scale(.58);
+  transform-origin:left center;
+  animation:burned-jack-score-pop 380ms 1030ms cubic-bezier(.14,.82,.2,1.22) both;
+}
+
+.burned-jack-score b{
+  color:#ff6840;
+  font:950 clamp(38px,6.5vw,58px)/.78 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:-.04em;
+  text-shadow:0 3px 0 #74190b,0 0 17px #ff4c2290;
+}
+
+.burned-jack-score small{
+  padding-bottom:2px;
+  color:#f0c5aa;
+  font:850 10px/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.18em;
+}
+
+.burned-jack-footer{
+  position:relative;
+  z-index:1;
+  margin-top:13px;
+  color:#cfa990;
+  font:800 9px/1.1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.15em;
+  opacity:0;
+  transform:translateY(7px);
+  animation:burned-jack-footer-arrive 320ms 1190ms ease-out both;
+}
+
 @keyframes brasta-table-takeover{
   from{opacity:0}
   to{opacity:1}
@@ -1441,11 +1754,76 @@
   to{opacity:1;transform:translateX(0) scale(1)}
 }
 
+@keyframes burned-jack-overlay-in{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+@keyframes burned-jack-vignette-sweep{
+  0%{opacity:0;background-position:125% 0,0 0}
+  24%{opacity:1}
+  100%{opacity:.68;background-position:-115% 0,0 0}
+}
+
+@keyframes burned-jack-heat-wave{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.18)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.8)}
+}
+
+@keyframes burned-jack-ember-burst{
+  0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--burn-r)) scale(.2)}
+  12%{opacity:1}
+  72%{opacity:.94}
+  100%{opacity:0;transform:translate(calc(-50% + var(--burn-x)),calc(-50% + var(--burn-y))) rotate(calc(var(--burn-r) + 125deg)) scale(1)}
+}
+
+@keyframes burned-jack-card-snap{
+  0%{opacity:0;transform:translateY(-68vh) rotate(-14deg) scale(.78)}
+  35%{opacity:1}
+  48%{transform:translateY(11px) rotate(3deg) scale(1.055)}
+  57%{transform:translateY(-5px) rotate(-1deg) scale(.99)}
+  63%{transform:translateY(0) rotate(0) scale(1)}
+  70%{transform:translateX(-5px) rotate(-1.8deg) scale(.99)}
+  76%{transform:translateX(4px) rotate(1.4deg) scale(1.01)}
+  83%{transform:translateX(-2px) rotate(-.6deg) scale(1)}
+  100%{opacity:1;transform:translate(0) rotate(0) scale(1)}
+}
+
+@keyframes burned-jack-brand-slam{
+  0%{opacity:0;transform:translateY(-50%) rotate(-12deg) scale(2.15)}
+  58%{opacity:1;transform:translateY(-50%) rotate(-12deg) scale(.91)}
+  78%{transform:translateY(-50%) rotate(-12deg) scale(1.06)}
+  100%{opacity:1;transform:translateY(-50%) rotate(-12deg) scale(1)}
+}
+
+@keyframes burned-jack-char-spread{
+  0%{opacity:0;transform:scale(.72)}
+  55%{opacity:.78}
+  100%{opacity:1;transform:scale(1)}
+}
+
+@keyframes burned-jack-copy-arrive{
+  from{opacity:0;transform:translateX(44px) scale(.92)}
+  to{opacity:1;transform:translateX(0) scale(1)}
+}
+
+@keyframes burned-jack-score-pop{
+  from{opacity:0;transform:scale(.58)}
+  to{opacity:1;transform:scale(1)}
+}
+
+@keyframes burned-jack-footer-arrive{
+  from{opacity:0;transform:translateY(7px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
 @media(max-width:600px){
   .event.brasta-crest-event,
   .event.big10-strike-event,
   .event.big2-crush-event,
-  .event.power-pair-event{border-radius:0!important}
+  .event.power-pair-event,
+  .event.burned-jack-event{border-radius:0!important}
   .brasta-flight-card:nth-child(1){--card-x:-132px;--card-y:-70px}
   .brasta-flight-card:nth-child(2){--card-x:-112px;--card-y:82px}
   .brasta-flight-card:nth-child(3){--card-x:-54px;--card-y:-102px}
@@ -1504,6 +1882,15 @@
   .power-pair-title{margin-top:5px;font-size:clamp(25px,8vw,34px)}
   .power-pair-score{margin-top:7px;transform-origin:center}
   .power-pair-footer{margin-top:5px;justify-content:center}
+  .burned-jack-lockup{width:calc(100% - 20px);gap:13px}
+  .burned-jack-card-stage{width:clamp(88px,26vw,104px)}
+  .burned-jack-card{border-radius:9px}
+  .burned-jack-brand{font-size:clamp(15px,4.8vw,20px);padding:6px 3px 5px}
+  .burned-jack-copy{width:min(61vw,246px);min-height:174px;padding:18px 16px 16px}
+  .burned-jack-title{font-size:clamp(29px,9vw,39px)}
+  .burned-jack-score{margin-top:10px}
+  .burned-jack-score small{font-size:8px}
+  .burned-jack-footer{margin-top:9px;font-size:8px}
 }
 
 @media(max-height:620px){
@@ -1530,6 +1917,12 @@
   .power-pair-title{font-size:30px}
   .power-pair-score{margin-top:7px}
   .power-pair-footer{margin-top:5px}
+  .burned-jack-lockup{min-height:190px}
+  .burned-jack-card-stage{width:88px}
+  .burned-jack-copy{min-height:150px;padding-top:14px;padding-bottom:13px}
+  .burned-jack-title{font-size:32px}
+  .burned-jack-score{margin-top:8px}
+  .burned-jack-footer{margin-top:7px}
 }
 
 /* Reduced Motion is an explicit Brasta preference instead of inheriting a
@@ -1551,6 +1944,10 @@
   animation:none;
   background:linear-gradient(120deg,#123626e8,#35141be8)!important;
 }
+:root[data-brasta-motion="reduced"] .event.burned-jack-event{
+  animation:none;
+  background:radial-gradient(circle at 50% 50%,#351009ef 0,#080302f8 72%)!important;
+}
 :root[data-brasta-motion="reduced"] :is(
   .brasta-crest-vignette,
   .brasta-card-storm,
@@ -1571,7 +1968,10 @@
   .power-pair-diamond-cut,
   .power-pair-shockwave,
   .power-pair-clubs,
-  .power-pair-diamonds
+  .power-pair-diamonds,
+  .burned-jack-vignette,
+  .burned-jack-heat-ring,
+  .burned-jack-embers
 ){display:none!important}
 :root[data-brasta-motion="reduced"] :is(
   .brasta-crest-seal,
@@ -1591,7 +1991,13 @@
   .power-pair-card,
   .power-pair-copy,
   .power-pair-score,
-  .power-pair-footer
+  .power-pair-footer,
+  .burned-jack-card,
+  .burned-jack-char,
+  .burned-jack-brand,
+  .burned-jack-copy,
+  .burned-jack-score,
+  .burned-jack-footer
 ){
   opacity:1;
   transform:none;

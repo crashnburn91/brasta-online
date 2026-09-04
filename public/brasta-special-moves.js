@@ -7,6 +7,7 @@
   const BIG2_SHOW_MS = 1900;
   const BIG10_SHOW_MS = 1900;
   const POWER_PAIR_SHOW_MS = 2200;
+  const BURNED_JACK_SHOW_MS = 2000;
   const EFFECT_FADE_MS = 220;
   const hapticKeys = new Set();
   const presentedKeys = new Set();
@@ -17,6 +18,14 @@
   const flightSuits = ['♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
   const burstSuits = ['♠', '♦', '♣', '♥', '♠', '♦', '♣', '♥', '♦', '♠', '♥', '♣'];
   const big10RushSuits = ['♠', '♥', '♣', '♦', '♣', '♥'];
+  const burnedJackEmbers = [
+    [-184, -82, -18, 4, 0], [-148, 94, 23, 5, 55], [-104, -132, -34, 3, 115],
+    [-66, 126, 31, 4, 30], [-24, -154, -12, 6, 85], [28, 142, 19, 3, 140],
+    [72, -128, 27, 5, 18], [112, 112, -25, 4, 105], [158, -88, 36, 5, 65],
+    [188, 54, -31, 3, 130], [-204, 18, 17, 4, 92], [206, -18, -14, 6, 42],
+    [-118, -24, 28, 3, 165], [132, 18, -22, 4, 155], [-42, 76, 35, 5, 70],
+    [48, -64, -27, 3, 122],
+  ];
   const scoringBonuses = Object.freeze([
     { name: 'a Brasta', label: 'BRASTA', pattern: /\bBRASTA!/i },
     { name: 'Big 2', label: 'BIG 2', pattern: /\bBIG\s*2\b/i },
@@ -61,7 +70,7 @@
       }
     }
 
-    const actionMatch = lastMove.match(/^(.+?)\s+(?:captured|called burn|swept)\b/i);
+    const actionMatch = lastMove.match(/^(.+?)\s+(?:captured|called burn|swept|burned)\b/i);
     if (actionMatch?.[1]) return actionMatch[1].trim();
     return team === 'A' ? 'Blue Team' : team === 'B' ? 'Red Team' : 'Brasta';
   }
@@ -89,6 +98,19 @@
 
   function diamondBurstMarkup() {
     return Array.from({ length: 12 }, () => '<i>♦</i>').join('');
+  }
+
+  function burnedJackEmbersMarkup() {
+    return burnedJackEmbers.map(([x, y, rotation, size, delay]) =>
+      `<i style="--burn-x:${x}px;--burn-y:${y}px;--burn-r:${rotation}deg;--burn-size:${size}px;--burn-delay:${delay}ms"></i>`
+    ).join('');
+  }
+
+  function burnedJackSuit() {
+    const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return lastMove.match(/\bburned\s+J\s*([♠♦♣♥])/i)?.[1] || '♠';
   }
 
   function clubBurstMarkup() {
@@ -132,6 +154,7 @@
       const patterns = {
         big2: [36, 45, 68],
         big10: [18, 32, 46],
+        'burned-jack': [22, 34, 76],
         'power-pair': [36, 32, 56, 28, 24],
       };
       const pattern = patterns[kind] || 42;
@@ -391,7 +414,68 @@
     playNextEffect();
   }
 
+  function decorateBurnedJack(banner, rawText) {
+    if (banner.dataset.brastaEffectKind === 'burned-jack') return;
+    const key = `${banner.dataset.eventSeq || ''}|burned-jack`;
+    banner.dataset.brastaEffectKind = 'burned-jack';
+    banner.dataset.brastaRawEvent = rawText;
+    banner.classList.add('brasta-effect-source');
+    banner.setAttribute('aria-hidden', 'true');
+    if (!key || presentedKeys.has(key)) return;
+
+    const team = eventTeam(banner, rawText);
+    const actor = eventActor(team);
+    const suit = burnedJackSuit();
+    const redSuit = suit === '♦' || suit === '♥';
+    const teamLabel = team ? `Team ${team}` : actor;
+
+    const layer = document.createElement('div');
+    layer.className = 'event burned-jack-event brasta-effect-layer';
+    if (team === 'A') layer.classList.add('team-event-blue');
+    if (team === 'B') layer.classList.add('team-event-red');
+    layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventText = rawText;
+    layer.dataset.brastaRawEvent = rawText;
+    layer.dataset.specialMoveKind = 'burned-jack';
+    layer.dataset.brastaTotalPoints = '-10';
+    if (team) layer.dataset.eventTeam = team;
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-live', 'polite');
+    layer.setAttribute('aria-label', `${actor} burned the Jack. ${teamLabel} loses 10 points.`);
+    layer.innerHTML = `
+      <span class="burned-jack-vignette" aria-hidden="true"></span>
+      <span class="burned-jack-lockup" aria-hidden="true">
+        <span class="burned-jack-card-stage">
+          <span class="burned-jack-heat-ring"></span>
+          <span class="burned-jack-embers">${burnedJackEmbersMarkup()}</span>
+          <span class="burned-jack-card${redSuit ? ' red' : ''}">
+            <span class="burned-jack-card-corner">J<i>${suit}</i></span>
+            <strong class="burned-jack-face">J</strong>
+            <i class="burned-jack-card-suit">${suit}</i>
+            <span class="burned-jack-card-corner bottom">J<i>${suit}</i></span>
+            <span class="burned-jack-char"></span>
+            <strong class="burned-jack-brand">BURNED</strong>
+          </span>
+        </span>
+        <span class="burned-jack-copy">
+          <span class="burned-jack-player">${escapeHtml(actor)}</span>
+          <strong class="burned-jack-title"><span>JACK</span> BURNED</strong>
+          <span class="burned-jack-score"><b>−10</b><small>POINTS</small></span>
+          <span class="burned-jack-footer">JACK LEFT LOOSE</span>
+        </span>
+      </span>`;
+
+    rememberEffect(key);
+    effectQueue.push({ key, layer, showMs: BURNED_JACK_SHOW_MS });
+    playNextEffect();
+  }
+
   const renderers = [
+    {
+      name: 'burned-jack',
+      matches: (text) => /\bBURNED\s+JACK!/i.test(text),
+      decorate: decorateBurnedJack,
+    },
     {
       name: 'brasta',
       matches: (text) => /\bBRASTA!/i.test(text),
