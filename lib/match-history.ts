@@ -4,6 +4,7 @@ const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVIC
 export type MatchHistoryType = 'ranked' | 'private' | 'bot';
 export type MatchHistoryResult = 'win' | 'loss' | 'draw';
 export type MatchStatsScope = 'all' | MatchHistoryType;
+export type MatchModeScope = 'all' | '1v1' | '2v2';
 
 export type MatchHistoryPlayerStats = {
   brastas: number;
@@ -117,9 +118,12 @@ export type PlayerAchievement = {
   completed: boolean;
 };
 
+export type PlayerStatsMatrix = Record<MatchStatsScope, Record<MatchModeScope, PlayerGameStats>>;
+
 export type PlayerProgression = {
   stats: PlayerGameStats;
   statsByType: Record<MatchStatsScope, PlayerGameStats>;
+  statsMatrix: PlayerStatsMatrix;
   matches: PlayerRecentMatch[];
   achievements: PlayerAchievement[];
 };
@@ -146,6 +150,23 @@ export const blankPlayerStats = (): PlayerGameStats => ({
   trackedSince: null,
 });
 
+function blankModeSet(): Record<MatchModeScope, PlayerGameStats> {
+  return {
+    all: blankPlayerStats(),
+    '1v1': blankPlayerStats(),
+    '2v2': blankPlayerStats(),
+  };
+}
+
+function blankStatsMatrix(): PlayerStatsMatrix {
+  return {
+    all: blankModeSet(),
+    ranked: blankModeSet(),
+    private: blankModeSet(),
+    bot: blankModeSet(),
+  };
+}
+
 export const blankPlayerProgression = (): PlayerProgression => ({
   stats: blankPlayerStats(),
   statsByType: {
@@ -154,6 +175,7 @@ export const blankPlayerProgression = (): PlayerProgression => ({
     private: blankPlayerStats(),
     bot: blankPlayerStats(),
   },
+  statsMatrix: blankStatsMatrix(),
   matches: [],
   achievements: [],
 });
@@ -243,23 +265,54 @@ function mergeStats(value: Partial<PlayerGameStats> | null | undefined): PlayerG
   return { ...blankPlayerStats(), ...(value || {}), currentBrastaStreak: 0 };
 }
 
+function normalizeMatrix(
+  raw: Partial<Record<MatchStatsScope, Partial<Record<MatchModeScope, Partial<PlayerGameStats>>>>> | null | undefined,
+  fallbackByType: Partial<Record<MatchStatsScope, PlayerGameStats>>,
+): PlayerStatsMatrix {
+  const out = blankStatsMatrix();
+  const typeKeys: MatchStatsScope[] = ['all', 'ranked', 'private', 'bot'];
+  const modeKeys: MatchModeScope[] = ['all', '1v1', '2v2'];
+  for (const type of typeKeys) {
+    for (const mode of modeKeys) {
+      const fallback = mode === 'all' ? fallbackByType[type] : undefined;
+      out[type][mode] = mergeStats(raw?.[type]?.[mode] || fallback);
+    }
+  }
+  return out;
+}
+
 export async function getPlayerProgression(playerId: string, limit = 10): Promise<PlayerProgression> {
   if (!playerId) return blankPlayerProgression();
-  const data = await rpc<PlayerProgression>('brasta_player_progression', {
-    p_player_id: playerId,
-    p_limit: Math.max(1, Math.min(Number(limit) || 10, 25)),
-  }, 'Could not load player progression');
+  const [data, matrixRaw] = await Promise.all([
+    rpc<PlayerProgression>('brasta_player_progression', {
+      p_player_id: playerId,
+      p_limit: Math.max(1, Math.min(Number(limit) || 10, 25)),
+    }, 'Could not load player progression'),
+    rpc<PlayerStatsMatrix>('brasta_player_stats_matrix', {
+      p_player_id: playerId,
+    }, 'Could not load filtered player stats').catch((error) => {
+      console.error('[brasta stats matrix]', error);
+      return null;
+    }),
+  ]);
   if (!data || typeof data !== 'object') return blankPlayerProgression();
   const byType = data.statsByType || ({} as Record<MatchStatsScope, PlayerGameStats>);
-  const all = mergeStats(byType.all || data.stats);
+  const legacyAll = mergeStats(byType.all || data.stats);
+  const matrix = normalizeMatrix(matrixRaw, {
+    all: legacyAll,
+    ranked: mergeStats(byType.ranked),
+    private: mergeStats(byType.private),
+    bot: mergeStats(byType.bot),
+  });
   return {
-    stats: all,
+    stats: matrix.all.all,
     statsByType: {
-      all,
-      ranked: mergeStats(byType.ranked),
-      private: mergeStats(byType.private),
-      bot: mergeStats(byType.bot),
+      all: matrix.all.all,
+      ranked: matrix.ranked.all,
+      private: matrix.private.all,
+      bot: matrix.bot.all,
     },
+    statsMatrix: matrix,
     matches: Array.isArray(data.matches) ? data.matches : [],
     achievements: Array.isArray(data.achievements) ? data.achievements : [],
   };
