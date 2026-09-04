@@ -82,12 +82,28 @@ function recordCaptureSpecials(
   }
 }
 
-function recordRoundFinish(room: StoredRoom, before: Brasta.GameState, after: Brasta.GameState): void {
+function recordRoundFinish(
+  room: StoredRoom,
+  before: Brasta.GameState,
+  after: Brasta.GameState,
+  commandSeat: Brasta.Seat,
+  directCapturedCount: number,
+): void {
   if (before.phase !== 'play' || (after.phase !== 'roundEnd' && after.phase !== 'matchEnd')) return;
   const seat = after.lastPickupSeat;
-  if (!seat) return;
-  runtimePlayer(room, seat).lastPickups += 1;
-  addHistoryEvent(room, seat, 'last_pickup', before.round, 10, { team: after.lastPickupTeam });
+  const team = after.lastPickupTeam;
+  if (!seat || !team) return;
+  const stats = runtimePlayer(room, seat);
+  stats.lastPickups += 1;
+
+  const beforeTeamCaptured = before.captured?.[team]?.length || 0;
+  const afterTeamCaptured = after.captured?.[team]?.length || 0;
+  const commandTeam = Brasta.teamForSeat(before.mode, commandSeat);
+  const directCountOnPickupTeam = commandTeam === team ? directCapturedCount : 0;
+  const cleanupCards = Math.max(0, afterTeamCaptured - beforeTeamCaptured - directCountOnPickupTeam);
+  stats.cardsCaptured += cleanupCards;
+
+  addHistoryEvent(room, seat, 'last_pickup', before.round, 10, { team, cards: cleanupCards });
 }
 
 function recordCommandHistory(room: StoredRoom, before: Brasta.GameState, after: Brasta.GameState, command: Brasta.Command): void {
@@ -104,8 +120,9 @@ function recordCommandHistory(room: StoredRoom, before: Brasta.GameState, after:
       addHistoryEvent(room, seat, 'jack_burn', before.round, -10, {});
     }
   }
-  recordCaptureSpecials(room, before, after, seat, directCaptureIds(before, command));
-  recordRoundFinish(room, before, after);
+  const capturedIds = directCaptureIds(before, command);
+  recordCaptureSpecials(room, before, after, seat, capturedIds);
+  recordRoundFinish(room, before, after, seat, capturedIds.length);
 }
 
 function burnCaptureIds(before: Brasta.GameState, burn: CallableBurn, option: BurnPickupOption): Brasta.CardId[] {
