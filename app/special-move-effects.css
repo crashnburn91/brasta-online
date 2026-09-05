@@ -1307,6 +1307,16 @@
 
 .event.jack-sweep-event.brasta-event-leaving{opacity:0}
 
+/* Team banner styling is intentionally disabled for the table-local sweep.
+   The sweep keeps team metadata for accessibility, but its presentation layer
+   must not inherit the blue/red event box. */
+.event.jack-sweep-event.team-event-blue,
+.event.jack-sweep-event.team-event-red{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
 .jack-sweep-trail{
   position:absolute;
   z-index:2;

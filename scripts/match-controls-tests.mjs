@@ -42,7 +42,7 @@ assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does no
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.9.0'), 'Special-move effect controller is not cache-busted for the table-native Jack Sweep update');
+assert(layout.includes('/brasta-special-moves.js?v=0.9.1'), 'Special-move effect controller is not cache-busted for the team-neutral Jack Sweep update');
 assert(layout.includes('/match-menu.js?v=0.13.0'), 'Motion preference control is not cache-busted by the root layout');
 assert(layout.includes('/lobby-polish.js?v=13'), 'Special-move sound update is not cache-busted by the root layout');
 assert(layout.includes('/tutorial.js?v=0.6.0'), 'Special-card tutorial steps are not cache-busted by the root layout');
@@ -101,6 +101,8 @@ assert(!specialMoves.includes('jack-sweep-felt-glow'), 'Jack Sweep still mounts 
 assert(!jackSweepActiveStyles.includes('.jack-sweep-felt-glow{'), 'Jack Sweep still styles an active felt backdrop');
 assert(jackSweepActiveStyles.includes('background:transparent;'), 'Jack Sweep presentation layer is not transparent');
 assert(jackSweepActiveStyles.includes('text-shadow:0 2px 6px #000'), 'Jack Sweep caption does not use a readable text-only treatment');
+assert(jackSweepActiveStyles.includes('.event.jack-sweep-event.team-event-blue'), 'Jack Sweep does not neutralize the blue team event box');
+assert(jackSweepActiveStyles.includes('.event.jack-sweep-event.team-event-red'), 'Jack Sweep does not neutralize the red team event box');
 assert(specialMoveStyles.includes('--sweep-left'), 'Jack Sweep does not position cards from captured viewport coordinates');
 assert(specialMoveStyles.includes('--jack-start-x'), 'Jack Sweep does not position the Jack from captured viewport coordinates');
 assert(specialMoveStyles.includes('.jack-sweep-combo'), 'Jack Sweep combo handoff styling is missing');
