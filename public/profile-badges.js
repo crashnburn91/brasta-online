@@ -26,7 +26,7 @@
       cache: 'no-store',
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.error) throw new Error(data.error || 'Profile badge request failed.');
+    if (!response.ok || data.error) throw new Error(data.error || 'Profile title request failed.');
     return data;
   }
 
@@ -108,10 +108,10 @@
     panel.innerHTML = `
       <div class="profile-badge-hero ${equippedBadge ? 'has-badge' : ''}">
         <div class="profile-badge-hero-emblem">${equippedBadge ? emblem(equippedBadge) : '<span class="profile-badge-empty-emblem">B</span>'}</div>
-        <div><span>EQUIPPED BADGE</span><b>${equippedBadge ? esc(equippedBadge.name) : 'None'}</b><small>${equippedBadge ? esc(equippedBadge.description) : 'Choose an unlocked badge to represent you.'}</small></div>
+        <div><span>EQUIPPED TITLE</span><b>${equippedBadge ? esc(equippedBadge.name) : 'None'}</b><small>${equippedBadge ? esc(equippedBadge.description) : 'Choose an unlocked title to represent you.'}</small></div>
         ${isSelf && equippedBadge ? '<button type="button" data-badge-unequip>Remove</button>' : ''}
       </div>
-      <div class="profile-badge-summary"><b>${unlocked}</b><span>of ${items.length} badges unlocked</span></div>
+      <div class="profile-badge-summary"><b>${unlocked}</b><span>of ${items.length} titles unlocked</span></div>
       <div class="profile-badge-grid">${items.map((item) => cardMarkup(item, isSelf)).join('')}</div>`;
 
     panel.querySelectorAll('[data-badge-equip]').forEach((button) => {
@@ -136,7 +136,7 @@
     } catch (error) {
       const message = document.createElement('div');
       message.className = 'profile-badge-error';
-      message.textContent = error?.message || 'Could not update your badge.';
+      message.textContent = error?.message || 'Could not update your title.';
       panel.prepend(message);
       panel.querySelectorAll('button').forEach((button) => { button.disabled = false; });
     } finally {
@@ -153,7 +153,7 @@
     if (!username) return;
     if (!force && panel.dataset.profileBadgeLoaded === username.toLowerCase()) return;
     panel.dataset.profileBadgeLoaded = username.toLowerCase();
-    panel.innerHTML = '<div class="ppg-empty"><b>Loading badges</b><span>Checking badge collection…</span></div>';
+    panel.innerHTML = '<div class="ppg-empty"><b>Loading titles</b><span>Checking title collection…</span></div>';
     try {
       const result = await collection(username, force);
       if (!panel.isConnected) return;
@@ -161,7 +161,7 @@
       applyHeadBadge(modal, result?.badges?.equipped || null);
     } catch (error) {
       if (!panel.isConnected) return;
-      panel.innerHTML = `<div class="ppg-empty"><b>Unable to load badges</b><span>${esc(error?.message || 'Please close and reopen the profile.')}</span></div>`;
+      panel.innerHTML = `<div class="ppg-empty"><b>Unable to load titles</b><span>${esc(error?.message || 'Please close and reopen the profile.')}</span></div>`;
     }
   }
 
@@ -181,11 +181,13 @@
     if (!button) {
       button = document.createElement('button');
       button.type = 'button';
-      button.textContent = 'Badges';
+      button.textContent = 'Titles';
       button.dataset.profileBadgesTab = 'true';
       button.setAttribute('aria-selected', 'false');
       tabs.appendChild(button);
       tabs.dataset.profileBadgesTabs = 'true';
+    } else if (button.textContent !== 'Titles') {
+      button.textContent = 'Titles';
     }
 
     if (!panel) {
