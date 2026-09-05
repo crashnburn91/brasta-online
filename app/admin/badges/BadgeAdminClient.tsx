@@ -42,7 +42,7 @@ export default function BadgeAdminClient() {
       badges?: BadgeDefinition[];
       profiles?: BadgeProfile[];
     };
-    if (!response.ok || data.error) throw new Error(data.error || 'Badge administration request failed.');
+    if (!response.ok || data.error) throw new Error(data.error || 'Title administration request failed.');
     return data;
   }, [accessToken]);
 
@@ -52,7 +52,7 @@ export default function BadgeAdminClient() {
       setBadges(data.badges || []);
       setMessage('');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not load admin badges.');
+      setMessage(error instanceof Error ? error.message : 'Could not load admin titles.');
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,7 @@ export default function BadgeAdminClient() {
         : candidate));
       setMessage(`${badge.name} ${assigned ? 'revoked from' : 'assigned to'} @${profile.username}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not update badge assignment.');
+      setMessage(error instanceof Error ? error.message : 'Could not update title assignment.');
     } finally {
       setBusy('');
     }
@@ -130,21 +130,21 @@ export default function BadgeAdminClient() {
   return (
     <main className="badge-admin-shell">
       <header className="badge-admin-header">
-        <div><span>BRASTA ADMIN</span><h1>Profile Badges</h1><p>Assign or revoke special profile badges. Achievement badges are awarded automatically.</p></div>
+        <div><span>BRASTA ADMIN</span><h1>Profile Titles</h1><p>Assign or revoke special profile titles. Achievement titles are awarded automatically.</p></div>
         <nav><a href="/admin/moderation">Moderation</a><a href="/admin/live">Live Traffic</a><a href="/admin/tournaments">Tournaments</a><a href="/">Back to Brasta</a></nav>
       </header>
 
       {message ? <div className="badge-admin-message" role="status">{message}</div> : null}
 
       <section className="badge-admin-card special-badges">
-        <div className="badge-admin-card-head"><div><span>ADMIN-ASSIGNED</span><h2>Special Badges</h2></div></div>
+        <div className="badge-admin-card-head"><div><span>ADMIN-ASSIGNED</span><h2>Special Titles</h2></div></div>
         <div className="badge-admin-definition-grid">
           {badges.map((badge) => <article key={badge.key}><i>{badge.icon}</i><div><b>{badge.name}</b><p>{badge.description}</p></div></article>)}
         </div>
       </section>
 
       <section className="badge-admin-card">
-        <div className="badge-admin-card-head"><div><span>PLAYER SEARCH</span><h2>Assign Badges</h2></div></div>
+        <div className="badge-admin-card-head"><div><span>PLAYER SEARCH</span><h2>Assign Titles</h2></div></div>
         <form className="badge-admin-search" onSubmit={search}>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search username" maxLength={20} aria-label="Search username" />
           <button type="submit" disabled={loading || !accessToken}>{loading ? 'Searching…' : 'Search'}</button>
