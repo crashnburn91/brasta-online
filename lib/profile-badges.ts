@@ -147,7 +147,10 @@ export async function getProfileBadgeCollection(playerId: string): Promise<Profi
 
   const owned = new Map(ownedRows.map((row) => [row.badge_key, row]));
   const equippedKey = equipmentRows[0]?.badge_key || null;
-  const items = defs.map((item): ProfileBadgeItem => {
+  // Admin-only badges are intentionally undiscoverable in normal badge collections
+  // until they have actually been assigned to this player.
+  const visibleDefs = defs.filter((item) => item.awardType !== 'admin' || owned.has(item.key));
+  const items = visibleDefs.map((item): ProfileBadgeItem => {
     const row = owned.get(item.key);
     const unlocked = Boolean(row);
     return {
