@@ -792,7 +792,6 @@
     layer.setAttribute('aria-live', 'polite');
     layer.setAttribute('aria-label', `${actor} swept ${count} loose card${count === 1 ? '' : 's'} with the Jack.`);
     layer.innerHTML = `
-      <span class="jack-sweep-felt-glow" aria-hidden="true"></span>
       <span class="jack-sweep-trail" aria-hidden="true"></span>
       <span class="jack-sweep-loose-cards" aria-hidden="true">${sweepLooseCardsMarkup(snapshot, count, geometry, hasReward)}</span>
       ${jackSweepMarkup(suit, geometry)}

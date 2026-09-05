@@ -42,7 +42,7 @@ assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does no
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.8.0'), 'Special-move effect controller is not cache-busted for the Brasta combination update');
+assert(layout.includes('/brasta-special-moves.js?v=0.9.0'), 'Special-move effect controller is not cache-busted for the table-native Jack Sweep update');
 assert(layout.includes('/match-menu.js?v=0.13.0'), 'Motion preference control is not cache-busted by the root layout');
 assert(layout.includes('/lobby-polish.js?v=13'), 'Special-move sound update is not cache-busted by the root layout');
 assert(layout.includes('/tutorial.js?v=0.6.0'), 'Special-card tutorial steps are not cache-busted by the root layout');
@@ -92,10 +92,15 @@ assert(app.includes('data-card-id="${escapeAttr(id)}"'), 'Board cards do not exp
 assert(app.includes('data-event-key="${escapeAttr(eventIdentityFor(state))}"'), 'Event banners do not expose their transition key to the effect queue');
 assert(specialMoveStyles.includes('--jack-sweep-frame-left'), 'Jack Sweep does not expose compact frame positioning variables');
 const jackSweepStyles = specialMoveStyles.slice(specialMoveStyles.indexOf('.event.jack-sweep-event{'), specialMoveStyles.indexOf('/* Burned Jack'));
+const jackSweepActiveStyles = specialMoveStyles.slice(specialMoveStyles.indexOf('.event.jack-sweep-event{'), specialMoveStyles.indexOf('/* Keep the old selectors'));
 assert(!jackSweepStyles.includes('inset:0!important'), 'Jack Sweep still uses a full-viewport presentation layer');
 assert(!jackSweepStyles.includes('width:100vw!important'), 'Jack Sweep still stretches to the viewport width');
 assert(!jackSweepStyles.includes('height:100vh!important'), 'Jack Sweep still stretches to the viewport height');
 assert(jackSweepStyles.includes('overflow:visible'), 'Jack Sweep compact frame clips the sweep path');
+assert(!specialMoves.includes('jack-sweep-felt-glow'), 'Jack Sweep still mounts a felt backdrop element');
+assert(!jackSweepActiveStyles.includes('.jack-sweep-felt-glow{'), 'Jack Sweep still styles an active felt backdrop');
+assert(jackSweepActiveStyles.includes('background:transparent;'), 'Jack Sweep presentation layer is not transparent');
+assert(jackSweepActiveStyles.includes('text-shadow:0 2px 6px #000'), 'Jack Sweep caption does not use a readable text-only treatment');
 assert(specialMoveStyles.includes('--sweep-left'), 'Jack Sweep does not position cards from captured viewport coordinates');
 assert(specialMoveStyles.includes('--jack-start-x'), 'Jack Sweep does not position the Jack from captured viewport coordinates');
 assert(specialMoveStyles.includes('.jack-sweep-combo'), 'Jack Sweep combo handoff styling is missing');

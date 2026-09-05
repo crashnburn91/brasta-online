@@ -1307,19 +1307,6 @@
 
 .event.jack-sweep-event.brasta-event-leaving{opacity:0}
 
-.jack-sweep-felt-glow{
-  position:absolute;
-  z-index:0;
-  left:0;
-  top:calc(var(--jack-sweep-y) - 92px);
-  width:100%;
-  height:184px;
-  background:radial-gradient(ellipse at var(--jack-sweep-caption-x) 50%,#d8b75e25 0,#6d522012 32%,transparent 72%);
-  opacity:0;
-  filter:blur(5px);
-  animation:jack-sweep-glow 760ms 20ms ease-out both;
-}
-
 .jack-sweep-trail{
   position:absolute;
   z-index:2;
@@ -1450,19 +1437,18 @@
   z-index:6;
   left:var(--jack-sweep-caption-x);
   top:var(--jack-sweep-caption-y);
-  padding:4px 8px;
-  border:1px solid #d8b75e55;
-  border-radius:999px;
-  background:#07150f99;
+  padding:0;
+  border:0;
+  background:transparent;
   color:#eedb9f;
   font:850 9px/1 var(--font-brasta-display),Georgia,serif;
   letter-spacing:.17em;
+  text-shadow:0 2px 6px #000,0 0 12px #d8b75e55;
   opacity:0;
   transform:translateX(-50%) translateY(4px);
   animation:jack-sweep-caption-in 360ms 600ms ease-out both;
 }
 
-.jack-sweep-combo .jack-sweep-felt-glow{animation-duration:520ms}
 .jack-sweep-combo .jack-sweep-trail{animation-duration:520ms}
 .jack-sweep-combo .jack-sweep-loose-card{animation-duration:480ms}
 .jack-sweep-combo .jack-sweep-jack{animation-duration:540ms}
@@ -2273,12 +2259,6 @@
   to{opacity:1}
 }
 
-@keyframes jack-sweep-glow{
-  0%{opacity:0;transform:scale(.88)}
-  32%{opacity:.78}
-  100%{opacity:0;transform:scale(1.08)}
-}
-
 @keyframes jack-sweep-trail-draw{
   0%{opacity:0;transform:rotate(-4deg) scaleX(.02)}
   15%{opacity:.88}
@@ -2469,7 +2449,6 @@
   .burned-jack-vignette,
   .burned-jack-heat-ring,
   .burned-jack-embers,
-  .jack-sweep-felt-glow,
   .jack-sweep-trail,
   .jack-sweep-loose-cards
 ){display:none!important}
