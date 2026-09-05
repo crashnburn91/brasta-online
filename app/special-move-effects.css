@@ -1211,26 +1211,30 @@
 .power-pair-badges .brasta-combo-medallion{animation-delay:1270ms}
 
 /* Jack Sweep — a compact pickup built from the real board-card geometry. The
-   transparent viewport layer survives the render that clears the loose row,
-   while the captured cards continue moving from their exact screen positions. */
+   small fixed layer survives the render that clears the loose row, while the
+   captured cards continue moving from their exact screen positions. */
 .event.jack-sweep-event{
-  --jack-sweep-y:50vh;
+  --jack-sweep-frame-left:0px;
+  --jack-sweep-frame-top:0px;
+  --jack-sweep-frame-width:100px;
+  --jack-sweep-frame-height:100px;
+  --jack-sweep-y:50%;
   --jack-sweep-start-x:0px;
-  --jack-sweep-trail-width:100vw;
-  --jack-sweep-caption-x:50vw;
-  --jack-sweep-caption-y:calc(50vh + 60px);
+  --jack-sweep-trail-width:100%;
+  --jack-sweep-caption-x:50%;
+  --jack-sweep-caption-y:calc(50% + 60px);
   position:fixed!important;
-  inset:0!important;
+  left:var(--jack-sweep-frame-left)!important;
+  top:var(--jack-sweep-frame-top)!important;
   z-index:1100;
-  width:100vw!important;
-  height:100vh!important;
-  height:100dvh!important;
+  width:var(--jack-sweep-frame-width)!important;
+  height:var(--jack-sweep-frame-height)!important;
   min-width:0;
   max-width:none!important;
   min-height:0;
   margin:0!important;
   padding:0!important;
-  overflow:hidden;
+  overflow:visible;
   pointer-events:none;
   border:0!important;
   border-radius:0!important;
@@ -1282,7 +1286,7 @@
 }
 
 .jack-sweep-loose-card{
-  position:fixed;
+  position:absolute;
   left:var(--sweep-left);
   top:var(--sweep-top);
   width:var(--sweep-width);
@@ -1330,7 +1334,7 @@
 .jack-sweep-card-corner i{font-size:.76em;font-style:normal;margin-top:2px}
 
 .jack-sweep-jack{
-  position:fixed;
+  position:absolute;
   z-index:5;
   left:var(--jack-start-x);
   top:calc(var(--jack-start-y) - var(--jack-height) / 2);
@@ -1384,7 +1388,7 @@
 .jack-sweep-jack-corner.bottom{top:auto;right:6px;bottom:5px;left:auto;transform:rotate(180deg)}
 
 .jack-sweep-caption{
-  position:fixed;
+  position:absolute;
   z-index:6;
   left:var(--jack-sweep-caption-x);
   top:var(--jack-sweep-caption-y);
@@ -1406,8 +1410,9 @@
 .jack-sweep-combo .jack-sweep-jack{animation-duration:540ms}
 .jack-sweep-combo .jack-sweep-caption{animation-delay:300ms;animation-duration:220ms}
 
-/* Keep the old selectors out of the presentation layer. The rules above are
-   viewport-based so a responsive table resize cannot stretch the backdrop. */
+/* Keep the old selectors out of the presentation layer. The active rules above
+   use a compact bounds box so a responsive table resize cannot stretch a
+   backdrop across the match. */
 /*
   position:fixed!important;
   z-index:35;

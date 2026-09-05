@@ -177,13 +177,15 @@
     return lastMove.match(/\b(?:with|burned)\s+J\s*([♠♦♣♥])/i)?.[1] || '♠';
   }
 
-  function sweepCardMarkup(card, index, target, combo = false) {
+  function sweepCardMarkup(card, index, target, frame, combo = false) {
     const rank = String(card.rank || '•');
     const suit = suitSymbol(card.suit);
     const width = Math.max(28, Math.min(118, safeNumber(card.width, 64)));
     const height = Math.max(42, Math.min(170, safeNumber(card.height, width * 1.43)));
     const left = safeNumber(card.left, window.innerWidth * 0.5 - width * 0.5);
     const top = safeNumber(card.top, window.innerHeight * 0.57 - height * 0.5);
+    const frameLeft = safeNumber(frame?.left);
+    const frameTop = safeNumber(frame?.top);
     const centerX = left + width / 2;
     const centerY = top + height / 2;
     const dx = safeNumber(target?.x, centerX + 130) - centerX;
@@ -194,7 +196,7 @@
       ? Math.min(110, 26 + index * 14)
       : Math.min(240, 40 + index * 32);
     const red = isRedSuit(suit) ? ' red' : '';
-    return `<span class="jack-sweep-loose-card${red}" style="--sweep-left:${Math.round(left)}px;--sweep-top:${Math.round(top)}px;--sweep-width:${Math.round(width)}px;--sweep-height:${Math.round(height)}px;--sweep-card-r:${rotation}deg;--sweep-to-x:${Math.round(dx)}px;--sweep-to-y:${Math.round(dy)}px;--sweep-to-r:${targetRotation}deg;--sweep-delay:${delay}ms"><span class="jack-sweep-card-corner">${escapeHtml(rank)}<i>${suit}</i></span><strong>${suit}</strong></span>`;
+    return `<span class="jack-sweep-loose-card${red}" style="--sweep-left:${Math.round(left - frameLeft)}px;--sweep-top:${Math.round(top - frameTop)}px;--sweep-width:${Math.round(width)}px;--sweep-height:${Math.round(height)}px;--sweep-card-r:${rotation}deg;--sweep-to-x:${Math.round(dx)}px;--sweep-to-y:${Math.round(dy)}px;--sweep-to-r:${targetRotation}deg;--sweep-delay:${delay}ms"><span class="jack-sweep-card-corner">${escapeHtml(rank)}<i>${suit}</i></span><strong>${suit}</strong></span>`;
   }
 
   function sweepGeometry(snapshot, count) {
@@ -212,33 +214,49 @@
     const minLeft = Math.min(...cards.map((card) => safeNumber(card.left)));
     const maxRight = Math.max(...cards.map((card) => safeNumber(card.left) + safeNumber(card.width, 64)));
     const centerY = cards.reduce((sum, card) => sum + safeNumber(card.top) + safeNumber(card.height, 92) / 2, 0) / cards.length;
-    const targetX = Math.min(window.innerWidth + 120, maxRight + Math.max(90, window.innerWidth * 0.08));
+    const targetX = maxRight + Math.max(90, Math.min(140, window.innerWidth * 0.08));
     const targetY = centerY + Math.min(26, Math.max(10, window.innerHeight * 0.03));
     const jackWidth = Math.max(46, Math.min(76, Math.round((cards.reduce((sum, card) => sum + safeNumber(card.width, 64), 0) / cards.length) * 0.82)));
     const jackHeight = Math.round(jackWidth * 1.43);
+    const jack = {
+      startX: minLeft - jackWidth * 1.35,
+      endX: targetX + jackWidth * 0.55,
+      y: centerY,
+      width: jackWidth,
+      height: jackHeight,
+    };
+    const minTop = Math.min(...cards.map((card) => safeNumber(card.top)));
+    const maxBottom = Math.max(...cards.map((card) => safeNumber(card.top) + safeNumber(card.height, 92)));
+    const framePadding = Math.max(18, Math.min(30, window.innerWidth * 0.025));
+    const frameLeft = Math.floor(Math.min(minLeft, jack.startX) - framePadding);
+    const frameTop = Math.floor(Math.min(minTop, jack.y - jack.height / 2) - framePadding);
+    const frameRight = Math.ceil(Math.max(maxRight, jack.endX + jack.width, targetX) + framePadding);
+    const frameBottom = Math.ceil(Math.max(maxBottom, jack.y + jack.height / 2) + framePadding);
     return {
       cards,
       target: { x: targetX, y: targetY },
-      jack: {
-        startX: minLeft - jackWidth * 1.35,
-        endX: targetX + jackWidth * 0.55,
-        y: centerY,
-        width: jackWidth,
-        height: jackHeight,
+      jack,
+      frame: {
+        left: frameLeft,
+        top: frameTop,
+        width: Math.max(1, frameRight - frameLeft),
+        height: Math.max(1, frameBottom - frameTop),
       },
     };
   }
 
   function sweepLooseCardsMarkup(snapshot, count, geometry, combo = false) {
-    return geometry.cards.map((card, index) => sweepCardMarkup(card, index, geometry.target, combo)).join('');
+    return geometry.cards.map((card, index) => sweepCardMarkup(card, index, geometry.target, geometry.frame, combo)).join('');
   }
 
   function jackSweepMarkup(suit, geometry) {
     const symbol = suitSymbol(suit);
     const red = isRedSuit(symbol) ? ' red' : '';
     const { startX, endX, y, width, height } = geometry.jack;
+    const frameLeft = safeNumber(geometry.frame?.left);
+    const frameTop = safeNumber(geometry.frame?.top);
     const dx = endX - startX;
-    return `<span class="jack-sweep-jack${red}" style="--jack-start-x:${Math.round(startX)}px;--jack-end-x:${Math.round(endX)}px;--jack-start-y:${Math.round(y)}px;--jack-width:${Math.round(width)}px;--jack-height:${Math.round(height)}px;--jack-dx:${Math.round(dx)}px;--jack-mid-dx:${Math.round(dx * 0.42)}px;--jack-near-dx:${Math.round(dx * 0.78)}px" aria-hidden="true"><span class="jack-sweep-jack-corner">J<i>${symbol}</i></span><strong>J</strong><i>${symbol}</i><span class="jack-sweep-jack-corner bottom">J<i>${symbol}</i></span></span>`;
+    return `<span class="jack-sweep-jack${red}" style="--jack-start-x:${Math.round(startX - frameLeft)}px;--jack-end-x:${Math.round(endX - frameLeft)}px;--jack-start-y:${Math.round(y - frameTop)}px;--jack-width:${Math.round(width)}px;--jack-height:${Math.round(height)}px;--jack-dx:${Math.round(dx)}px;--jack-mid-dx:${Math.round(dx * 0.42)}px;--jack-near-dx:${Math.round(dx * 0.78)}px" aria-hidden="true"><span class="jack-sweep-jack-corner">J<i>${symbol}</i></span><strong>J</strong><i>${symbol}</i><span class="jack-sweep-jack-corner bottom">J<i>${symbol}</i></span></span>`;
   }
 
   function burnedJackSuit() {
@@ -626,11 +644,15 @@
     if (team === 'A') layer.classList.add('team-event-blue');
     if (team === 'B') layer.classList.add('team-event-red');
     if (hasReward) layer.classList.add('jack-sweep-combo');
-    layer.style.setProperty('--jack-sweep-y', `${Math.round(geometry.jack.y)}px`);
-    layer.style.setProperty('--jack-sweep-start-x', `${Math.round(geometry.jack.startX)}px`);
+    layer.style.setProperty('--jack-sweep-frame-left', `${Math.round(geometry.frame.left)}px`);
+    layer.style.setProperty('--jack-sweep-frame-top', `${Math.round(geometry.frame.top)}px`);
+    layer.style.setProperty('--jack-sweep-frame-width', `${Math.round(geometry.frame.width)}px`);
+    layer.style.setProperty('--jack-sweep-frame-height', `${Math.round(geometry.frame.height)}px`);
+    layer.style.setProperty('--jack-sweep-y', `${Math.round(geometry.jack.y - geometry.frame.top)}px`);
+    layer.style.setProperty('--jack-sweep-start-x', `${Math.round(geometry.jack.startX - geometry.frame.left)}px`);
     layer.style.setProperty('--jack-sweep-trail-width', `${Math.round(geometry.jack.endX - geometry.jack.startX)}px`);
-    layer.style.setProperty('--jack-sweep-caption-x', `${Math.round((geometry.jack.startX + geometry.jack.endX) / 2)}px`);
-    layer.style.setProperty('--jack-sweep-caption-y', `${Math.round(geometry.jack.y + geometry.jack.height * 0.7)}px`);
+    layer.style.setProperty('--jack-sweep-caption-x', `${Math.round((geometry.jack.startX + geometry.jack.endX) / 2 - geometry.frame.left)}px`);
+    layer.style.setProperty('--jack-sweep-caption-y', `${Math.round(geometry.jack.y + geometry.jack.height * 0.7 - geometry.frame.top)}px`);
     layer.dataset.eventSeq = banner.dataset.eventSeq || '';
     layer.dataset.eventKey = banner.dataset.eventKey || '';
     layer.dataset.eventText = rawText;
