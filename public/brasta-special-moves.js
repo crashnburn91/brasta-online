@@ -290,6 +290,117 @@
     return badges.join('');
   }
 
+  function brastaComboKind(bonuses) {
+    const labels = new Set((bonuses || []).map((bonus) => bonus.label));
+    if (labels.has('BIG 2') && labels.has('BIG 10')) return 'power-pair';
+    if (labels.has('BIG 2')) return 'big2';
+    if (labels.has('BIG 10')) return 'big10';
+    return '';
+  }
+
+  function brastaComboKindForEvent(text) {
+    return brastaComboKind(matchingBonuses(text));
+  }
+
+  function brastaComboCopyMarkup(kind, actor, totalPoints, rawText) {
+    const variants = {
+      big2: {
+        player: 'big2-crush-player',
+        title: 'big2-crush-title',
+        titleMarkup: '<span>BRASTA</span><i>+</i><em>BIG 2</em>',
+        score: 'big2-crush-score',
+        footer: 'big2-crush-footer',
+        badges: 'big2-combo-badges',
+        footerLabel: 'BRASTA CLUB CRUSH',
+      },
+      big10: {
+        player: 'big10-strike-player',
+        title: 'big10-strike-title',
+        titleMarkup: '<span>BRASTA</span><i>+</i><em>BIG 10</em>',
+        score: 'big10-strike-score',
+        footer: 'big10-strike-footer',
+        badges: 'big10-combo-badges',
+        footerLabel: 'BRASTA DIAMOND STRIKE',
+      },
+      'power-pair': {
+        player: 'power-pair-player',
+        title: 'power-pair-title',
+        titleMarkup: '<span>BRASTA</span><i>+</i><span>POWER PAIR</span>',
+        score: 'power-pair-score',
+        footer: 'power-pair-footer',
+        badges: 'power-pair-badges',
+        footerLabel: 'BRASTA POWER PAIR',
+      },
+    };
+    const variant = variants[kind];
+    if (!variant) return '';
+    return `
+      <span class="brasta-combo-stamp">BRASTA! <i>♠♦♣♥</i></span>
+      <span class="${variant.player}">${escapeHtml(actor)}</span>
+      <strong class="${variant.title} brasta-combo-title">${variant.titleMarkup}</strong>
+      <span class="${variant.score}"><b>+${totalPoints}</b><small>POINTS</small></span>
+      <span class="${variant.footer}">
+        <small>${variant.footerLabel}</small>
+        <span class="${variant.badges}">${bonusBadgesMarkup(rawText, 'BRASTA')}</span>
+      </span>`;
+  }
+
+  function brastaComboMarkup(kind, actor, totalPoints, rawText) {
+    const copy = brastaComboCopyMarkup(kind, actor, totalPoints, rawText);
+    if (!copy) return '';
+    if (kind === 'big2') return `
+      <span class="big2-crush-vignette" aria-hidden="true"></span>
+      <span class="big2-crush-floor" aria-hidden="true"></span>
+      <span class="big2-club-pincers" aria-hidden="true"><i>♣</i><i>♣</i></span>
+      <span class="big2-club-shockwave" aria-hidden="true">♣</span>
+      <span class="big2-club-burst" aria-hidden="true">${clubBurstMarkup()}</span>
+      <span class="big2-crush-lockup brasta-combo-lockup" aria-hidden="true">
+        <span class="big2-prize-card">
+          <span class="big2-card-corner">2<i>♣</i></span>
+          <strong>♣</strong>
+          <span class="big2-card-corner bottom">2<i>♣</i></span>
+        </span>
+        <span class="big2-crush-copy brasta-combo-copy">${copy}
+        </span>
+      </span>`;
+    if (kind === 'big10') return `
+      <span class="big10-strike-vignette" aria-hidden="true"></span>
+      <span class="big10-strike-beam" aria-hidden="true"></span>
+      <span class="big10-card-rush" aria-hidden="true">${big10FlightMarkup()}</span>
+      <span class="big10-diamond-shockwave" aria-hidden="true"></span>
+      <span class="big10-diamond-burst" aria-hidden="true">${diamondBurstMarkup()}</span>
+      <span class="big10-strike-lockup brasta-combo-lockup" aria-hidden="true">
+        <span class="big10-prize-card">
+          <span class="big10-card-corner">10<i>♦</i></span>
+          <strong>♦</strong>
+          <span class="big10-card-corner bottom">10<i>♦</i></span>
+        </span>
+        <span class="big10-strike-copy brasta-combo-copy">${copy}
+        </span>
+      </span>`;
+    return `
+      <span class="power-pair-vignette" aria-hidden="true"></span>
+      <span class="power-pair-club-impact" aria-hidden="true">♣</span>
+      <span class="power-pair-diamond-cut" aria-hidden="true"></span>
+      <span class="power-pair-shockwave" aria-hidden="true"></span>
+      <span class="big2-club-burst power-pair-clubs" aria-hidden="true">${clubBurstMarkup()}</span>
+      <span class="big10-diamond-burst power-pair-diamonds" aria-hidden="true">${diamondBurstMarkup()}</span>
+      <span class="power-pair-lockup brasta-combo-lockup" aria-hidden="true">
+        <span class="power-pair-cards">
+          <span class="power-pair-card power-pair-card-big2">
+            <span class="power-pair-card-corner">2<i>♣</i></span><strong>♣</strong>
+            <span class="power-pair-card-corner bottom">2<i>♣</i></span>
+          </span>
+          <span class="power-pair-card power-pair-card-big10">
+            <span class="power-pair-card-corner">10<i>♦</i></span><strong>♦</strong>
+            <span class="power-pair-card-corner bottom">10<i>♦</i></span>
+          </span>
+        </span>
+        <span class="power-pair-copy brasta-combo-copy">${copy}
+        </span>
+      </span>`;
+  }
+
   function scheduleHaptic(banner) {
     const kind = banner.dataset.specialMoveKind || 'special';
     const key = `${banner.dataset.eventSeq || ''}|${kind}`;
@@ -349,37 +460,54 @@
     const team = eventTeam(banner, rawText);
     const actor = eventActor(team);
     const bonuses = matchingBonuses(rawText);
+    const comboKind = brastaComboKind(bonuses);
     const totalPoints = eventPoints(rawText);
     const scoringLabel = naturalList(bonuses.map((bonus) => bonus.name));
 
     const layer = document.createElement('div');
     layer.className = 'event brasta-crest-event brasta-effect-layer';
+    if (comboKind) layer.classList.add(`brasta-combo-${comboKind}`);
+    if (comboKind === 'big2') layer.classList.add('big2-crush-event');
+    if (comboKind === 'big10') layer.classList.add('big10-strike-event');
+    if (comboKind === 'power-pair') layer.classList.add('power-pair-event');
     if (team === 'A') layer.classList.add('team-event-blue');
     if (team === 'B') layer.classList.add('team-event-red');
     layer.dataset.eventSeq = banner.dataset.eventSeq || '';
     layer.dataset.eventText = rawText;
     layer.dataset.brastaRawEvent = rawText;
-    layer.dataset.specialMoveKind = 'brasta';
+    layer.dataset.specialMoveKind = comboKind || 'brasta';
     if (team) layer.dataset.eventTeam = team;
     layer.dataset.brastaTotalPoints = String(totalPoints);
+    layer.dataset.brastaCombo = comboKind;
     layer.setAttribute('role', 'status');
     layer.setAttribute('aria-live', 'polite');
     layer.setAttribute('aria-label', `${actor} scored ${totalPoints} points from ${scoringLabel}.`);
-    layer.innerHTML = `
-      <span class="brasta-crest-vignette" aria-hidden="true"></span>
-      <span class="brasta-card-storm" aria-hidden="true">${flightCardsMarkup()}</span>
-      <span class="brasta-crest-shockwave" aria-hidden="true"></span>
-      <span class="brasta-suit-burst" aria-hidden="true">${burstMarkup()}</span>
-      <span class="brasta-crest-seal" aria-hidden="true">
-        <span class="brasta-crest-player">${escapeHtml(actor)}</span>
-        <span class="brasta-crest-suits"><i>♠</i><i>♦</i><i>♣</i><i>♥</i></span>
-        <strong class="brasta-crest-title">BRASTA<em>!</em></strong>
-        <span class="brasta-crest-score"><b>+${totalPoints}</b><small>POINTS</small></span>
-        <span class="brasta-crest-footer">${bonusBadgesMarkup(rawText, 'BRASTA') || '<span>Board cleared</span>'}</span>
-      </span>`;
+    layer.innerHTML = comboKind
+      ? brastaComboMarkup(comboKind, actor, totalPoints, rawText)
+      : `
+        <span class="brasta-crest-vignette" aria-hidden="true"></span>
+        <span class="brasta-card-storm" aria-hidden="true">${flightCardsMarkup()}</span>
+        <span class="brasta-crest-shockwave" aria-hidden="true"></span>
+        <span class="brasta-suit-burst" aria-hidden="true">${burstMarkup()}</span>
+        <span class="brasta-crest-seal" aria-hidden="true">
+          <span class="brasta-crest-player">${escapeHtml(actor)}</span>
+          <span class="brasta-crest-suits"><i>♠</i><i>♦</i><i>♣</i><i>♥</i></span>
+          <strong class="brasta-crest-title">BRASTA<em>!</em></strong>
+          <span class="brasta-crest-score"><b>+${totalPoints}</b><small>POINTS</small></span>
+          <span class="brasta-crest-footer">${bonusBadgesMarkup(rawText, 'BRASTA') || '<span>Board cleared</span>'}</span>
+        </span>`;
 
     rememberEffect(key);
-    effectQueue.push({ key, layer });
+    if (!comboKind) {
+      effectQueue.push({ key, layer });
+    } else {
+      const showMs = comboKind === 'big2'
+        ? BIG2_SHOW_MS
+        : comboKind === 'big10'
+          ? BIG10_SHOW_MS
+          : POWER_PAIR_SHOW_MS;
+      effectQueue.push({ key, layer, showMs });
+    }
     playNextEffect();
   }
 
@@ -752,6 +880,7 @@
     refresh: queueSync,
     pointsForEvent: eventPoints,
     effectKindsForEvent,
+    brastaComboKindForEvent,
     motionPreference: () => document.documentElement.dataset.brastaMotion === 'reduced' ? 'reduced' : 'full',
     captureJackSweep: rememberJackSweepSnapshot,
   });

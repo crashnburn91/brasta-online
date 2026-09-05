@@ -42,7 +42,7 @@ assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does no
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.7.0'), 'Special-move effect controller is not cache-busted for the compact Jack Sweep update');
+assert(layout.includes('/brasta-special-moves.js?v=0.8.0'), 'Special-move effect controller is not cache-busted for the Brasta combination update');
 assert(layout.includes('/match-menu.js?v=0.13.0'), 'Motion preference control is not cache-busted by the root layout');
 assert(layout.includes('/lobby-polish.js?v=13'), 'Special-move sound update is not cache-busted by the root layout');
 assert(layout.includes('/tutorial.js?v=0.6.0'), 'Special-card tutorial steps are not cache-busted by the root layout');
@@ -70,6 +70,10 @@ assert(specialMoves.includes('sweepGeometry(snapshot, count)'), 'Jack Sweep does
 assert(specialMoves.includes('event?.detail'), 'Jack Sweep does not accept a pre-render snapshot event');
 assert(specialMoves.includes('captureJackSweep: rememberJackSweepSnapshot'), 'Jack Sweep snapshot capture is not exposed to the game client');
 assert(specialMoves.includes('const renderedKinds = new Set'), 'Special-move effects still allow only one renderer per event');
+assert(specialMoves.includes('function brastaComboKind(bonuses)'), 'Brasta combo planner is missing');
+assert(specialMoves.includes('function brastaComboMarkup(kind, actor, totalPoints, rawText)'), 'Brasta combo scene markup is missing');
+assert(specialMoves.includes('layer.dataset.brastaCombo = comboKind'), 'Brasta combo metadata is missing from the presentation layer');
+assert(specialMoves.includes('brastaComboKindForEvent,'), 'Brasta combo planner is not exposed for regression checks');
 assert(specialMoves.includes('document.body.append(next.layer)'), 'Brasta animation does not mount in the persistent presentation layer');
 assert(specialMoves.includes('effectQueue.push({ key, layer })'), 'Special-move effects cannot queue without interrupting one another');
 assert(specialMoves.includes('big2: [36, 45, 68]'), 'Big 2 Club Crush is missing its double-impact haptic');
@@ -105,6 +109,10 @@ assert(specialMoveStyles.includes('.event.big2-crush-event'), 'Big 2 Club Crush 
 assert(specialMoveStyles.includes('@keyframes big2-prize-card-drop'), 'Big 2 card-drop impact animation is missing');
 assert(specialMoveStyles.includes('.event.power-pair-event'), 'Big 2 + Big 10 Power Pair styling is missing');
 assert(specialMoveStyles.includes('@keyframes power-pair-card-diamond'), 'Power Pair diamond-cut animation is missing');
+assert(specialMoveStyles.includes('.brasta-combo-stamp'), 'Brasta combo identity stamp styling is missing');
+assert(specialMoveStyles.includes('.brasta-combo-big2'), 'Brasta + Big 2 styling is missing');
+assert(specialMoveStyles.includes('.brasta-combo-big10'), 'Brasta + Big 10 styling is missing');
+assert(specialMoveStyles.includes('.brasta-combo-power-pair'), 'Brasta + Power Pair styling is missing');
 assert(specialMoveStyles.includes('.event.burned-jack-event'), 'Burned Jack Brand the Jack styling is missing');
 assert(specialMoveStyles.includes('@keyframes burned-jack-brand-slam'), 'Burned Jack branding impact animation is missing');
 assert(specialMoveStyles.includes('.event.jack-sweep-event'), 'Jack Sweep table-local styling is missing');
@@ -157,6 +165,8 @@ const pointsForEvent = specialMoveSandbox.window.BrastaSpecialMoves?.pointsForEv
 assert.equal(typeof pointsForEvent, 'function', 'Brasta point-total helper is unavailable');
 const effectKindsForEvent = specialMoveSandbox.window.BrastaSpecialMoves?.effectKindsForEvent;
 assert.equal(typeof effectKindsForEvent, 'function', 'Special-move effect planner is unavailable');
+const brastaComboKindForEvent = specialMoveSandbox.window.BrastaSpecialMoves?.brastaComboKindForEvent;
+assert.equal(typeof brastaComboKindForEvent, 'function', 'Brasta combo planner is unavailable');
 assert.equal(JSON.stringify(effectKindsForEvent('Jack sweep — Alex • BIG 10! Team A')), JSON.stringify(['jack-sweep', 'big10']), 'Jack + Big 10 does not queue both effects');
 assert.equal(JSON.stringify(effectKindsForEvent('Jack sweep — Alex • BIG 2! Team A')), JSON.stringify(['jack-sweep', 'big2']), 'Jack + Big 2 does not queue both effects');
 assert.equal(JSON.stringify(effectKindsForEvent('Jack sweep — Alex • BIG 2 + BIG 10! Team A')), JSON.stringify(['jack-sweep', 'power-pair']), 'Jack + Power Pair does not queue the fused reward effect');
@@ -168,5 +178,9 @@ assert.equal(pointsForEvent('BRASTA! Team A +10 • BIG 2! Team A'), 20, 'Brasta
 assert.equal(pointsForEvent('BRASTA! Team A +10 • BIG 10! Team A'), 20, 'Brasta + Big 10 does not show +20');
 assert.equal(pointsForEvent('BRASTA! Team A +10 • LAST PICKUP! Team A +10'), 20, 'Brasta + Last Pickup does not show +20');
 assert.equal(pointsForEvent('BRASTA! Team A +10 • BIG 2 + BIG 10! Team A • LAST PICKUP! Team A +10'), 40, 'The full Brasta combination does not show +40');
+assert.equal(brastaComboKindForEvent('BRASTA! Team A +10 • BIG 2! Team A'), 'big2', 'Brasta + Big 2 does not use Club Crush');
+assert.equal(brastaComboKindForEvent('BRASTA! Team A +10 • BIG 10! Team A'), 'big10', 'Brasta + Big 10 does not use Diamond Strike');
+assert.equal(brastaComboKindForEvent('BRASTA! Team A +10 • BIG 2 + BIG 10! Team A'), 'power-pair', 'Brasta + Big 2 + Big 10 does not use Power Pair');
+assert.equal(brastaComboKindForEvent('BRASTA! Team A +10 • LAST PICKUP! Team A +10'), '', 'Brasta + Last Pickup should keep the crest scene');
 
 console.log('Match-control, header, chat, score-display, and special-move regression checks passed');

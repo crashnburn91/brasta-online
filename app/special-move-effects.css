@@ -1210,6 +1210,64 @@
 .power-pair-footer{animation-delay:1170ms}
 .power-pair-badges .brasta-combo-medallion{animation-delay:1270ms}
 
+/* Brasta combinations keep the authored special-move scenes, then layer a
+   small Brasta identity stamp and shared score treatment over the lockup. */
+.brasta-combo-copy{position:relative}
+
+.brasta-combo-stamp{
+  position:absolute;
+  top:12px;
+  right:20px;
+  z-index:2;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 7px;
+  border:1px solid #d8b75eaa;
+  border-radius:999px;
+  background:#d8b75e1c;
+  color:#f4df91;
+  font:900 8px/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.12em;
+  opacity:0;
+  transform:translateY(-8px) scale(.86);
+  animation:brasta-combo-stamp-in 380ms 720ms cubic-bezier(.16,.9,.24,1.2) both;
+}
+
+.brasta-combo-stamp i{
+  color:#c9b77a;
+  font:700 9px/1 Georgia,"Times New Roman",serif;
+  font-style:normal;
+  letter-spacing:.05em;
+}
+
+.brasta-combo-title{
+  display:flex;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:8px;
+  white-space:nowrap;
+}
+
+.brasta-combo-title span:first-child{color:#f4df91}
+.brasta-combo-title>i{color:#fff2bd;font:.72em/1 Georgia,"Times New Roman",serif;font-style:normal}
+.brasta-combo-title em{font-style:normal}
+
+.brasta-combo-big2 .brasta-combo-title em{
+  color:#75c99e;
+  text-shadow:0 3px 0 #174c35,0 0 22px #42bd8166;
+}
+
+.brasta-combo-big10 .brasta-combo-title em{
+  color:#ee5965;
+  text-shadow:0 3px 0 #751c28,0 0 20px #e5435066;
+}
+
+.brasta-combo-power-pair .brasta-combo-title span:last-child{color:#ef5965}
+.brasta-combo-big2 .brasta-combo-stamp{border-color:#73bd9a99}
+.brasta-combo-big10 .brasta-combo-stamp{border-color:#e0646d99}
+.brasta-combo-power-pair .brasta-combo-stamp{border-color:#d8b75eaa}
+
 /* Jack Sweep — a compact pickup built from the real board-card geometry. The
    small fixed layer survives the render that clears the loose row, while the
    captured cards continue moving from their exact screen positions. */
@@ -1960,6 +2018,12 @@
   to{opacity:1;transform:translateY(0) scale(1)}
 }
 
+@keyframes brasta-combo-stamp-in{
+  from{opacity:0;transform:translateY(-8px) scale(.86)}
+  70%{opacity:1;transform:translateY(1px) scale(1.04)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
 @keyframes brasta-suit-particle{
   0%{opacity:0;transform:translate(-50%,-50%) scale(.35) rotate(0)}
   18%{opacity:1}
@@ -2307,6 +2371,12 @@
   .power-pair-title{margin-top:5px;font-size:clamp(25px,8vw,34px)}
   .power-pair-score{margin-top:7px;transform-origin:center}
   .power-pair-footer{margin-top:5px;justify-content:center}
+  .brasta-combo-title{gap:5px;white-space:normal}
+  .brasta-combo-stamp{top:10px;right:14px;font-size:7px}
+  .brasta-combo-stamp i{font-size:8px}
+  .brasta-combo-big2 .brasta-combo-title,
+  .brasta-combo-big10 .brasta-combo-title{font-size:clamp(32px,9.5vw,48px)}
+  .brasta-combo-power-pair .brasta-combo-title{font-size:clamp(24px,7vw,34px)}
   .burned-jack-lockup{width:calc(100% - 20px);gap:13px}
   .burned-jack-card-stage{width:clamp(88px,26vw,104px)}
   .burned-jack-card{border-radius:9px}
@@ -2410,6 +2480,7 @@
   .brasta-crest-score,
   .brasta-crest-footer,
   .brasta-combo-medallion,
+  .brasta-combo-stamp,
   .big10-prize-card,
   .big10-strike-copy,
   .big10-strike-score,
