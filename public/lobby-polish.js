@@ -227,7 +227,10 @@
       { frequency: 783.99, offset: 0.09, duration: 0.12, gain: 0.085 },
       { frequency: 587.33, offset: 0.18, duration: 0.2, gain: 0.08 },
     ], delay);
-    return 0.4;
+    // Keep the next reward cue in step with the compact Jack Sweep handoff.
+    // The visual layer fades after 620ms for Big 2/Big 10 combinations, so
+    // the following sound should not land before the reward animation starts.
+    return 0.72;
   }
 
   function playBurnedJackSound(delay = 0) {

@@ -8,10 +8,12 @@
   const BIG10_SHOW_MS = 1900;
   const POWER_PAIR_SHOW_MS = 2200;
   const BURNED_JACK_SHOW_MS = 2000;
-  const JACK_SWEEP_SHOW_MS = 1400;
+  const JACK_SWEEP_SHOW_MS = 900;
+  const JACK_SWEEP_COMBO_SHOW_MS = 620;
   const EFFECT_FADE_MS = 220;
   const hapticKeys = new Set();
   const presentedKeys = new Set();
+  const jackSweepSnapshots = new Map();
   const effectQueue = [];
   let activeEffect = null;
   let syncQueued = false;
@@ -107,36 +109,136 @@
     ).join('');
   }
 
-  const sweepCardPositions = [
-    [-126, -6, -10, 148, -22, -14, 0], [-78, 13, 6, 166, 12, 12, 42],
-    [-25, -10, -3, 184, -34, -2, 84], [28, 12, 8, 202, 18, 14, 126],
-    [78, -7, -7, 216, -28, -17, 168], [126, 15, 11, 232, 10, 18, 210],
-  ];
-  const sweepCardFaces = [
+  const fallbackSweepCardFaces = [
     ['4', '♣'], ['7', '♦'], ['3', '♥'], ['A', '♠'], ['5', '♣'], ['8', '♦'],
   ];
+
+  const suitSymbols = Object.freeze({
+    clubs: '♣',
+    diamonds: '♦',
+    hearts: '♥',
+    spades: '♠',
+  });
+
+  function suitSymbol(suit) {
+    return suitSymbols[suit] || String(suit || '♠');
+  }
+
+  function isRedSuit(suit) {
+    const symbol = suitSymbol(suit);
+    return symbol === '♦' || symbol === '♥';
+  }
+
+  function safeNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function rememberJackSweepSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return;
+    const key = String(snapshot.key || '');
+    const cards = Array.isArray(snapshot.cards) ? snapshot.cards : [];
+    if (!key || !cards.length) return;
+    jackSweepSnapshots.set(key, { ...snapshot, cards: cards.slice(0, 24) });
+    while (jackSweepSnapshots.size > 8) jackSweepSnapshots.delete(jackSweepSnapshots.keys().next().value);
+  }
+
+  function ingestPendingJackSweepSnapshots() {
+    const pending = Array.isArray(window.__BRASTA_JACK_SWEEP_SNAPSHOTS__)
+      ? window.__BRASTA_JACK_SWEEP_SNAPSHOTS__
+      : [];
+    pending.forEach(rememberJackSweepSnapshot);
+    window.__BRASTA_JACK_SWEEP_SNAPSHOTS__ = [];
+  }
+
+  function snapshotForBanner(banner) {
+    const key = String(banner.dataset.eventKey || '');
+    if (key && jackSweepSnapshots.has(key)) {
+      const snapshot = jackSweepSnapshots.get(key);
+      jackSweepSnapshots.delete(key);
+      return snapshot;
+    }
+    return null;
+  }
 
   function sweptLooseCount() {
     const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
       .replace(/\s+/g, ' ')
       .trim();
     const count = Number(lastMove.match(/\bswept\s+(\d+)\s+loose\s+cards?/i)?.[1] || 0);
-    return Math.min(6, Math.max(1, count || 3));
+    return Math.min(24, Math.max(1, count || 3));
   }
 
-  function sweptJackSuit() {
+  function sweptJackSuit(snapshot = null) {
+    if (snapshot?.jackSuit) return suitSymbol(snapshot.jackSuit);
     const lastMove = String(document.querySelector('.last-move-banner b')?.textContent || '')
       .replace(/\s+/g, ' ')
       .trim();
     return lastMove.match(/\b(?:with|burned)\s+J\s*([♠♦♣♥])/i)?.[1] || '♠';
   }
 
-  function sweepLooseCardsMarkup(count) {
-    return sweepCardPositions.slice(0, count).map(([x, y, rotation, toX, toY, toRotation, delay], index) => {
-      const [rank, suit] = sweepCardFaces[index % sweepCardFaces.length];
-      const red = suit === '♦' || suit === '♥' ? ' red' : '';
-      return `<span class="jack-sweep-loose-card${red}" style="--sweep-card-x:${x}px;--sweep-card-y:${y}px;--sweep-card-r:${rotation}deg;--sweep-to-x:${toX}px;--sweep-to-y:${toY}px;--sweep-to-r:${toRotation}deg;--sweep-delay:${delay}ms"><span class="jack-sweep-card-corner">${rank}<i>${suit}</i></span><strong>${suit}</strong></span>`;
-    }).join('');
+  function sweepCardMarkup(card, index, target, combo = false) {
+    const rank = String(card.rank || '•');
+    const suit = suitSymbol(card.suit);
+    const width = Math.max(28, Math.min(118, safeNumber(card.width, 64)));
+    const height = Math.max(42, Math.min(170, safeNumber(card.height, width * 1.43)));
+    const left = safeNumber(card.left, window.innerWidth * 0.5 - width * 0.5);
+    const top = safeNumber(card.top, window.innerHeight * 0.57 - height * 0.5);
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
+    const dx = safeNumber(target?.x, centerX + 130) - centerX;
+    const dy = safeNumber(target?.y, centerY) - centerY;
+    const rotation = (index % 2 ? 1 : -1) * (4 + (index % 3) * 2);
+    const targetRotation = rotation + (index % 2 ? 8 : -9);
+    const delay = combo
+      ? Math.min(110, 26 + index * 14)
+      : Math.min(240, 40 + index * 32);
+    const red = isRedSuit(suit) ? ' red' : '';
+    return `<span class="jack-sweep-loose-card${red}" style="--sweep-left:${Math.round(left)}px;--sweep-top:${Math.round(top)}px;--sweep-width:${Math.round(width)}px;--sweep-height:${Math.round(height)}px;--sweep-card-r:${rotation}deg;--sweep-to-x:${Math.round(dx)}px;--sweep-to-y:${Math.round(dy)}px;--sweep-to-r:${targetRotation}deg;--sweep-delay:${delay}ms"><span class="jack-sweep-card-corner">${escapeHtml(rank)}<i>${suit}</i></span><strong>${suit}</strong></span>`;
+  }
+
+  function sweepGeometry(snapshot, count) {
+    const sourceCards = Array.isArray(snapshot?.cards) && snapshot.cards.length
+      ? snapshot.cards.slice(0, 24)
+      : Array.from({ length: count }, (_, index) => {
+        const [rank, suit] = fallbackSweepCardFaces[index % fallbackSweepCardFaces.length];
+        const width = window.innerWidth <= 600 ? 38 : 52;
+        const height = Math.round(width * 1.43);
+        const centerX = window.innerWidth * 0.5 + (index - Math.max(0, count - 1) / 2) * (width + 8);
+        const centerY = window.innerHeight * 0.56 + (index % 2 ? 6 : -6);
+        return { rank, suit, left: centerX - width / 2, top: centerY - height / 2, width, height };
+      });
+    const cards = sourceCards.slice().sort((a, b) => safeNumber(a.left) - safeNumber(b.left) || safeNumber(a.top) - safeNumber(b.top));
+    const minLeft = Math.min(...cards.map((card) => safeNumber(card.left)));
+    const maxRight = Math.max(...cards.map((card) => safeNumber(card.left) + safeNumber(card.width, 64)));
+    const centerY = cards.reduce((sum, card) => sum + safeNumber(card.top) + safeNumber(card.height, 92) / 2, 0) / cards.length;
+    const targetX = Math.min(window.innerWidth + 120, maxRight + Math.max(90, window.innerWidth * 0.08));
+    const targetY = centerY + Math.min(26, Math.max(10, window.innerHeight * 0.03));
+    const jackWidth = Math.max(46, Math.min(76, Math.round((cards.reduce((sum, card) => sum + safeNumber(card.width, 64), 0) / cards.length) * 0.82)));
+    const jackHeight = Math.round(jackWidth * 1.43);
+    return {
+      cards,
+      target: { x: targetX, y: targetY },
+      jack: {
+        startX: minLeft - jackWidth * 1.35,
+        endX: targetX + jackWidth * 0.55,
+        y: centerY,
+        width: jackWidth,
+        height: jackHeight,
+      },
+    };
+  }
+
+  function sweepLooseCardsMarkup(snapshot, count, geometry, combo = false) {
+    return geometry.cards.map((card, index) => sweepCardMarkup(card, index, geometry.target, combo)).join('');
+  }
+
+  function jackSweepMarkup(suit, geometry) {
+    const symbol = suitSymbol(suit);
+    const red = isRedSuit(symbol) ? ' red' : '';
+    const { startX, endX, y, width, height } = geometry.jack;
+    const dx = endX - startX;
+    return `<span class="jack-sweep-jack${red}" style="--jack-start-x:${Math.round(startX)}px;--jack-end-x:${Math.round(endX)}px;--jack-start-y:${Math.round(y)}px;--jack-width:${Math.round(width)}px;--jack-height:${Math.round(height)}px;--jack-dx:${Math.round(dx)}px;--jack-mid-dx:${Math.round(dx * 0.42)}px;--jack-near-dx:${Math.round(dx * 0.78)}px" aria-hidden="true"><span class="jack-sweep-jack-corner">J<i>${symbol}</i></span><strong>J</strong><i>${symbol}</i><span class="jack-sweep-jack-corner bottom">J<i>${symbol}</i></span></span>`;
   }
 
   function burnedJackSuit() {
@@ -503,8 +605,6 @@
 
   function decorateJackSweep(banner, rawText) {
     if (banner.dataset.brastaEffectKind === 'jack-sweep') return;
-    const table = banner.closest('.table');
-    if (!table) return;
 
     const key = `${banner.dataset.eventSeq || ''}|jack-sweep`;
     banner.dataset.brastaEffectKind = 'jack-sweep';
@@ -515,22 +615,24 @@
 
     const team = eventTeam(banner, rawText);
     const actor = eventActor(team);
-    const suit = sweptJackSuit();
-    const count = sweptLooseCount();
-    const redSuit = suit === '♦' || suit === '♥';
-    const frame = table.getBoundingClientRect();
+    const snapshot = snapshotForBanner(banner);
+    const count = snapshot?.cards?.length || sweptLooseCount();
+    const suit = sweptJackSuit(snapshot);
+    const geometry = sweepGeometry(snapshot, count);
+    const hasReward = /\bBIG\s*(?:2|10)\b/i.test(rawText);
 
     const layer = document.createElement('div');
     layer.className = 'event jack-sweep-event brasta-effect-layer';
     if (team === 'A') layer.classList.add('team-event-blue');
     if (team === 'B') layer.classList.add('team-event-red');
-    if (frame.width > 0 && frame.height > 0) {
-      layer.style.setProperty('--jack-sweep-left', `${Math.round(frame.left)}px`);
-      layer.style.setProperty('--jack-sweep-top', `${Math.round(frame.top)}px`);
-      layer.style.setProperty('--jack-sweep-width', `${Math.round(frame.width)}px`);
-      layer.style.setProperty('--jack-sweep-height', `${Math.round(frame.height)}px`);
-    }
+    if (hasReward) layer.classList.add('jack-sweep-combo');
+    layer.style.setProperty('--jack-sweep-y', `${Math.round(geometry.jack.y)}px`);
+    layer.style.setProperty('--jack-sweep-start-x', `${Math.round(geometry.jack.startX)}px`);
+    layer.style.setProperty('--jack-sweep-trail-width', `${Math.round(geometry.jack.endX - geometry.jack.startX)}px`);
+    layer.style.setProperty('--jack-sweep-caption-x', `${Math.round((geometry.jack.startX + geometry.jack.endX) / 2)}px`);
+    layer.style.setProperty('--jack-sweep-caption-y', `${Math.round(geometry.jack.y + geometry.jack.height * 0.7)}px`);
     layer.dataset.eventSeq = banner.dataset.eventSeq || '';
+    layer.dataset.eventKey = banner.dataset.eventKey || '';
     layer.dataset.eventText = rawText;
     layer.dataset.brastaRawEvent = rawText;
     layer.dataset.specialMoveKind = 'jack-sweep';
@@ -542,17 +644,12 @@
     layer.innerHTML = `
       <span class="jack-sweep-felt-glow" aria-hidden="true"></span>
       <span class="jack-sweep-trail" aria-hidden="true"></span>
-      <span class="jack-sweep-loose-cards" aria-hidden="true">${sweepLooseCardsMarkup(count)}</span>
-      <span class="jack-sweep-jack${redSuit ? ' red' : ''}" aria-hidden="true">
-        <span class="jack-sweep-jack-corner">J<i>${suit}</i></span>
-        <strong>J</strong>
-        <i>${suit}</i>
-        <span class="jack-sweep-jack-corner bottom">J<i>${suit}</i></span>
-      </span>
+      <span class="jack-sweep-loose-cards" aria-hidden="true">${sweepLooseCardsMarkup(snapshot, count, geometry, hasReward)}</span>
+      ${jackSweepMarkup(suit, geometry)}
       <span class="jack-sweep-caption" aria-hidden="true">JACK SWEEP</span>`;
 
     rememberEffect(key);
-    effectQueue.push({ key, layer, showMs: JACK_SWEEP_SHOW_MS });
+    effectQueue.push({ key, layer, showMs: hasReward ? JACK_SWEEP_COMBO_SHOW_MS : JACK_SWEEP_SHOW_MS });
     playNextEffect();
   }
 
@@ -596,8 +693,17 @@
       .trim();
     if (!rawText) return;
 
-    const renderer = renderers.find((candidate) => candidate.matches(rawText));
-    if (renderer) renderer.decorate(banner, rawText);
+    const renderedKinds = new Set(String(banner.dataset.brastaEffectKinds || '').split(',').filter(Boolean));
+    renderers.forEach((renderer) => {
+      if (!renderer.matches(rawText) || renderedKinds.has(renderer.name)) return;
+      renderer.decorate(banner, rawText);
+      renderedKinds.add(renderer.name);
+    });
+    if (renderedKinds.size) banner.dataset.brastaEffectKinds = [...renderedKinds].join(',');
+  }
+
+  function effectKindsForEvent(text) {
+    return renderers.filter((renderer) => renderer.matches(String(text || ''))).map((renderer) => renderer.name);
   }
 
   function sync() {
@@ -612,6 +718,10 @@
   }
 
   function boot() {
+    ingestPendingJackSweepSnapshots();
+    window.addEventListener('brasta-jack-sweep-snapshot', (event) => {
+      rememberJackSweepSnapshot(event?.detail);
+    });
     new MutationObserver(queueSync).observe(document.body, { childList: true, subtree: true });
     queueSync();
   }
@@ -619,7 +729,9 @@
   window.BrastaSpecialMoves = Object.freeze({
     refresh: queueSync,
     pointsForEvent: eventPoints,
+    effectKindsForEvent,
     motionPreference: () => document.documentElement.dataset.brastaMotion === 'reduced' ? 'reduced' : 'full',
+    captureJackSweep: rememberJackSweepSnapshot,
   });
 
   if (document.readyState === 'loading') {

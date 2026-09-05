@@ -46,6 +46,58 @@ namespace BrastaApp {
     directActions = [];
   }
 
+  function eventIdentityFor(gameState: Brasta.GameState | null): string {
+    return gameState?.event
+      ? `${gameState.round}|${gameState.event}|${gameState.lastMove || ''}`
+      : '';
+  }
+
+  function queueJackSweepSnapshot(previousState: Brasta.GameState | null, nextState: Brasta.GameState | null): void {
+    if (!previousState || !nextState || !/\bJack sweep\b/i.test(nextState.event || '')) return;
+
+    const sweptIds = previousState.loose.filter((id) => !nextState.loose.includes(id));
+    if (!sweptIds.length) return;
+
+    const looseRow = document.querySelector<HTMLElement>('.table .loose-row');
+    if (!looseRow) return;
+    const renderedCards = Array.from(looseRow.querySelectorAll<HTMLElement>('[data-card-id]'));
+    const renderedById = new Map(renderedCards.map((card) => [card.dataset.cardId || '', card]));
+    const cards = sweptIds.map((id, index) => {
+      const source = renderedById.get(id) || renderedCards[index];
+      const card = previousState.cards[id];
+      if (!source || !card) return null;
+      const rect = source.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      return {
+        id,
+        rank: card.rank,
+        suit: card.suit,
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+    }).filter((card): card is NonNullable<typeof card> => Boolean(card));
+
+    if (!cards.length) return;
+    const snapshot = {
+      key: eventIdentityFor(nextState),
+      eventText: nextState.event || '',
+      jackSuit: nextState.lastMove?.match(/\bwith\s+J\s*([♠♦♣♥])/i)?.[1] || '',
+      cards,
+    };
+    const win = window as any;
+    const pending = Array.isArray(win.__BRASTA_JACK_SWEEP_SNAPSHOTS__)
+      ? win.__BRASTA_JACK_SWEEP_SNAPSHOTS__
+      : [];
+    pending.push(snapshot);
+    while (pending.length > 8) pending.shift();
+    win.__BRASTA_JACK_SWEEP_SNAPSHOTS__ = pending;
+    try {
+      window.dispatchEvent(new CustomEvent('brasta-jack-sweep-snapshot', { detail: snapshot }));
+    } catch {}
+  }
+
   function suitClass(card: Brasta.Card): string { return card.suit === 'diamonds' || card.suit === 'hearts' ? 'red' : 'black'; }
 
   function cardHtml(id: string, opts: { clickable?: boolean; selected?: boolean; tiny?: boolean } = {}): string {
@@ -56,7 +108,7 @@ namespace BrastaApp {
     if (opts.clickable) classes.push('clickable');
     if (opts.selected) classes.push('selected');
     if (opts.tiny) classes.push('tiny');
-    return `<button class="${classes.join(' ')}" ${opts.clickable ? `data-card="${escapeAttr(id)}"` : 'disabled'} aria-label="${escapeAttr(Brasta.cardLabel(c))}">
+    return `<button class="${classes.join(' ')}" data-card-id="${escapeAttr(id)}" ${opts.clickable ? `data-card="${escapeAttr(id)}"` : 'disabled'} aria-label="${escapeAttr(Brasta.cardLabel(c))}">
       <span class="corner">${c.rank}</span><span class="suit">${Brasta.cardLabel(c).slice(-1)}</span>
     </button>`;
   }
@@ -429,7 +481,7 @@ namespace BrastaApp {
     const teamClass = team === 'A' ? ' team-event-blue' : team === 'B' ? ' team-event-red' : '';
     const placementClass = placement === 'round' ? ' round-event-overlay' : ' board-event-overlay';
 
-    return `<div class="event transient-event-overlay${placementClass}${teamClass}" data-event-seq="${eventRenderSequence}" data-event-text="${escapeAttr(text)}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
+    return `<div class="event transient-event-overlay${placementClass}${teamClass}" data-event-seq="${eventRenderSequence}" data-event-key="${escapeAttr(eventIdentityFor(state))}" data-event-text="${escapeAttr(text)}"${team ? ` data-event-team="${team}"` : ''}>${escapeHtml(event)}</div>`;
   }
 
   function currentRoomIsRanked(): boolean {
@@ -476,9 +528,7 @@ namespace BrastaApp {
     // transient event banners look "new" on every render, so a dismissed Jack
     // Sweep/Brasta/Big-card banner would immediately come back until the next
     // turn. Track the actual event + move instead.
-    const eventIdentity = state.event
-      ? `${state.round}|${state.event}|${state.lastMove || ''}`
-      : '';
+    const eventIdentity = eventIdentityFor(state);
     if (eventIdentity !== lastEventIdentity) {
       lastEventIdentity = eventIdentity;
       if (eventIdentity) eventRenderSequence += 1;
@@ -534,6 +584,7 @@ namespace BrastaApp {
     if (context === 'online') { if (!onlineClient || !onlineSession || onlineSession.role !== 'player' || !onlineSession.seat) return; commandPending = true; lastError = null; onlineClient.command({ ...command, seat: onlineSession.seat } as Brasta.Command); render(); return; }
     const result = Brasta.applyCommand(state, command);
     if (!result.ok) { lastError = result.error || 'Move rejected.'; render(); return; }
+    queueJackSweepSnapshot(state, result.state);
     state = result.state; resetInteraction(); if (context === 'local' && (state.phase === 'play' || state.phase === 'openingChoice')) covered = true; render();
   }
 
@@ -656,7 +707,30 @@ namespace BrastaApp {
         emitChatContext();
         render();
       }
-      else if (event.type === 'room') { onlineRoom = event.update.room; state = event.update.state; context = 'online'; if (!onlineSession) { const role = event.update.you.role; const stored = BrastaNet.loadSession(event.update.room.code, role); if (stored) onlineSession = stored; } if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) { onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat }; BrastaNet.saveSession(onlineSession); } if (event.update.room.revision !== lastOnlineRevision) { lastOnlineRevision = event.update.room.revision; resetInteraction(); } commandPending = false; lastError = null; emitChatContext(); render(); }
+      else if (event.type === 'room') {
+        const nextState = event.update.state;
+        queueJackSweepSnapshot(state, nextState);
+        onlineRoom = event.update.room;
+        state = nextState;
+        context = 'online';
+        if (!onlineSession) {
+          const role = event.update.you.role;
+          const stored = BrastaNet.loadSession(event.update.room.code, role);
+          if (stored) onlineSession = stored;
+        }
+        if (onlineSession && onlineSession.role === event.update.you.role && (onlineSession.role === 'spectator' || onlineSession.seat === event.update.you.seat)) {
+          onlineSession = { ...onlineSession, name: event.update.you.name, isHost: event.update.you.isHost, role: event.update.you.role, seat: event.update.you.seat };
+          BrastaNet.saveSession(onlineSession);
+        }
+        if (event.update.room.revision !== lastOnlineRevision) {
+          lastOnlineRevision = event.update.room.revision;
+          resetInteraction();
+        }
+        commandPending = false;
+        lastError = null;
+        emitChatContext();
+        render();
+      }
       else if (event.type === 'roomClosed') {
         const code = onlineRoom?.code || onlineSession?.code || '';
         const role = onlineSession?.role || 'player';
@@ -793,7 +867,7 @@ namespace BrastaApp {
       renderLanding();
     });
   }
-  function labExecute(command: Brasta.Command): void { if (!state) return; const result = Brasta.applyCommand(state, command); if (result.ok) { state = result.state; resetInteraction(); state.message = 'Rules Lab'; state.phase = 'play'; state.currentSeat = 1; } else lastError = result.error || 'Rejected'; renderLab(); }
+  function labExecute(command: Brasta.Command): void { if (!state) return; const result = Brasta.applyCommand(state, command); if (result.ok) { queueJackSweepSnapshot(state, result.state); state = result.state; resetInteraction(); state.message = 'Rules Lab'; state.phase = 'play'; state.currentSeat = 1; } else lastError = result.error || 'Rejected'; renderLab(); }
   function labSubmitPending(): void {
     if (!state || !selectedCard || !pendingAction) return;
     if (pendingAction === 'CAPTURE_LOOSE') labExecute({ type: 'CAPTURE_LOOSE', seat: 1, cardId: selectedCard, looseIds: [...selectedLoose] });

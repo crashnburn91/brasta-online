@@ -42,9 +42,9 @@ assert(server.includes("msg.type === 'ABANDON_MATCH'"), 'Realtime server does no
 assert(server.includes('if (rankedMeta(room))'), 'Realtime server does not protect ranked matches from private abandonment');
 
 assert(layout.includes("import './special-move-effects.css'"), 'Brasta effect styles are not bundled by the root layout');
-assert(layout.includes('/brasta-special-moves.js?v=0.5.0'), 'Special-move effect controller is not loaded by the root layout');
+assert(layout.includes('/brasta-special-moves.js?v=0.6.0'), 'Special-move effect controller is not cache-busted for the board snapshot update');
 assert(layout.includes('/match-menu.js?v=0.13.0'), 'Motion preference control is not cache-busted by the root layout');
-assert(layout.includes('/lobby-polish.js?v=12'), 'Special-move sound update is not cache-busted by the root layout');
+assert(layout.includes('/lobby-polish.js?v=13'), 'Special-move sound update is not cache-busted by the root layout');
 assert(layout.includes('/tutorial.js?v=0.6.0'), 'Special-card tutorial steps are not cache-busted by the root layout');
 assert(specialMoves.includes("name: 'brasta'"), 'Special-move registry is missing the Brasta renderer');
 assert(specialMoves.includes("name: 'big2'"), 'Special-move registry is missing the Big 2 renderer');
@@ -65,8 +65,11 @@ assert(specialMoves.includes("layer.className = 'event big10-strike-event brasta
 assert(specialMoves.includes("layer.className = 'event power-pair-event brasta-effect-layer'"), 'Power Pair animation is still coupled to the replaceable game render tree');
 assert(specialMoves.includes("layer.className = 'event burned-jack-event brasta-effect-layer'"), 'Burned Jack animation is still coupled to the replaceable game render tree');
 assert(specialMoves.includes("layer.className = 'event jack-sweep-event brasta-effect-layer'"), 'Jack Sweep animation is still coupled to the replaceable game render tree');
-assert(specialMoves.includes("const table = banner.closest('.table')"), 'Jack Sweep does not anchor itself to the active table');
-assert(specialMoves.includes('table.getBoundingClientRect()'), 'Jack Sweep does not capture the table frame before rerender');
+assert(specialMoves.includes('const jackSweepSnapshots = new Map()'), 'Jack Sweep does not retain board snapshots across rerenders');
+assert(specialMoves.includes('sweepGeometry(snapshot, count)'), 'Jack Sweep does not derive its path from captured card geometry');
+assert(specialMoves.includes('event?.detail'), 'Jack Sweep does not accept a pre-render snapshot event');
+assert(specialMoves.includes('captureJackSweep: rememberJackSweepSnapshot'), 'Jack Sweep snapshot capture is not exposed to the game client');
+assert(specialMoves.includes('const renderedKinds = new Set'), 'Special-move effects still allow only one renderer per event');
 assert(specialMoves.includes('document.body.append(next.layer)'), 'Brasta animation does not mount in the persistent presentation layer');
 assert(specialMoves.includes('effectQueue.push({ key, layer })'), 'Special-move effects cannot queue without interrupting one another');
 assert(specialMoves.includes('big2: [36, 45, 68]'), 'Big 2 Club Crush is missing its double-impact haptic');
@@ -77,7 +80,17 @@ assert(specialMoves.includes('showMs: BIG2_SHOW_MS'), 'Big 2 effect does not use
 assert(specialMoves.includes('showMs: BIG10_SHOW_MS'), 'Big 10 effect does not use its shorter presentation window');
 assert(specialMoves.includes('showMs: POWER_PAIR_SHOW_MS'), 'Power Pair effect does not use its combined presentation window');
 assert(specialMoves.includes('showMs: BURNED_JACK_SHOW_MS'), 'Burned Jack effect does not use its penalty presentation window');
-assert(specialMoves.includes('showMs: JACK_SWEEP_SHOW_MS'), 'Jack Sweep effect does not use its compact presentation window');
+assert(specialMoves.includes('showMs: hasReward ? JACK_SWEEP_COMBO_SHOW_MS : JACK_SWEEP_SHOW_MS'), 'Jack Sweep effect does not use its compact presentation windows');
+assert(specialMoves.includes('JACK_SWEEP_COMBO_SHOW_MS'), 'Jack Sweep combo does not use its shorter handoff window');
+assert(app.includes('queueJackSweepSnapshot(state, result.state)'), 'Local Jack Sweep does not capture cards before the state swap');
+assert(app.includes('queueJackSweepSnapshot(state, nextState)'), 'Online Jack Sweep does not capture cards before the state swap');
+assert(app.includes('data-card-id="${escapeAttr(id)}"'), 'Board cards do not expose stable ids for animation snapshots');
+assert(app.includes('data-event-key="${escapeAttr(eventIdentityFor(state))}"'), 'Event banners do not expose their transition key to the effect queue');
+assert(specialMoveStyles.includes('inset:0!important'), 'Jack Sweep does not use a viewport presentation layer');
+assert(specialMoveStyles.includes('--sweep-left'), 'Jack Sweep does not position cards from captured viewport coordinates');
+assert(specialMoveStyles.includes('--jack-start-x'), 'Jack Sweep does not position the Jack from captured viewport coordinates');
+assert(specialMoveStyles.includes('.jack-sweep-combo'), 'Jack Sweep combo handoff styling is missing');
+assert(!specialMoveStyles.includes('--jack-sweep-left'), 'Jack Sweep still depends on a captured table rectangle');
 assert(specialMoveStyles.includes('position:fixed!important'), 'Brasta crest is not anchored to the viewport takeover layer');
 assert(specialMoveStyles.includes('height:100dvh!important'), 'Brasta crest does not cover the dynamic viewport');
 assert(specialMoveStyles.includes('pointer-events:none'), 'Brasta crest blocks the next player from taking their turn');
@@ -91,7 +104,7 @@ assert(specialMoveStyles.includes('.event.burned-jack-event'), 'Burned Jack Bran
 assert(specialMoveStyles.includes('@keyframes burned-jack-brand-slam'), 'Burned Jack branding impact animation is missing');
 assert(specialMoveStyles.includes('.event.jack-sweep-event'), 'Jack Sweep table-local styling is missing');
 assert(specialMoveStyles.includes('@keyframes jack-sweep-jack-run'), 'Jack Sweep card run animation is missing');
-assert(specialMoveStyles.includes('--jack-sweep-left:0px'), 'Jack Sweep is missing its table-frame positioning variables');
+assert(specialMoveStyles.includes('--jack-sweep-y:50vh'), 'Jack Sweep is missing its viewport path positioning variables');
 assert(specialMoveStyles.includes(':root[data-brasta-motion="reduced"]'), 'Brasta effect is missing its explicit reduced-motion presentation');
 assert(!specialMoveStyles.includes('@media(prefers-reduced-motion:reduce)'), 'System reduced-motion still forces special moves directly to their final frame');
 assert(specialMoves.includes("dataset.brastaMotion === 'reduced'"), 'Special-move haptics do not honor the explicit Brasta motion preference');
@@ -137,6 +150,11 @@ const specialMoveSandbox = {
 runInNewContext(specialMoves, specialMoveSandbox);
 const pointsForEvent = specialMoveSandbox.window.BrastaSpecialMoves?.pointsForEvent;
 assert.equal(typeof pointsForEvent, 'function', 'Brasta point-total helper is unavailable');
+const effectKindsForEvent = specialMoveSandbox.window.BrastaSpecialMoves?.effectKindsForEvent;
+assert.equal(typeof effectKindsForEvent, 'function', 'Special-move effect planner is unavailable');
+assert.equal(JSON.stringify(effectKindsForEvent('Jack sweep — Alex • BIG 10! Team A')), JSON.stringify(['jack-sweep', 'big10']), 'Jack + Big 10 does not queue both effects');
+assert.equal(JSON.stringify(effectKindsForEvent('Jack sweep — Alex • BIG 2! Team A')), JSON.stringify(['jack-sweep', 'big2']), 'Jack + Big 2 does not queue both effects');
+assert.equal(JSON.stringify(effectKindsForEvent('Jack sweep — Alex • BIG 2 + BIG 10! Team A')), JSON.stringify(['jack-sweep', 'power-pair']), 'Jack + Power Pair does not queue the fused reward effect');
 assert.equal(pointsForEvent('BRASTA! Team A +10'), 10, 'A standalone Brasta does not show +10');
 assert.equal(pointsForEvent('BIG 2! Team A'), 10, 'A standalone Big 2 does not show +10');
 assert.equal(pointsForEvent('BIG 10! Team A'), 10, 'A standalone Big 10 does not show +10');

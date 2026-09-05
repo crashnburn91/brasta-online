@@ -1210,18 +1210,209 @@
 .power-pair-footer{animation-delay:1170ms}
 .power-pair-badges .brasta-combo-medallion{animation-delay:1270ms}
 
-/* Jack Sweep — a compact table-local pickup. The table frame is captured by
-   the controller before the board re-renders, so this survives the next turn
-   replacing the game DOM without dimming or blocking the rest of the match. */
+/* Jack Sweep — a compact pickup built from the real board-card geometry. The
+   transparent viewport layer survives the render that clears the loose row,
+   while the captured cards continue moving from their exact screen positions. */
 .event.jack-sweep-event{
-  --jack-sweep-left:0px;
-  --jack-sweep-top:0px;
-  --jack-sweep-width:100vw;
-  --jack-sweep-height:100vh;
+  --jack-sweep-y:50vh;
+  --jack-sweep-start-x:0px;
+  --jack-sweep-trail-width:100vw;
+  --jack-sweep-caption-x:50vw;
+  --jack-sweep-caption-y:calc(50vh + 60px);
+  position:fixed!important;
+  inset:0!important;
+  z-index:1100;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-width:0;
+  max-width:none!important;
+  min-height:0;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden;
+  pointer-events:none;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#f6e3ad!important;
+  box-shadow:none!important;
+  text-transform:none;
+  transform:none!important;
+  isolation:isolate;
+  animation:jack-sweep-overlay-in 100ms ease-out both;
+}
+
+.event.jack-sweep-event.brasta-event-leaving{opacity:0}
+
+.jack-sweep-felt-glow{
+  position:absolute;
+  z-index:0;
+  left:0;
+  top:calc(var(--jack-sweep-y) - 92px);
+  width:100%;
+  height:184px;
+  background:radial-gradient(ellipse at var(--jack-sweep-caption-x) 50%,#d8b75e25 0,#6d522012 32%,transparent 72%);
+  opacity:0;
+  filter:blur(5px);
+  animation:jack-sweep-glow 760ms 20ms ease-out both;
+}
+
+.jack-sweep-trail{
+  position:absolute;
+  z-index:2;
+  left:var(--jack-sweep-start-x);
+  top:var(--jack-sweep-y);
+  width:var(--jack-sweep-trail-width);
+  height:5px;
+  border-top:2px solid #f3d47c;
+  border-radius:50%;
+  box-shadow:0 0 8px #ffe8a8,0 0 18px #d8b75e88;
+  opacity:0;
+  transform:rotate(-4deg) scaleX(.02);
+  transform-origin:left center;
+  animation:jack-sweep-trail-draw 720ms 30ms cubic-bezier(.18,.78,.2,1) both;
+}
+
+.jack-sweep-loose-cards{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+}
+
+.jack-sweep-loose-card{
+  position:fixed;
+  left:var(--sweep-left);
+  top:var(--sweep-top);
+  width:var(--sweep-width);
+  height:var(--sweep-height);
+  display:grid;
+  place-items:center;
+  border:1px solid #d8c99d;
+  border-radius:clamp(4px,calc(var(--sweep-width) * .08),9px);
+  background:linear-gradient(145deg,#fffdf0,#d9d0ba);
+  color:#171513;
+  box-shadow:0 8px 14px #0009,0 0 0 2px #fff3;
+  opacity:0;
+  transform:translateY(8px) rotate(var(--sweep-card-r)) scale(.92);
+  transform-origin:center;
+  animation:jack-sweep-loose-card 620ms calc(50ms + var(--sweep-delay)) cubic-bezier(.18,.72,.2,1) both;
+}
+
+.jack-sweep-loose-card.red{color:#a32831}
+
+.jack-sweep-loose-card::after{
+  content:"";
+  position:absolute;
+  inset:3px;
+  border:1px solid #806f4733;
+  border-radius:4px;
+}
+
+.jack-sweep-loose-card strong{
+  position:relative;
+  z-index:1;
+  font:700 clamp(18px,calc(var(--sweep-width) * .56),34px)/1 Georgia,"Times New Roman",serif;
+}
+
+.jack-sweep-card-corner{
+  position:absolute;
+  z-index:2;
+  top:5px;
+  left:6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font:800 clamp(8px,calc(var(--sweep-width) * .16),13px)/.85 Georgia,"Times New Roman",serif;
+}
+
+.jack-sweep-card-corner i{font-size:.76em;font-style:normal;margin-top:2px}
+
+.jack-sweep-jack{
+  position:fixed;
+  z-index:5;
+  left:var(--jack-start-x);
+  top:calc(var(--jack-start-y) - var(--jack-height) / 2);
+  width:var(--jack-width);
+  height:var(--jack-height);
+  display:grid;
+  place-items:center;
+  border:2px solid #e2ca82;
+  border-radius:clamp(6px,calc(var(--jack-width) * .12),10px);
+  background:radial-gradient(circle at 50% 44%,#fffdf3 0,#ebe1ca 70%,#c4b388 100%);
+  color:#151311;
+  box-shadow:0 15px 25px #000b,0 0 0 3px #352516,0 0 18px #f0cc6e88;
+  opacity:0;
+  transform:translateX(0) rotate(-16deg) scale(.86);
+  transform-origin:center;
+  animation:jack-sweep-jack-run 820ms 40ms cubic-bezier(.2,.68,.18,1) both;
+}
+
+.jack-sweep-jack.red{color:#a5222d}
+
+.jack-sweep-jack>strong{
+  position:relative;
+  z-index:1;
+  margin-top:-10%;
+  font:800 clamp(27px,calc(var(--jack-width) * .6),45px)/1 Georgia,"Times New Roman",serif;
+  text-shadow:0 3px 0 #9f8f6b55;
+}
+
+.jack-sweep-jack>i{
+  position:absolute;
+  z-index:1;
+  top:59%;
+  left:50%;
+  font:700 clamp(14px,calc(var(--jack-width) * .29),22px)/1 Georgia,"Times New Roman",serif;
+  font-style:normal;
+  transform:translate(-50%,-50%);
+}
+
+.jack-sweep-jack-corner{
+  position:absolute;
+  z-index:2;
+  top:5px;
+  left:6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font:800 clamp(9px,calc(var(--jack-width) * .17),13px)/.85 Georgia,"Times New Roman",serif;
+}
+
+.jack-sweep-jack-corner i{font-size:.75em;font-style:normal;margin-top:2px}
+.jack-sweep-jack-corner.bottom{top:auto;right:6px;bottom:5px;left:auto;transform:rotate(180deg)}
+
+.jack-sweep-caption{
+  position:fixed;
+  z-index:6;
+  left:var(--jack-sweep-caption-x);
+  top:var(--jack-sweep-caption-y);
+  padding:4px 8px;
+  border:1px solid #d8b75e55;
+  border-radius:999px;
+  background:#07150f99;
+  color:#eedb9f;
+  font:850 9px/1 var(--font-brasta-display),Georgia,serif;
+  letter-spacing:.17em;
+  opacity:0;
+  transform:translateX(-50%) translateY(4px);
+  animation:jack-sweep-caption-in 360ms 600ms ease-out both;
+}
+
+.jack-sweep-combo .jack-sweep-felt-glow{animation-duration:520ms}
+.jack-sweep-combo .jack-sweep-trail{animation-duration:520ms}
+.jack-sweep-combo .jack-sweep-loose-card{animation-duration:480ms}
+.jack-sweep-combo .jack-sweep-jack{animation-duration:540ms}
+.jack-sweep-combo .jack-sweep-caption{animation-delay:300ms;animation-duration:220ms}
+
+/* Keep the old selectors out of the presentation layer. The rules above are
+   viewport-based so a responsive table resize cannot stretch the backdrop. */
+/*
   position:fixed!important;
   z-index:35;
-  top:var(--jack-sweep-top)!important;
-  left:var(--jack-sweep-left)!important;
+  top:var(--legacy-jack-sweep-top)!important;
+  left:var(--legacy-jack-sweep-left)!important;
   width:var(--jack-sweep-width)!important;
   height:var(--jack-sweep-height)!important;
   min-width:0;
@@ -1397,6 +1588,7 @@
   transform:translateX(-50%) translateY(4px);
   animation:jack-sweep-caption-in 360ms 670ms ease-out both;
 }
+*/
 
 /* Burned Jack — Brand the Jack. This is a penalty beat rather than a reward:
    the card snaps down, receives a hot diagonal brand, then chars under it. */
@@ -2013,32 +2205,32 @@
 }
 
 @keyframes jack-sweep-glow{
-  0%{opacity:0;transform:scale(.7)}
-  28%{opacity:.9}
-  100%{opacity:0;transform:scale(1.12)}
+  0%{opacity:0;transform:scale(.88)}
+  32%{opacity:.78}
+  100%{opacity:0;transform:scale(1.08)}
 }
 
 @keyframes jack-sweep-trail-draw{
-  0%{opacity:0;transform:rotate(-7deg) scaleX(.02)}
+  0%{opacity:0;transform:rotate(-4deg) scaleX(.02)}
   15%{opacity:.88}
-  78%{opacity:.72;transform:rotate(-7deg) scaleX(1)}
-  100%{opacity:0;transform:rotate(-7deg) scaleX(1)}
+  78%{opacity:.72;transform:rotate(-4deg) scaleX(1)}
+  100%{opacity:0;transform:rotate(-4deg) scaleX(1)}
 }
 
 @keyframes jack-sweep-loose-card{
-  0%{opacity:0;transform:translate(-50%,-50%) translate(var(--sweep-card-x),var(--sweep-card-y)) rotate(var(--sweep-card-r)) scale(.8)}
+  0%{opacity:0;transform:translateY(8px) rotate(var(--sweep-card-r)) scale(.92)}
   14%{opacity:1}
-  39%{opacity:1;transform:translate(-50%,-50%) translate(var(--sweep-card-x),calc(var(--sweep-card-y) - 10px)) rotate(calc(var(--sweep-card-r) - 3deg)) scale(1.02)}
-  100%{opacity:0;transform:translate(-50%,-50%) translate(var(--sweep-to-x),var(--sweep-to-y)) rotate(var(--sweep-to-r)) scale(.25)}
+  39%{opacity:1;transform:translateY(-10px) rotate(calc(var(--sweep-card-r) - 4deg)) scale(1.04)}
+  100%{opacity:0;transform:translate(var(--sweep-to-x),var(--sweep-to-y)) rotate(var(--sweep-to-r)) scale(.2)}
 }
 
 @keyframes jack-sweep-jack-run{
-  0%{opacity:0;left:-9%;transform:translate(-50%,-50%) rotate(-18deg) scale(.82)}
+  0%{opacity:0;transform:translateX(0) rotate(-16deg) scale(.86)}
   13%{opacity:1}
-  42%{left:33%;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}
-  68%{left:70%;transform:translate(-50%,-50%) rotate(5deg) scale(1.02)}
-  86%{opacity:.9;left:98%;transform:translate(-50%,-50%) rotate(14deg) scale(.92)}
-  100%{opacity:0;left:114%;transform:translate(-50%,-50%) rotate(22deg) scale(.72)}
+  42%{transform:translate(var(--jack-mid-dx),-6px) rotate(-7deg) scale(1)}
+  68%{transform:translate(var(--jack-near-dx),2px) rotate(5deg) scale(1.02)}
+  86%{opacity:.9;transform:translate(calc(var(--jack-dx) - 12px),4px) rotate(14deg) scale(.92)}
+  100%{opacity:0;transform:translate(var(--jack-dx),6px) rotate(22deg) scale(.72)}
 }
 
 @keyframes jack-sweep-caption-in{
@@ -2119,12 +2311,7 @@
   .burned-jack-score{margin-top:10px}
   .burned-jack-score small{font-size:8px}
   .burned-jack-footer{margin-top:9px;font-size:8px}
-  .jack-sweep-loose-card{width:40px}
-  .jack-sweep-loose-card strong{font-size:23px}
-  .jack-sweep-jack{width:54px}
-  .jack-sweep-jack>strong{font-size:32px}
-  .jack-sweep-jack>i{font-size:16px}
-  .jack-sweep-caption{bottom:8px;font-size:8px}
+  .jack-sweep-caption{font-size:8px}
 }
 
 @media(max-height:620px){
@@ -2157,9 +2344,6 @@
   .burned-jack-title{font-size:32px}
   .burned-jack-score{margin-top:8px}
   .burned-jack-footer{margin-top:7px}
-  .jack-sweep-jack{width:48px}
-  .jack-sweep-loose-card{width:36px}
-  .jack-sweep-loose-card strong{font-size:20px}
 }
 
 /* Reduced Motion is an explicit Brasta preference instead of inheriting a
@@ -2246,9 +2430,10 @@
   animation:none;
 }
 :root[data-brasta-motion="reduced"] .jack-sweep-jack{
-  left:50%;
+  left:var(--jack-end-x);
+  top:calc(var(--jack-start-y) - var(--jack-height) / 2);
   opacity:1;
-  transform:translate(-50%,-50%) rotate(0) scale(1);
+  transform:none;
   animation:none;
 }
 :root[data-brasta-motion="reduced"] .jack-sweep-caption{transform:translateX(-50%)}
