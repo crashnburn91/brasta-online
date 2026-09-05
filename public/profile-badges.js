@@ -214,7 +214,10 @@
       });
       tabs.addEventListener('click', (event) => {
         const clicked = event.target?.closest?.('button');
-        if (clicked && clicked !== button) panel.hidden = true;
+        if (clicked && clicked !== button) {
+          panel.hidden = true;
+          button.setAttribute('aria-selected', 'false');
+        }
       });
     }
 
