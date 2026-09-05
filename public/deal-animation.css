@@ -62,9 +62,7 @@
   .deal-flight-card>span{font-size:12px}
 }
 
-@media(prefers-reduced-motion:reduce){
-  .deal-flight-card{display:none!important}
-}
+:root[data-brasta-motion="reduced"] .deal-flight-card{display:none!important}
 
 
 /* Hold the already-authoritative hand UI visually until each animated card arrives. */
@@ -92,13 +90,11 @@
   100%{opacity:1;transform:translateY(0) scale(1)}
 }
 
-@media(prefers-reduced-motion:reduce){
-  .player-card-back.deal-pending-mini-card,
-  .hand-area .hand > .card.deal-pending-hand-card{
-    opacity:1!important;
-    transform:none!important;
-    pointer-events:auto!important;
-  }
+:root[data-brasta-motion="reduced"] .player-card-back.deal-pending-mini-card,
+:root[data-brasta-motion="reduced"] .hand-area .hand > .card.deal-pending-hand-card{
+  opacity:1!important;
+  transform:none!important;
+  pointer-events:auto!important;
 }
 
 
@@ -120,10 +116,8 @@ html.brasta-dealing-opening .loose-row > .card,
 html.brasta-dealing-opening .hand-area .card{
   transition:none!important;
 }
-@media(prefers-reduced-motion:reduce){
-  .loose-row > .card.deal-pending-board-card{
-    opacity:1!important;
-    transform:none!important;
-    pointer-events:auto!important;
-  }
+:root[data-brasta-motion="reduced"] .loose-row > .card.deal-pending-board-card{
+  opacity:1!important;
+  transform:none!important;
+  pointer-events:auto!important;
 }

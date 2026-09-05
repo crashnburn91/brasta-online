@@ -133,6 +133,13 @@
     return seat.card;
   }
 
+  // Motion is an explicit Brasta preference. The special-move system uses the
+  // same flag so a browser/OS accessibility setting does not silently turn
+  // the deal sequence into a static state when Brasta motion is enabled.
+  function reducedMotionEnabled() {
+    return document.documentElement.dataset.brastaMotion === 'reduced';
+  }
+
   function finishHandReveal(run, seats, sequenceCount = CARDS_PER_HAND * Math.max(1, seats.length)) {
     window.setTimeout(() => {
       if (run !== animationRun) return;
@@ -171,7 +178,7 @@
   }
 
   function animateKeepOpening(seats, table) {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedMotionEnabled()) return;
     const deck = document.querySelector('.table-deck-stack');
     const boardCards = Array.from(document.querySelectorAll('.loose-row > .card')).slice(0, 4);
     const starter = seats.find((seat) => seat.starter);
@@ -225,7 +232,7 @@
   }
 
   function animateFullDeal(seats) {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedMotionEnabled()) return;
     const deck = document.querySelector('.table-deck-stack');
     if (!(deck instanceof HTMLElement) || !seats.length) return;
 
