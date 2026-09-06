@@ -1,0 +1,167 @@
+/* Player-card identity cleanup: larger title crests without increasing card size. */
+.player-chip.player-card .player-seat-corner,
+.player-chip.player-card .player-connection-corner,
+.player-chip.player-card .player-connection-inline{
+  display:none!important;
+}
+
+/* Offline state is already communicated by the faded player card. */
+.player-chip.player-card .player-status{
+  display:none!important;
+}
+
+/* Reclaim the seat/status gutters for the player identity. */
+.player-chip.player-card .player-card-top{
+  padding-left:0!important;
+  padding-right:42px!important;
+}
+
+/* Equipped title becomes a proper crest in the top-right instead of a tiny inline icon. */
+.player-chip.player-card .player-card-profile-badge{
+  position:absolute;
+  top:4px;
+  right:2px;
+  z-index:6;
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  margin:0!important;
+  pointer-events:none;
+}
+.player-chip.player-card .player-card-profile-badge .profile-badge-emblem.compact{
+  width:32px!important;
+  height:32px!important;
+  max-width:none!important;
+  max-height:none!important;
+}
+
+/* Dealer status belongs with the gameplay information at the bottom-right. */
+.player-chip.player-card .dealer-button{
+  top:auto!important;
+  right:7px!important;
+  bottom:7px!important;
+  transform:none!important;
+}
+
+/* The old online pill reserved a large bottom-right gutter. Give that space back to the hand fan. */
+.player-chip.player-card:not(.dealer-position) .player-card-hand{
+  padding-right:4px!important;
+}
+.player-chip.player-card.dealer-position .player-card-hand{
+  padding-right:38px!important;
+}
+
+@media(max-height:1080px), (max-width:900px){
+  .player-chip.player-card .player-card-top{
+    padding-left:0!important;
+    padding-right:38px!important;
+  }
+  .player-chip.player-card .player-card-profile-badge{
+    top:3px;
+    right:1px;
+    width:31px;
+    height:31px;
+  }
+  .player-chip.player-card .player-card-profile-badge .profile-badge-emblem.compact{
+    width:29px!important;
+    height:29px!important;
+  }
+  .player-chip.player-card .dealer-button{
+    right:6px!important;
+    bottom:6px!important;
+  }
+  .player-chip.player-card.dealer-position .player-card-hand{
+    padding-right:34px!important;
+  }
+}
+
+/* Compact 2v2: rank + title share the top-right as a single crest cluster. */
+@media(max-width:600px){
+  .players.players-2v2 .player-card-top{
+    position:relative!important;
+    min-height:27px!important;
+    padding:2px 61px 0 0!important;
+  }
+  .players.players-2v2 .player-card-identity{
+    padding-top:0!important;
+  }
+  .players.players-2v2 .player-name-line{
+    min-width:0;
+  }
+  .players.players-2v2 .player-name{
+    max-width:100%;
+  }
+
+  .players.players-2v2 .player-rank-row{
+    position:absolute!important;
+    top:1px!important;
+    right:30px!important;
+    bottom:auto!important;
+    z-index:5!important;
+    min-height:0!important;
+    margin:0!important;
+  }
+  .players.players-2v2 .player-rank-row .player-rank-badge{
+    width:28px!important;
+    height:28px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:2px!important;
+    border-radius:7px!important;
+  }
+  .players.players-2v2 .player-rank-row .rank-badge-copy{
+    display:none!important;
+  }
+  .players.players-2v2 .player-rank-row .player-card-rank .rank-emblem{
+    width:21px!important;
+    height:24px!important;
+  }
+
+  .players.players-2v2 .player-card-profile-badge{
+    top:1px!important;
+    right:1px!important;
+    width:28px!important;
+    height:28px!important;
+  }
+  .players.players-2v2 .player-card-profile-badge .profile-badge-emblem.compact{
+    width:27px!important;
+    height:27px!important;
+  }
+
+  .players.players-2v2 .player-chip.player-card .dealer-button{
+    top:auto!important;
+    right:4px!important;
+    bottom:4px!important;
+    width:22px!important;
+    height:22px!important;
+  }
+  .players.players-2v2 .player-chip.player-card:not(.dealer-position) .player-card-hand{
+    padding-right:1px!important;
+  }
+  .players.players-2v2 .player-chip.player-card.dealer-position .player-card-hand{
+    padding-right:28px!important;
+  }
+}
+
+@media(max-width:380px){
+  .players.players-2v2 .player-card-top{
+    padding-right:56px!important;
+  }
+  .players.players-2v2 .player-rank-row{
+    right:27px!important;
+  }
+  .players.players-2v2 .player-rank-row .player-rank-badge,
+  .players.players-2v2 .player-card-profile-badge{
+    width:26px!important;
+    height:26px!important;
+  }
+  .players.players-2v2 .player-rank-row .player-card-rank .rank-emblem{
+    width:19px!important;
+    height:22px!important;
+  }
+  .players.players-2v2 .player-card-profile-badge .profile-badge-emblem.compact{
+    width:25px!important;
+    height:25px!important;
+  }
+}
