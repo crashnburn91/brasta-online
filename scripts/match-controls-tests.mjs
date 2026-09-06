@@ -20,6 +20,7 @@ const pushNotifications = readFileSync('lib/push-notifications.ts', 'utf8');
 const pushRoute = readFileSync('app/api/push/route.ts', 'utf8');
 const androidManifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
 const androidActivity = readFileSync('android/app/src/main/java/app/brasta/MainActivity.java', 'utf8');
+const capacitorConfig = readFileSync('capacitor.config.ts', 'utf8');
 
 assert(/latestState\.score/.test(liveStatus), 'Live header no longer renders the completed-round match score');
 assert(liveStatus.includes('match-score-live'), 'Live header is missing the match-score group');
@@ -162,6 +163,10 @@ assert(androidActivity.includes('"x-vercel-skip-toolbar", "1"'), 'Android previe
 assert(androidActivity.includes('loadUrl(appUrl, PREVIEW_HEADERS)'), 'The initial Android preview request is missing toolbar-suppression headers');
 assert(androidActivity.includes('vercel.live/_next-live/feedback'), 'Android is missing its preview-toolbar rendering fallback');
 assert(androidBridge.includes("PushNotifications.requestPermissions()"), 'Android notification permission is not requested at runtime');
+assert(androidBridge.includes('nativePushAvailable()'), 'Android push registration is not guarded by an APK capability check');
+assert(androidBridge.includes('BrastaPush\\/1'), 'Android cannot detect whether Firebase configuration was embedded in the APK');
+assert(capacitorConfig.includes("existsSync('android/app/google-services.json')"), 'Capacitor does not derive push capability from Firebase configuration');
+assert(capacitorConfig.includes("' BrastaPush/1'"), 'Firebase-enabled APKs do not advertise native push capability');
 assert(androidBridge.includes("syncPushToken('unregister', token, secret)"), 'Android sign-out cannot revoke a notification registration without retaining credentials');
 assert(pushRoute.includes("body.action === 'unregister'"), 'Push API is missing device-capability revocation');
 assert(pushNotifications.includes("createHash('sha256')"), 'Push revocation secrets are not hashed before storage');

@@ -1,8 +1,11 @@
 /// <reference types="@capacitor/push-notifications" />
 
 import type { CapacitorConfig } from '@capacitor/cli';
+import { existsSync } from 'node:fs';
 
 const serverUrl = process.env.BRASTA_ANDROID_SERVER_URL?.trim() || 'https://brasta.app';
+const pushConfigured = process.env.BRASTA_ANDROID_PUSH_CONFIGURED === 'true'
+  || existsSync('android/app/google-services.json');
 
 const config: CapacitorConfig = {
   appId: 'app.brasta',
@@ -17,7 +20,7 @@ const config: CapacitorConfig = {
     errorPath: 'offline.html',
   },
   android: {
-    appendUserAgent: ' BrastaAndroid/0.1.0',
+    appendUserAgent: ` BrastaAndroid/0.1.0-beta.4${pushConfigured ? ' BrastaPush/1' : ''}`,
     backgroundColor: '#071b13',
     zoomEnabled: false,
   },

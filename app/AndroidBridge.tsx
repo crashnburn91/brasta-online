@@ -38,6 +38,10 @@ function accessToken(): string {
   try { return localStorage.getItem(BRASTA_AUTH_TOKEN_KEY) || ''; } catch { return ''; }
 }
 
+function nativePushAvailable(): boolean {
+  try { return /(?:^|\s)BrastaPush\/1(?:\s|$)/.test(navigator.userAgent); } catch { return false; }
+}
+
 function storedPushToken(): string {
   try { return localStorage.getItem(PUSH_TOKEN_KEY) || ''; } catch { return ''; }
 }
@@ -182,7 +186,10 @@ export default function AndroidBridge() {
     };
 
     const registerPush = async () => {
-      if (registering || !accessToken()) return;
+      // FirebaseMessaging.getInstance() throws at the native layer when an APK
+      // was built without google-services.json. The APK advertises BrastaPush/1
+      // only when that configuration was embedded during Capacitor sync.
+      if (registering || !accessToken() || !nativePushAvailable()) return;
       registering = true;
       try {
         await PushNotifications.createChannel({
