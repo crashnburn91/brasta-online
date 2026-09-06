@@ -15,3 +15,5 @@
 .profile-badge-hero-emblem .profile-badge-emblem{width:54px;height:54px}
 .profile-badge-card .profile-badge-emblem{width:46px;height:46px}
 .player-card-profile-badge .profile-badge-emblem.compact{background-size:contain!important;background-position:center!important}
+.player-profile-modal .profile-equipped-badge{gap:8px;margin-top:6px;font-size:11px}
+.player-profile-modal .profile-equipped-badge .profile-badge-emblem.compact{width:32px;height:32px;flex:0 0 32px}
