@@ -165,8 +165,10 @@ assert(androidActivity.includes('vercel.live/_next-live/feedback'), 'Android is 
 assert(androidBridge.includes("PushNotifications.requestPermissions()"), 'Android notification permission is not requested at runtime');
 assert(androidBridge.includes('nativePushAvailable()'), 'Android push registration is not guarded by an APK capability check');
 assert(androidBridge.includes('BrastaPush\\/1'), 'Android cannot detect whether Firebase configuration was embedded in the APK');
+assert(androidBridge.includes('if (pushAvailable) {'), 'Android still subscribes to native push events when Firebase is unavailable');
 assert(capacitorConfig.includes("existsSync('android/app/google-services.json')"), 'Capacitor does not derive push capability from Firebase configuration');
 assert(capacitorConfig.includes("' BrastaPush/1'"), 'Firebase-enabled APKs do not advertise native push capability');
+assert(capacitorConfig.includes("...(pushConfigured ? ['@capacitor/push-notifications'] : [])"), 'Firebase-free APKs still bundle the crashing native push plugin');
 assert(androidBridge.includes("syncPushToken('unregister', token, secret)"), 'Android sign-out cannot revoke a notification registration without retaining credentials');
 assert(pushRoute.includes("body.action === 'unregister'"), 'Push API is missing device-capability revocation');
 assert(pushNotifications.includes("createHash('sha256')"), 'Push revocation secrets are not hashed before storage');

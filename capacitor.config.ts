@@ -22,6 +22,12 @@ const config: CapacitorConfig = {
   android: {
     appendUserAgent: ` BrastaAndroid/0.1.0-beta.4${pushConfigured ? ' BrastaPush/1' : ''}`,
     backgroundColor: '#071b13',
+    includePlugins: [
+      '@capacitor/app',
+      '@capacitor/browser',
+      '@capacitor/haptics',
+      ...(pushConfigured ? ['@capacitor/push-notifications'] : []),
+    ],
     zoomEnabled: false,
   },
   plugins: {

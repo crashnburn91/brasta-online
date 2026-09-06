@@ -35,7 +35,7 @@ Add `brasta://auth/callback` under Supabase **Authentication → URL Configurati
 
 The Android client keeps the PKCE verifier and flow identifier in the app WebView, receives the one-time authorization code through the `brasta://` deep link, closes the Custom Tab, and exchanges the code inside the app's own Supabase client. Authorization codes and verifier values are never placed in app logs.
 
-Beta 4 also makes Firebase capability explicit in the APK user agent. Builds without `google-services.json` do not invoke native FCM registration after sign-in, preventing Firebase's unconfigured default-app failure from terminating the process. When Firebase configuration is included, Capacitor sync adds the `BrastaPush/1` capability marker and notification registration proceeds normally.
+Beta 4 also makes Firebase capability explicit in the APK user agent. Builds without `google-services.json` omit the native push plugin and do not invoke FCM registration after sign-in, preventing Firebase's unconfigured default-app failure from terminating the process. When Firebase configuration is included, Capacitor sync includes the plugin, adds the `BrastaPush/1` capability marker, and notification registration proceeds normally.
 
 ## Enable push notifications
 

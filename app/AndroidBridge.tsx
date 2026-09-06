@@ -175,6 +175,7 @@ export default function AndroidBridge() {
     let unregistering = false;
     let lastTapAt = 0;
     const handles: PluginListenerHandle[] = [];
+    const pushAvailable = nativePushAvailable();
 
     const keepImmersive = async () => {
       try {
@@ -189,7 +190,7 @@ export default function AndroidBridge() {
       // FirebaseMessaging.getInstance() throws at the native layer when an APK
       // was built without google-services.json. The APK advertises BrastaPush/1
       // only when that configuration was embedded during Capacitor sync.
-      if (registering || !accessToken() || !nativePushAvailable()) return;
+      if (registering || !accessToken() || !pushAvailable) return;
       registering = true;
       try {
         await PushNotifications.createChannel({
@@ -276,22 +277,24 @@ export default function AndroidBridge() {
           openRoute(route);
         }
       }));
-      handles.push(await PushNotifications.addListener('registration', ({ value }) => {
-        const token = String(value || '').trim();
-        const bearer = accessToken();
-        if (!token || !bearer) return;
-        const secret = revocationSecret();
-        rememberPushToken(token);
-        void syncPushToken('register', token, secret, bearer).catch((error) => {
-          console.warn('[Brasta Android] Could not sync push token.', error);
-        });
-      }));
-      handles.push(await PushNotifications.addListener('registrationError', (error) => {
-        console.warn('[Brasta Android] FCM registration failed.', error.error);
-      }));
-      handles.push(await PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
-        openRoute(notification.data?.route || notification.data?.path || '/');
-      }));
+      if (pushAvailable) {
+        handles.push(await PushNotifications.addListener('registration', ({ value }) => {
+          const token = String(value || '').trim();
+          const bearer = accessToken();
+          if (!token || !bearer) return;
+          const secret = revocationSecret();
+          rememberPushToken(token);
+          void syncPushToken('register', token, secret, bearer).catch((error) => {
+            console.warn('[Brasta Android] Could not sync push token.', error);
+          });
+        }));
+        handles.push(await PushNotifications.addListener('registrationError', (error) => {
+          console.warn('[Brasta Android] FCM registration failed.', error.error);
+        }));
+        handles.push(await PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
+          openRoute(notification.data?.route || notification.data?.path || '/');
+        }));
+      }
 
       const launch = await App.getLaunchUrl();
       if (launch?.url) {

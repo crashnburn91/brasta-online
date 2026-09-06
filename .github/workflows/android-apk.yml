@@ -84,8 +84,11 @@ jobs:
         run: |
           if [ -f android/app/google-services.json ]; then
             grep -q 'BrastaPush/1' android/app/src/main/assets/capacitor.config.json
+            grep -q '@capacitor/push-notifications' android/app/src/main/assets/capacitor.plugins.json
           else
             ! grep -q 'BrastaPush/1' android/app/src/main/assets/capacitor.config.json
+            ! grep -q '@capacitor/push-notifications' android/app/src/main/assets/capacitor.plugins.json
+            ! grep -q "capacitor-push-notifications" android/app/capacitor.build.gradle
           fi
 
       - name: Build debug APK
