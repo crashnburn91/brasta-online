@@ -19,6 +19,7 @@ const accountBridge = readFileSync('app/AccountBridge.tsx', 'utf8');
 const pushNotifications = readFileSync('lib/push-notifications.ts', 'utf8');
 const pushRoute = readFileSync('app/api/push/route.ts', 'utf8');
 const androidManifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
+const androidActivity = readFileSync('android/app/src/main/java/app/brasta/MainActivity.java', 'utf8');
 
 assert(/latestState\.score/.test(liveStatus), 'Live header no longer renders the completed-round match score');
 assert(liveStatus.includes('match-score-live'), 'Live header is missing the match-score group');
@@ -154,6 +155,12 @@ assert(androidBridge.includes('Haptics.impact'), 'Android bridge is missing tact
 assert(accountBridge.includes('skipBrowserRedirect: native'), 'Native social authentication can still open inside the Android WebView');
 assert(accountBridge.includes('await Browser.open'), 'Native social authentication does not use an Android Custom Tab');
 assert(androidBridge.includes('Browser.close()'), 'Native authentication callbacks do not close the Android Custom Tab');
+assert(androidBridge.includes('BRASTA_NATIVE_AUTH_CALLBACK_EVENT'), 'Native authentication callbacks are not delivered to the app session');
+assert(accountBridge.includes('flowId ? { flowId } : undefined'), 'Native authentication does not select its matching PKCE verifier');
+assert(accountBridge.includes('exchangeCodeForSession'), 'Native authentication does not exchange the callback code inside the app');
+assert(androidActivity.includes('"x-vercel-skip-toolbar", "1"'), 'Android preview requests no longer suppress the Vercel toolbar');
+assert(androidActivity.includes('loadUrl(appUrl, PREVIEW_HEADERS)'), 'The initial Android preview request is missing toolbar-suppression headers');
+assert(androidActivity.includes('vercel.live/_next-live/feedback'), 'Android is missing its preview-toolbar rendering fallback');
 assert(androidBridge.includes("PushNotifications.requestPermissions()"), 'Android notification permission is not requested at runtime');
 assert(androidBridge.includes("syncPushToken('unregister', token, secret)"), 'Android sign-out cannot revoke a notification registration without retaining credentials');
 assert(pushRoute.includes("body.action === 'unregister'"), 'Push API is missing device-capability revocation');

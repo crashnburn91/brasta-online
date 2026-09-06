@@ -8,8 +8,11 @@ import FriendsBridge from './FriendsBridge';
 import ResumeMatchBridge from './ResumeMatchBridge';
 import TournamentBridge from './TournamentBridge';
 import {
+  BRASTA_AUTH_FLOW_ID_KEY,
   BRASTA_AUTH_RETURN_KEY,
   BRASTA_AUTH_TOKEN_KEY,
+  BRASTA_NATIVE_AUTH_CALLBACK_EVENT,
+  BRASTA_NATIVE_AUTH_CALLBACK_KEY,
   getSupabaseBrowserClient,
   isSupabaseConfigured,
 } from '../lib/supabase-browser';
@@ -53,6 +56,22 @@ function authRedirectUrl(): string {
   return isNativeAndroid() ? 'brasta://auth/callback' : `${location.origin}/auth/callback`;
 }
 
+function rememberAuthFlowId(flowId: string | null | undefined): void {
+  try {
+    if (flowId) sessionStorage.setItem(BRASTA_AUTH_FLOW_ID_KEY, flowId);
+    else sessionStorage.removeItem(BRASTA_AUTH_FLOW_ID_KEY);
+  } catch {}
+}
+
+function callbackParameters(url: URL): URLSearchParams {
+  const parameters = new URLSearchParams(url.search);
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ''));
+  fragment.forEach((value, key) => {
+    if (!parameters.has(key)) parameters.set(key, value);
+  });
+  return parameters;
+}
+
 function suggestedDisplayName(user: User): string {
   const meta = user.user_metadata || {};
   return String(meta.full_name || meta.name || meta.user_name || '').trim().slice(0, 24);
@@ -84,6 +103,7 @@ export default function AccountBridge() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
   const privateClaimInFlight = useRef<Set<string>>(new Set());
+  const nativeAuthInFlight = useRef('');
 
   const refreshIdentities = useCallback(async () => {
     if (!supabase) return;
@@ -171,6 +191,54 @@ export default function AccountBridge() {
     }));
   }, [refreshExperience, refreshIdentities, supabase]);
 
+  const finishNativeAuth = useCallback(async (callbackUrl: string) => {
+    if (!supabase || !isNativeAndroid() || nativeAuthInFlight.current === callbackUrl) return;
+
+    let url: URL;
+    try {
+      url = new URL(callbackUrl);
+    } catch {
+      return;
+    }
+    if (url.protocol !== 'brasta:' || url.hostname !== 'auth' || url.pathname !== '/callback') return;
+
+    nativeAuthInFlight.current = callbackUrl;
+    try { sessionStorage.removeItem(BRASTA_NATIVE_AUTH_CALLBACK_KEY); } catch {}
+    const parameters = callbackParameters(url);
+    const authError = parameters.get('error_description') || parameters.get('error');
+    if (authError) {
+      rememberAuthFlowId(null);
+      setMessage(authError);
+      setBusy(false);
+      return;
+    }
+
+    const code = parameters.get('code');
+    if (!code) {
+      rememberAuthFlowId(null);
+      setMessage('The sign-in response did not include an authorization code.');
+      setBusy(false);
+      return;
+    }
+
+    let flowId = '';
+    try { flowId = sessionStorage.getItem(BRASTA_AUTH_FLOW_ID_KEY) || ''; } catch {}
+    setBusy(true);
+    const { error } = await supabase.auth.exchangeCodeForSession(
+      code,
+      flowId ? { flowId } : undefined,
+    );
+    rememberAuthFlowId(null);
+    setBusy(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    try { sessionStorage.removeItem(BRASTA_AUTH_RETURN_KEY); } catch {}
+    setMessage('Signed in.');
+  }, [supabase]);
+
   useEffect(() => {
     if (!configured || !supabase) return;
     let alive = true;
@@ -194,6 +262,25 @@ export default function AccountBridge() {
     });
     return () => { if (handle) void handle.remove(); };
   }, []);
+
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+    const onNativeAuthCallback = (rawEvent: Event) => {
+      const event = rawEvent as CustomEvent<{ url?: string }>;
+      const url = String(event.detail?.url || '');
+      if (url) void finishNativeAuth(url);
+    };
+    window.addEventListener(BRASTA_NATIVE_AUTH_CALLBACK_EVENT, onNativeAuthCallback as EventListener);
+
+    let pending = '';
+    try { pending = sessionStorage.getItem(BRASTA_NATIVE_AUTH_CALLBACK_KEY) || ''; } catch {}
+    if (pending) void finishNativeAuth(pending);
+
+    return () => window.removeEventListener(
+      BRASTA_NATIVE_AUTH_CALLBACK_EVENT,
+      onNativeAuthCallback as EventListener,
+    );
+  }, [finishNativeAuth]);
 
   useEffect(() => {
     if (!configured || !supabase) return;
@@ -340,6 +427,7 @@ export default function AccountBridge() {
       setBusy(false);
       return;
     }
+    rememberAuthFlowId(data.flowId);
     if (native && data.url) {
       try {
         await Browser.open({ url: data.url, toolbarColor: '#071b13' });
@@ -368,6 +456,7 @@ export default function AccountBridge() {
       setBusy(false);
       return;
     }
+    rememberAuthFlowId(data.flowId);
     if (native && data.url) {
       try {
         await Browser.open({ url: data.url, toolbarColor: '#071b13' });

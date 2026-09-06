@@ -11,7 +11,11 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { BRASTA_AUTH_TOKEN_KEY } from '../lib/supabase-browser';
+import {
+  BRASTA_AUTH_TOKEN_KEY,
+  BRASTA_NATIVE_AUTH_CALLBACK_EVENT,
+  BRASTA_NATIVE_AUTH_CALLBACK_KEY,
+} from '../lib/supabase-browser';
 
 const PUSH_TOKEN_KEY = 'brasta-android-push-token';
 const PUSH_REVOCATION_KEY = 'brasta-android-push-revocation';
@@ -78,6 +82,21 @@ function routeFromUrl(value: string): string | null {
     }
   } catch {}
   return null;
+}
+
+function isNativeAuthCallback(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'brasta:' && url.hostname === 'auth' && url.pathname === '/callback';
+  } catch {
+    return false;
+  }
+}
+
+function deliverNativeAuthCallback(url: string): void {
+  if (!isNativeAuthCallback(url)) return;
+  try { sessionStorage.setItem(BRASTA_NATIVE_AUTH_CALLBACK_KEY, url); } catch {}
+  window.dispatchEvent(new CustomEvent(BRASTA_NATIVE_AUTH_CALLBACK_EVENT, { detail: { url } }));
 }
 
 function openRoute(route: unknown): void {
@@ -239,6 +258,11 @@ export default function AndroidBridge() {
         else void unregisterStoredPush();
       }));
       handles.push(await App.addListener('appUrlOpen', ({ url }) => {
+        if (isNativeAuthCallback(url)) {
+          void Browser.close().catch(() => {});
+          deliverNativeAuthCallback(url);
+          return;
+        }
         const route = routeFromUrl(url);
         if (route) {
           void Browser.close().catch(() => {});
@@ -264,8 +288,12 @@ export default function AndroidBridge() {
 
       const launch = await App.getLaunchUrl();
       if (launch?.url) {
-        const route = routeFromUrl(launch.url);
-        if (route) openRoute(route);
+        if (isNativeAuthCallback(launch.url)) {
+          deliverNativeAuthCallback(launch.url);
+        } else {
+          const route = routeFromUrl(launch.url);
+          if (route) openRoute(route);
+        }
       }
       if (!cancelled && accessToken()) await registerPush();
       else if (!cancelled) await unregisterStoredPush();
