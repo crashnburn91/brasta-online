@@ -82,7 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/player-progression.css?v=0.1.2" />
         <link rel="stylesheet" href="/profile-badges.css?v=0.2.1" />
-        <link rel="stylesheet" href="/profile-title-art.css?v=0.1.2" />
+        <link rel="stylesheet" href="/profile-title-art.css?v=0.1.3" />
         <link rel="stylesheet" href="/achievement-filter.css?v=0.1.0" />
         <link rel="stylesheet" href="/stats-match-filter.css?v=0.2.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
