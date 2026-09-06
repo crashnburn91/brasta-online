@@ -27,6 +27,19 @@ jobs:
       - name: Check out Brasta
         uses: actions/checkout@v4
 
+      - name: Select hosted Brasta client
+        shell: bash
+        run: |
+          if [ -n "$BRASTA_ANDROID_SERVER_URL" ]; then
+            exit 0
+          fi
+
+          if [ "$GITHUB_REF_NAME" = "feature/android-app" ]; then
+            echo "BRASTA_ANDROID_SERVER_URL=https://brasta-online-git-feature-android-app-crashnburn91s-projects.vercel.app" >> "$GITHUB_ENV"
+          else
+            echo "BRASTA_ANDROID_SERVER_URL=https://brasta.app" >> "$GITHUB_ENV"
+          fi
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -68,7 +81,7 @@ jobs:
       - name: Upload Brasta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Brasta-Android-0.1.0-beta.1
+          name: Brasta-Android-0.1.0-beta.2
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/debug/app-debug.apk.sha256

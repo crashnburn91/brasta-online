@@ -1,6 +1,6 @@
 # Brasta for Android
 
-Brasta Android 0.1.0-beta.1 is a Capacitor 8 shell for the live Brasta service. It keeps the existing account, lobby, private, ranked, tournament, and realtime gameplay experience while adding:
+Brasta Android 0.1.0-beta.2 is a Capacitor 8 shell for the live Brasta service. It keeps the existing account, lobby, private, ranked, tournament, and realtime gameplay experience while adding:
 
 - transient immersive mode with system bars available by edge swipe;
 - light interaction haptics plus gameplay-specific success, warning, and impact patterns;
@@ -8,7 +8,7 @@ Brasta Android 0.1.0-beta.1 is a Capacitor 8 shell for the live Brasta service. 
 - notification and deep-link routing back into the matching Brasta room;
 - Android Custom Tabs for Google, Apple, and Discord authentication.
 
-The beta shell loads `https://brasta.app` by default so a test APK stays in sync with the web release. Set the GitHub Actions variable `BRASTA_ANDROID_SERVER_URL` to an HTTPS preview deployment when testing Android-specific web changes before they reach production. A store release should bundle a fixed, reviewed web client instead of relying on a remote server URL.
+The beta shell loads `https://brasta.app` by default so a test APK stays in sync with the web release. CI builds from `feature/android-app` use that branch's stable Vercel preview alias, which makes Android-specific bridge changes testable before they reach production. The GitHub Actions variable `BRASTA_ANDROID_SERVER_URL` overrides either default. A store release should bundle a fixed, reviewed web client instead of relying on a remote server URL.
 
 ## Build an APK
 
