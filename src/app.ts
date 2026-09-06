@@ -52,6 +52,36 @@ namespace BrastaApp {
       : '';
   }
 
+  function nativeStateSummary(gameState: Brasta.GameState | null) {
+    if (!gameState) return null;
+    return {
+      phase: gameState.phase,
+      currentSeat: gameState.currentSeat,
+      lastMove: gameState.lastMove,
+    };
+  }
+
+  function emitNativeStateTransition(
+    previousState: Brasta.GameState | null,
+    nextState: Brasta.GameState | null,
+    update: BrastaNet.RoomUpdate,
+  ): void {
+    try {
+      window.dispatchEvent(new CustomEvent('brasta-native-state', {
+        detail: {
+          previous: nativeStateSummary(previousState),
+          current: nativeStateSummary(nextState),
+          you: update.you,
+          room: {
+            code: update.room.code,
+            started: update.room.started,
+            revision: update.room.revision,
+          },
+        },
+      }));
+    } catch {}
+  }
+
   function queueJackSweepSnapshot(previousState: Brasta.GameState | null, nextState: Brasta.GameState | null): void {
     if (!previousState || !nextState || !/\bJack sweep\b/i.test(nextState.event || '')) return;
 
@@ -709,6 +739,7 @@ namespace BrastaApp {
       }
       else if (event.type === 'room') {
         const nextState = event.update.state;
+        const previousState = state;
         queueJackSweepSnapshot(state, nextState);
         onlineRoom = event.update.room;
         state = nextState;
@@ -730,6 +761,7 @@ namespace BrastaApp {
         lastError = null;
         emitChatContext();
         render();
+        emitNativeStateTransition(previousState, nextState, event.update);
       }
       else if (event.type === 'roomClosed') {
         const code = onlineRoom?.code || onlineSession?.code || '';

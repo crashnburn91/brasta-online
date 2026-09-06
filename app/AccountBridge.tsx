@@ -2,6 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import FriendsBridge from './FriendsBridge';
 import ResumeMatchBridge from './ResumeMatchBridge';
 import TournamentBridge from './TournamentBridge';
@@ -41,6 +43,14 @@ const PROVIDERS: Array<{ id: OAuthProvider; label: string; mark: string }> = [
 
 function authReturnPath(): string {
   return `${location.pathname}${location.search}${location.hash}` || '/';
+}
+
+function isNativeAndroid(): boolean {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+}
+
+function authRedirectUrl(): string {
+  return isNativeAndroid() ? 'brasta://auth/callback' : `${location.origin}/auth/callback`;
 }
 
 function suggestedDisplayName(user: User): string {
@@ -177,6 +187,15 @@ export default function AccountBridge() {
   }, [configured, supabase, syncSession]);
 
   useEffect(() => {
+    if (!isNativeAndroid()) return;
+    let handle: { remove: () => Promise<void> } | null = null;
+    void Browser.addListener('browserFinished', () => setBusy(false)).then((listener) => {
+      handle = listener;
+    });
+    return () => { if (handle) void handle.remove(); };
+  }, []);
+
+  useEffect(() => {
     if (!configured || !supabase) return;
 
     let refreshInFlight: Promise<string> | null = null;
@@ -311,13 +330,23 @@ export default function AccountBridge() {
     setBusy(true);
     setMessage('');
     try { sessionStorage.setItem(BRASTA_AUTH_RETURN_KEY, authReturnPath()); } catch {}
-    const { error } = await supabase!.auth.signInWithOAuth({
+    const native = isNativeAndroid();
+    const { data, error } = await supabase!.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${location.origin}/auth/callback` },
+      options: { redirectTo: authRedirectUrl(), skipBrowserRedirect: native },
     });
     if (error) {
       setMessage(error.message);
       setBusy(false);
+      return;
+    }
+    if (native && data.url) {
+      try {
+        await Browser.open({ url: data.url, toolbarColor: '#071b13' });
+      } catch (openError) {
+        setMessage(openError instanceof Error ? openError.message : 'Could not open the secure sign-in window.');
+        setBusy(false);
+      }
     }
   }
 
@@ -326,9 +355,10 @@ export default function AccountBridge() {
     setBusy(true);
     setMessage('');
     try { sessionStorage.setItem(BRASTA_AUTH_RETURN_KEY, authReturnPath()); } catch {}
-    const { error } = await supabase!.auth.linkIdentity({
+    const native = isNativeAndroid();
+    const { data, error } = await supabase!.auth.linkIdentity({
       provider,
-      options: { redirectTo: `${location.origin}/auth/callback` },
+      options: { redirectTo: authRedirectUrl(), skipBrowserRedirect: native },
     });
     if (error) {
       const manualLinkingDisabled = /manual linking|identity linking|linking is disabled/i.test(error.message);
@@ -336,6 +366,15 @@ export default function AccountBridge() {
         ? 'Account linking is not enabled in Supabase yet. Enable Manual Linking under Authentication settings and try again.'
         : error.message);
       setBusy(false);
+      return;
+    }
+    if (native && data.url) {
+      try {
+        await Browser.open({ url: data.url, toolbarColor: '#071b13' });
+      } catch (openError) {
+        setMessage(openError instanceof Error ? openError.message : 'Could not open the secure account-linking window.');
+        setBusy(false);
+      }
     }
   }
 
@@ -349,7 +388,7 @@ export default function AccountBridge() {
     const { error } = await supabase!.auth.signInWithOtp({
       email: clean,
       options: {
-        emailRedirectTo: `${location.origin}/auth/callback`,
+        emailRedirectTo: authRedirectUrl(),
         shouldCreateUser: true,
       },
     });

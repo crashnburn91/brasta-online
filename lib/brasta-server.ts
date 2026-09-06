@@ -3,6 +3,7 @@ import * as Brasta from './game-engine';
 import { redis, duplicateRedis } from './redis';
 import { verifyBrastaAccessToken } from './supabase-auth';
 import type { BrastaAuthIdentity } from './supabase-auth';
+import { sendTurnPush } from './push-notifications';
 import { clearActiveMatch, getActiveMatch, setActiveMatch } from './account-active-match';
 import { ROOM_PRESENCE_LEASE_REFRESH_MS, roomPresenceLeaseIsFresh } from './room-presence';
 import {
@@ -111,6 +112,10 @@ type StoredRoom = {
   gameState: Brasta.GameState | null;
   callableBurn: CallableBurn | null;
 };
+type TurnSnapshot = {
+  phase: Brasta.Phase;
+  currentSeat: Brasta.Seat;
+} | null;
 export type ConnectionRole = 'player' | 'spectator' | null;
 export type Connection = {
   id: string;
@@ -159,6 +164,42 @@ function normalizeRoom(room: StoredRoom): StoredRoom {
   if (!room.spectators) room.spectators = {};
   if (room.callableBurn === undefined) room.callableBurn = null;
   return room;
+}
+
+function turnSnapshot(room: StoredRoom): TurnSnapshot {
+  return room.gameState
+    ? { phase: room.gameState.phase, currentSeat: room.gameState.currentSeat }
+    : null;
+}
+
+function accountIdForParticipant(participant: Participant | undefined): string | null {
+  if (!participant) return null;
+  const rankedId = (participant as Participant & { authUserId?: string }).authUserId;
+  return participant.accountId || rankedId || null;
+}
+
+function notifyTurnTransition(room: StoredRoom, previous: TurnSnapshot): void {
+  const current = turnSnapshot(room);
+  if (!current || (current.phase !== 'openingChoice' && current.phase !== 'play')) return;
+  if (previous?.phase === current.phase && previous.currentSeat === current.currentSeat) return;
+
+  const participant = room.seats[String(current.currentSeat)];
+  const userId = accountIdForParticipant(participant);
+  if (!userId || participant?.isBot) return;
+
+  const opponentName = Object.values(room.seats).find((candidate) => {
+    if (candidate.seat === current.currentSeat || candidate.isBot) return false;
+    if (room.mode === '1v1') return true;
+    const sameTeam = candidate.seat % 2 === current.currentSeat % 2;
+    return !sameTeam;
+  })?.name || null;
+
+  void sendTurnPush({
+    userId,
+    roomCode: room.code,
+    phase: current.phase,
+    opponentName,
+  });
 }
 type RankedRuntimeMeta = {
   roundEndedAt?: number;
@@ -1732,10 +1773,12 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
     // every play, capture, build, burn, and round transition.
     const code = requirePlayerRoomCode(conn);
     if (!code) return;
+    let previousTurn: TurnSnapshot = null;
     const changed = await mutateRoom(code, (room) => {
       const p = room.seats[String(conn.seat!)];
       if (!p || p.token !== conn.token || p.connectionId !== conn.id) throw new Error('Your room session is no longer valid.');
       p.lastSeen = Date.now();
+      previousTurn = turnSnapshot(room);
       const requireHost = () => { if (p.token !== room.hostToken) throw new Error('Only the room host can do that.'); };
 
       if (msg.type === 'START_GAME') {
@@ -1925,6 +1968,7 @@ export async function handleMessage(conn: Connection, raw: string): Promise<void
       throw new Error('Unsupported room command.');
     });
     if (!changed) return sendError(conn, 'That room no longer exists.');
+    notifyTurnTransition(changed.room, previousTurn);
     if (msg.type === 'START_GAME') {
       await Promise.all(Object.values(changed.room.seats).map((seatPlayer) => bindParticipantActiveMatch(changed.room, seatPlayer)));
     }

@@ -1,0 +1,76 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/android-app
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build installable APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BRASTA_ANDROID_SERVER_URL: ${{ vars.BRASTA_ANDROID_SERVER_URL }}
+      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+
+    steps:
+      - name: Check out Brasta
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify web and realtime code
+        run: npm run build
+
+      - name: Add Firebase Android configuration
+        if: ${{ env.GOOGLE_SERVICES_JSON_BASE64 != '' }}
+        run: echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+
+      - name: Sync Capacitor project
+        run: npm run android:sync
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Record APK checksum
+        run: sha256sum android/app/build/outputs/apk/debug/app-debug.apk > android/app/build/outputs/apk/debug/app-debug.apk.sha256
+
+      - name: Upload Brasta APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Brasta-Android-0.1.0-beta.1
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/app-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 14

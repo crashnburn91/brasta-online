@@ -9,3 +9,7 @@ node_modules/
 public/dist/
 lib/game-engine.ts
 tsconfig.tsbuildinfo
+android/app/google-services.json
+android/local.properties
+artifacts/android/
+supabase/.temp/
