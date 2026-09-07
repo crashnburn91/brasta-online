@@ -60,6 +60,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.21" />
         <link rel="stylesheet" href="/burn-callout.css?v=0.13.0" />
         <link rel="stylesheet" href="/account-ui.css?v=0.6.3" />
+        <link rel="stylesheet" href="/avatar-editor.css?v=0.1.0" />
         <link rel="stylesheet" href="/account-nav.css?v=0.7.5" />
         <link rel="stylesheet" href="/friends-ui.css?v=0.1.5" />
         <link rel="stylesheet" href="/tournament-ui.css?v=0.1.3" />
@@ -81,7 +82,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/deal-animation.css?v=0.1.3" />
         <link rel="stylesheet" href="/player-profile.css?v=0.1.0" />
         <link rel="stylesheet" href="/player-progression.css?v=0.1.2" />
-        <link rel="stylesheet" href="/profile-badges.css?v=0.1.0" />
+        <link rel="stylesheet" href="/profile-badges.css?v=0.2.1" />
+        <link rel="stylesheet" href="/profile-title-art.css?v=0.1.4" />
+        <link rel="stylesheet" href="/player-card-identity.css?v=0.1.0" />
         <link rel="stylesheet" href="/achievement-filter.css?v=0.1.0" />
         <link rel="stylesheet" href="/stats-match-filter.css?v=0.2.0" />
         <link rel="stylesheet" href="/private-postmatch.css?v=0.16.0" />
@@ -106,10 +109,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/player-profile.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/player-progression.js?v=0.1.2" strategy="afterInteractive" />
-        <Script src="/profile-badges.js?v=0.1.1" strategy="afterInteractive" />
+        <Script src="/profile-badges.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/achievement-filter.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/stats-match-filter.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />
+        <Script src="/avatar-editor.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.8" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.7" strategy="afterInteractive" />

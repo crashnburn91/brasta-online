@@ -3,7 +3,7 @@ import BadgeAdminClient from './BadgeAdminClient';
 import './badge-admin.css';
 
 export const metadata: Metadata = {
-  title: 'Profile Badges · Brasta Admin',
+  title: 'Profile Titles · Brasta Admin',
   robots: { index: false, follow: false },
 };
 

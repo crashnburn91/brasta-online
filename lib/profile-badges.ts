@@ -57,6 +57,75 @@ type OwnedRow = {
 type EquipmentRow = { badge_key: string | null };
 type ProfileRow = { id: string; username: string | null; avatar_url?: string | null };
 
+// Achievements are progress; profile titles are prestige. Starter achievements can
+// still unlock normally in the achievement system, but they are intentionally not
+// exposed as equippable profile identities. The backend badge keys remain stable so
+// existing data does not need to be rewritten while we refine the title catalog.
+const RETIRED_STARTER_TITLE_KEYS = new Set([
+  'winner',          // first win
+  'builder',         // first build
+  'brasta',          // first Brasta
+  'back_to_back',    // two-Brasta streak
+  'big_game_hunter', // first Big 10 capture
+]);
+
+const TITLE_OVERRIDES: Record<string, Partial<ProfileBadgeDefinition>> = {
+  brasta_veteran: {
+    name: 'Brasta Champ',
+    category: 'Title',
+    tier: 'gold',
+  },
+  triple_threat: {
+    name: 'Triple Threat',
+    category: 'Title',
+    tier: 'silver',
+  },
+  brasta_run: {
+    name: 'Brasta Runner',
+    category: 'Title',
+    tier: 'gold',
+  },
+  unstoppable: {
+    name: 'Unstoppable',
+    category: 'Title',
+    tier: 'legendary',
+  },
+  sweep_artist: {
+    name: 'Sweep Artist',
+    category: 'Title',
+  },
+  fire_marshal: {
+    name: 'Fire Marshal',
+    category: 'Title',
+  },
+  scorched_earth: {
+    name: 'Scorched Earth',
+    category: 'Title',
+  },
+  hot_hand: {
+    name: 'Hot Hand',
+    category: 'Title',
+  },
+  on_fire: {
+    name: 'On Fire',
+    category: 'Title',
+  },
+  card_collector: {
+    name: 'Card Collector',
+    category: 'Title',
+  },
+  table_regular: {
+    name: 'Table Regular',
+    category: 'Title',
+  },
+  gazda: {
+    category: 'Special Title',
+  },
+  founder: {
+    category: 'Special Title',
+  },
+};
+
 function headers(): Record<string, string> {
   if (!secretKey) throw new Error('Profile badges are not configured.');
   return {
@@ -94,7 +163,7 @@ function cleanUsername(value: unknown): string {
 }
 
 function definition(row: DefinitionRow): ProfileBadgeDefinition {
-  return {
+  const base: ProfileBadgeDefinition = {
     key: row.badge_key,
     name: row.name,
     description: row.description,
@@ -105,6 +174,7 @@ function definition(row: DefinitionRow): ProfileBadgeDefinition {
     tier: row.tier || 'standard',
     sortOrder: Math.max(0, Number(row.sort_order) || 0),
   };
+  return { ...base, ...(TITLE_OVERRIDES[base.key] || {}) };
 }
 
 async function definitions(awardType?: ProfileBadgeAwardType): Promise<ProfileBadgeDefinition[]> {
@@ -147,9 +217,12 @@ export async function getProfileBadgeCollection(playerId: string): Promise<Profi
 
   const owned = new Map(ownedRows.map((row) => [row.badge_key, row]));
   const equippedKey = equipmentRows[0]?.badge_key || null;
-  // Admin-only badges are intentionally undiscoverable in normal badge collections
-  // until they have actually been assigned to this player.
-  const visibleDefs = defs.filter((item) => item.awardType !== 'admin' || owned.has(item.key));
+  // Admin-only titles are intentionally undiscoverable until assigned. Starter
+  // achievement rewards are also omitted from the title catalog entirely.
+  const visibleDefs = defs.filter((item) =>
+    !RETIRED_STARTER_TITLE_KEYS.has(item.key)
+    && (item.awardType !== 'admin' || owned.has(item.key))
+  );
   const items = visibleDefs.map((item): ProfileBadgeItem => {
     const row = owned.get(item.key);
     const unlocked = Boolean(row);
@@ -185,6 +258,9 @@ export async function getEquippedProfileBadgeByUsername(usernameValue: unknown):
 
 export async function equipProfileBadge(playerId: string, badgeKey: unknown): Promise<ProfileBadgeCollection> {
   const normalized = String(badgeKey || '').trim() || null;
+  if (normalized && RETIRED_STARTER_TITLE_KEYS.has(normalized)) {
+    throw new Error('That achievement does not unlock a profile title.');
+  }
   await rpc<string | null>('brasta_equip_profile_badge', {
     p_player_id: playerId,
     p_badge_key: normalized,
