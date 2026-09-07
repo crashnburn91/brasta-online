@@ -60,6 +60,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/build-owner-ui.css?v=0.5.21" />
         <link rel="stylesheet" href="/burn-callout.css?v=0.13.0" />
         <link rel="stylesheet" href="/account-ui.css?v=0.6.3" />
+        <link rel="stylesheet" href="/avatar-editor.css?v=0.1.0" />
         <link rel="stylesheet" href="/account-nav.css?v=0.7.5" />
         <link rel="stylesheet" href="/friends-ui.css?v=0.1.5" />
         <link rel="stylesheet" href="/tournament-ui.css?v=0.1.3" />
@@ -112,6 +113,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/achievement-filter.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/stats-match-filter.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />
+        <Script src="/avatar-editor.js?v=0.1.0" strategy="afterInteractive" />
         <Script src="/competitive-observer-guard.js?v=0.7.6" strategy="afterInteractive" />
         <Script src="/competitive-ui.js?v=0.7.8" strategy="afterInteractive" />
         <Script src="/competitive-2v2-ui.js?v=0.8.7" strategy="afterInteractive" />
