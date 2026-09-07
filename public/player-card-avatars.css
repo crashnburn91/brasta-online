@@ -1,0 +1,77 @@
+/* Profile pictures add identity without increasing the in-match player-card footprint. */
+.player-chip.player-card .player-card-top:has(> .player-card-avatar){
+  display:flex!important;
+  align-items:flex-start;
+  gap:9px;
+}
+.player-chip.player-card .player-card-top:has(> .player-card-avatar) .player-card-identity{
+  flex:1 1 auto;
+  min-width:0;
+}
+.player-chip.player-card .player-card-avatar{
+  width:32px;
+  height:32px;
+  flex:0 0 32px;
+  margin-top:2px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(212,175,55,.38);
+  border-radius:50%;
+  background:rgba(255,255,255,.055);
+  color:#e1c269;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+}
+.player-chip.player-card .player-card-avatar img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+}
+.player-chip.player-card .player-card-avatar-fallback{
+  display:grid;
+  width:100%;
+  height:100%;
+  place-items:center;
+}
+
+/* 2v2 keeps the avatar slightly quieter so rank/title crests remain the visual focus. */
+.players.players-2v2 .player-card-avatar{
+  width:26px;
+  height:26px;
+  flex-basis:26px;
+  margin-top:1px;
+  font-size:10px;
+}
+.players.players-2v2 .player-card-top:has(> .player-card-avatar){
+  gap:7px;
+}
+
+@media(max-height:1080px), (max-width:900px){
+  .player-chip.player-card .player-card-avatar{
+    width:28px;
+    height:28px;
+    flex-basis:28px;
+    margin-top:1px;
+    font-size:10px;
+  }
+  .player-chip.player-card .player-card-top:has(> .player-card-avatar){
+    gap:7px;
+  }
+  .players.players-2v2 .player-card-avatar{
+    width:25px;
+    height:25px;
+    flex-basis:25px;
+    font-size:9px;
+  }
+}
+
+/* On compact 2v2 mobile cards, rank + title crests get the limited identity space. */
+@media(max-width:600px){
+  .players.players-2v2 .player-card-avatar{
+    display:none!important;
+  }
+}
