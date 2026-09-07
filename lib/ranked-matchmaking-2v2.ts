@@ -13,6 +13,7 @@ import {
   type RankedFinalizeResult,
 } from './competitive';
 import { createRanked2v2MatchRecord, finalizeRanked2v2Match } from './competitive-2v2';
+import { sendRankedMatchPush, sendTurnPush } from './push-notifications';
 
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL_SECONDS = 24 * 60 * 60;
@@ -626,6 +627,12 @@ async function createMatch(entries: [QueueEntry, QueueEntry, QueueEntry, QueueEn
     };
   }
   await Promise.all(Object.entries(assignments).map(([userId, assignment]) => writeAssignment(userId, assignment)));
+  await Promise.all(Object.entries(assignments).map(([userId, assignment]) => sendRankedMatchPush({
+    userId,
+    roomCode: assignment.roomCode,
+    mode: '2v2',
+    opponent: assignment.opponent,
+  })));
   return assignments;
 }
 
@@ -888,6 +895,14 @@ export async function monitorRanked2v2Room(request: Request, roomCode: string) {
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
+        const starter = room.seats[String(room.gameState.currentSeat)];
+        if (starter?.authUserId) {
+          await sendTurnPush({
+            userId: starter.authUserId,
+            roomCode: room.code,
+            phase: 'openingChoice',
+          });
+        }
         return { state: 'playing' as const, phase: room.gameState.phase, started: true };
       }
       return { state: 'waiting' as const, message: 'Waiting for all four players to connect.' };
@@ -912,6 +927,14 @@ export async function monitorRanked2v2Room(request: Request, roomCode: string) {
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
+        const starter = room.seats[String(room.gameState.currentSeat)];
+        if (starter?.authUserId) {
+          await sendTurnPush({
+            userId: starter.authUserId,
+            roomCode: room.code,
+            phase: 'openingChoice',
+          });
+        }
         return { state: 'playing' as const, phase: room.gameState.phase, advancedRound: true };
       }
       return { state: 'roundEnd' as const, advanceInMs: remaining };
