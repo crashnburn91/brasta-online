@@ -66,7 +66,7 @@ async function providerAvatar(accessToken: string): Promise<string | null> {
   }
 }
 
-async function removeOldAvatar(admin: ReturnType<typeof createClient>, avatarUrl: unknown): Promise<void> {
+async function removeOldAvatar(admin: any, avatarUrl: unknown): Promise<void> {
   const path = avatarObjectPath(avatarUrl);
   if (!path) return;
   const { error } = await admin.storage.from(AVATAR_BUCKET).remove([path]);
