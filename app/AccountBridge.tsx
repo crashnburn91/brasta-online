@@ -35,7 +35,6 @@ type OAuthProvider = 'google' | 'apple' | 'discord';
 
 const PROVIDERS: Array<{ id: OAuthProvider; label: string; mark: string }> = [
   { id: 'google', label: 'Google', mark: 'G' },
-  { id: 'apple', label: 'Apple', mark: 'A' },
   { id: 'discord', label: 'Discord', mark: 'D' },
 ];
 
@@ -492,7 +491,6 @@ export default function AccountBridge() {
                 <p>Accounts are optional for private games. An account is required for ranked play, persistent stats, and posting or reporting in match chat.</p>
                 <div className="account-provider-grid">
                   <button type="button" disabled={busy} onClick={() => void signIn('google')}><span>G</span>Continue with Google</button>
-                  <button type="button" disabled={busy} onClick={() => void signIn('apple')}><span>A</span>Continue with Apple</button>
                   <button type="button" disabled={busy} onClick={() => void signIn('discord')}><span>D</span>Continue with Discord</button>
                 </div>
                 <div className="account-divider"><span>or</span></div>
