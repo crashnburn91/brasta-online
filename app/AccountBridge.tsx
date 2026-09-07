@@ -103,6 +103,10 @@ export default function AccountBridge() {
   const [deleting, setDeleting] = useState(false);
   const privateClaimInFlight = useRef<Set<string>>(new Set());
   const nativeAuthInFlight = useRef('');
+  const profileSyncVersion = useRef(0);
+  const usernameDraftUserId = useRef<string | null>(null);
+  const usernameInput = useRef<HTMLInputElement>(null);
+  const usernameFocusedUserId = useRef<string | null>(null);
 
   const refreshIdentities = useCallback(async () => {
     if (!supabase) return;
@@ -143,11 +147,15 @@ export default function AccountBridge() {
   }, []);
 
   const syncSession = useCallback(async (nextSession: Session | null) => {
+    const syncVersion = ++profileSyncVersion.current;
     setSession(nextSession);
     setMessage('');
     if (!nextSession?.access_token || !supabase) {
       try { localStorage.removeItem(BRASTA_AUTH_TOKEN_KEY); } catch {}
+      usernameDraftUserId.current = null;
+      usernameFocusedUserId.current = null;
       setProfile(null);
+      setProfileLoading(false);
       setExperience(null);
       setOtpEmail('');
       setOtpCode('');
@@ -155,6 +163,16 @@ export default function AccountBridge() {
       setLinkedProviders(new Set());
       window.dispatchEvent(new CustomEvent('brasta-auth-changed', { detail: { signedIn: false } }));
       return;
+    }
+
+    // getSession(), INITIAL_SESSION, SIGNED_IN, and TOKEN_REFRESHED can all
+    // arrive for the same account. Reset the username draft only when the
+    // actual user changes so a later profile response cannot erase typing.
+    if (usernameDraftUserId.current !== nextSession.user.id) {
+      usernameDraftUserId.current = nextSession.user.id;
+      usernameFocusedUserId.current = null;
+      setProfile(null);
+      setUsername('');
     }
 
     try { localStorage.setItem(BRASTA_AUTH_TOKEN_KEY, nextSession.access_token); } catch {}
@@ -166,6 +184,7 @@ export default function AccountBridge() {
       .select('id,username,display_name,avatar_url,created_at,updated_at')
       .eq('id', nextSession.user.id)
       .maybeSingle();
+    if (syncVersion !== profileSyncVersion.current) return;
     setProfileLoading(false);
 
     if (error) {
@@ -179,7 +198,9 @@ export default function AccountBridge() {
 
     const nextProfile = data as BrastaProfile | null;
     setProfile(nextProfile);
-    setUsername(nextProfile?.username || '');
+    // A missing profile is the expected state while this form is open. Keep
+    // the current draft; only a saved server username should replace it.
+    if (nextProfile?.username) setUsername(nextProfile.username);
     const preferredName = nextProfile?.username || suggestedDisplayName(nextSession.user);
     if (preferredName) {
       try { localStorage.setItem('brasta-online-last-name', preferredName); } catch {}
@@ -401,8 +422,6 @@ export default function AccountBridge() {
     };
   }, [refreshExperience, session?.access_token]);
 
-  if (!configured || !supabase) return null;
-
   const user = session?.user || null;
   const displayName = profile?.display_name || profile?.username || (user ? suggestedDisplayName(user) : '');
   const avatar = profile?.avatar_url || (user ? suggestedAvatar(user) : null);
@@ -411,6 +430,19 @@ export default function AccountBridge() {
   // profileLoading caused the modal to flicker into the normal profile card
   // during TOKEN_REFRESHED / duplicate session syncs.
   const needsUsername = Boolean(user && !profile?.username);
+
+  useEffect(() => {
+    if (!open || !needsUsername || !user || usernameFocusedUserId.current === user.id) return;
+    // Native autofocus can repeatedly summon/dismiss a mobile soft keyboard
+    // as the visual viewport and auth state settle. Preserve autofocus for a
+    // mouse/trackpad, but let touch users explicitly focus the field once.
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    usernameFocusedUserId.current = user.id;
+    const frame = window.requestAnimationFrame(() => usernameInput.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [needsUsername, open, user?.id]);
+
+  if (!configured || !supabase) return null;
 
   async function signIn(provider: OAuthProvider) {
     setBusy(true);
@@ -521,6 +553,10 @@ export default function AccountBridge() {
       setMessage('Username must be 3–20 characters using only letters, numbers, or underscores.');
       return;
     }
+    // Ignore any older profile lookup that may still be completing while the
+    // new profile is saved.
+    profileSyncVersion.current += 1;
+    setProfileLoading(false);
     setBusy(true);
     setMessage('');
     const fallbackName = suggestedDisplayName(user) || clean;
@@ -543,6 +579,7 @@ export default function AccountBridge() {
     }
     const nextProfile = data as BrastaProfile;
     setProfile(nextProfile);
+    setUsername(nextProfile.username || clean);
     try { localStorage.setItem('brasta-online-last-name', nextProfile.username || clean); } catch {}
     window.dispatchEvent(new CustomEvent('brasta-auth-changed', {
       detail: { signedIn: true, userId: user.id, username: nextProfile.username },
@@ -656,8 +693,24 @@ export default function AccountBridge() {
                 <h2>Choose your Brasta username</h2>
                 <p>This will be your persistent competitive identity. It can be different from the name supplied by Google or Discord.</p>
                 <form onSubmit={saveUsername} className="account-email-form">
-                  <label>Username<input autoFocus maxLength={20} autoCapitalize="none" autoCorrect="off" value={username} onChange={(event) => setUsername(event.target.value.replace(/\s+/g, ''))} placeholder="Player123" /></label>
-                  <small>3–20 characters · letters, numbers, underscore</small>
+                  <label htmlFor="brasta-profile-username">Username</label>
+                  <input
+                    ref={usernameInput}
+                    id="brasta-profile-username"
+                    name="username"
+                    type="text"
+                    maxLength={20}
+                    autoCapitalize="none"
+                    autoComplete="username"
+                    autoCorrect="off"
+                    enterKeyHint="done"
+                    spellCheck={false}
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="Player123"
+                    aria-describedby="brasta-profile-username-help"
+                  />
+                  <small id="brasta-profile-username-help">3–20 characters · letters, numbers, underscore</small>
                   <button className="primary" disabled={busy || profileLoading} type="submit">Create Brasta Profile</button>
                 </form>
                 <button className="account-guest" disabled={busy} type="button" onClick={() => void signOut()}>Sign out instead</button>
