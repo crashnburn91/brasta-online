@@ -20,7 +20,7 @@ const config: CapacitorConfig = {
     errorPath: 'offline.html',
   },
   android: {
-    appendUserAgent: ` BrastaAndroid/0.1.0-beta.4${pushConfigured ? ' BrastaPush/1' : ''}`,
+    appendUserAgent: ` BrastaAndroid/0.1.0-beta.5${pushConfigured ? ' BrastaPush/1' : ''}`,
     backgroundColor: '#071b13',
     includePlugins: [
       '@capacitor/app',

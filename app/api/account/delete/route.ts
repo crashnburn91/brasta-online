@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fhdrywazfmmvgswkdpdb.supabase.co';
 const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const AVATAR_BUCKET = 'avatars';
 
 function tokenFrom(request: Request): string {
   return (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
@@ -13,6 +14,22 @@ function tokenFrom(request: Request): string {
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+}
+
+function avatarObjectPath(value: unknown): string | null {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.origin !== new URL(supabaseUrl).origin) return null;
+    const marker = `/storage/v1/object/public/${AVATAR_BUCKET}/`;
+    const index = parsed.pathname.indexOf(marker);
+    if (index < 0) return null;
+    const path = decodeURIComponent(parsed.pathname.slice(index + marker.length));
+    return path && !path.includes('..') ? path : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -28,6 +45,12 @@ export async function POST(request: Request) {
     const admin = createClient(supabaseUrl, secretKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+    const avatarPath = avatarObjectPath(identity.avatarUrl);
+    if (avatarPath) {
+      const { error: avatarError } = await admin.storage.from(AVATAR_BUCKET).remove([avatarPath]);
+      if (avatarError) console.warn('[brasta account deletion avatar cleanup]', avatarError.message);
+    }
+
     const { error } = await admin.auth.admin.deleteUser(identity.userId, false);
     if (error) throw error;
     return json({ state: 'deleted' });

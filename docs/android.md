@@ -1,6 +1,6 @@
 # Brasta for Android
 
-Brasta Android 0.1.0-beta.4 is a Capacitor 8 shell for the live Brasta service. It keeps the existing account, lobby, private, ranked, tournament, and realtime gameplay experience while adding:
+Brasta Android 0.1.0-beta.5 is a Capacitor 8 shell for the live Brasta service. It keeps the existing account, lobby, private, ranked, tournament, and realtime gameplay experience while adding:
 
 - transient immersive mode with system bars available by edge swipe;
 - light interaction haptics plus gameplay-specific success, warning, and impact patterns;
@@ -35,7 +35,7 @@ Add `brasta://auth/callback` under Supabase **Authentication → URL Configurati
 
 The Android client keeps the PKCE verifier and flow identifier in the app WebView, receives the one-time authorization code through the `brasta://` deep link, closes the Custom Tab, and exchanges the code inside the app's own Supabase client. Authorization codes and verifier values are never placed in app logs.
 
-Beta 4 also makes Firebase capability explicit in the APK user agent. Builds without `google-services.json` omit the native push plugin and do not invoke FCM registration after sign-in, preventing Firebase's unconfigured default-app failure from terminating the process. When Firebase configuration is included, Capacitor sync includes the plugin, adds the `BrastaPush/1` capability marker, and notification registration proceeds normally.
+Beta 4 and later also make Firebase capability explicit in the APK user agent. Builds without `google-services.json` omit the native push plugin and do not invoke FCM registration after sign-in, preventing Firebase's unconfigured default-app failure from terminating the process. When Firebase configuration is included, Capacitor sync includes the plugin, adds the `BrastaPush/1` capability marker, and notification registration proceeds normally.
 
 ## Enable push notifications
 
