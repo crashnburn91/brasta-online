@@ -45,5 +45,7 @@ assert(accountBridge.includes('if (nextProfile?.username) setUsername(nextProfil
 assert(!accountBridge.includes("setUsername(nextProfile?.username || '')"), 'Profile refresh still clears an in-progress username draft');
 assert(!accountBridge.includes('<input autoFocus'), 'Username signup still forces the mobile keyboard open during auth refresh');
 assert(accountBridge.includes('onChange={(event) => setUsername(event.target.value)}'), 'Username input still rewrites text during mobile keyboard composition');
+assert(!accountBridge.includes('disabled={busy || profileLoading}'), 'Username submit button still flickers with background profile loading');
+assert(accountBridge.includes('disabled={busy || profileResolvedUserId !== user.id}'), 'Username submit button is not gated by the initial user profile lookup');
 
-console.log('7 account and username-draft regression checks passed');
+console.log('9 account and username-draft regression checks passed');
