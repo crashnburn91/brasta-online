@@ -14,6 +14,7 @@ import {
   cancelMatchInvite,
   unblockFriend,
 } from '../../../lib/friends';
+import { sendGameInvitePush } from '../../../lib/push-notifications';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -79,13 +80,23 @@ export async function POST(request: Request) {
       return json({ state: 'removed', ...(await getFriendsSnapshot(identity.userId)) });
     }
     if (action === 'send-invite') {
+      const targetId = String(body.userId || '');
+      const inviteType = body.inviteType === 'ranked_2v2' ? 'ranked_2v2' : 'private';
+      const mode = body.mode === '2v2' ? '2v2' : body.mode === '1v1' ? '1v1' : null;
       await sendMatchInvite({
         userId: identity.userId,
-        targetId: String(body.userId || ''),
-        inviteType: body.inviteType === 'ranked_2v2' ? 'ranked_2v2' : 'private',
-        mode: body.mode === '2v2' ? '2v2' : body.mode === '1v1' ? '1v1' : null,
+        targetId,
+        inviteType,
+        mode,
         roomCode: body.roomCode || null,
         partyCode: body.partyCode || null,
+      });
+      await sendGameInvitePush({
+        userId: targetId,
+        inviterName: identity.username || identity.displayName || 'A Brasta friend',
+        inviteType,
+        mode,
+        roomCode: body.roomCode || null,
       });
       return json({ state: 'invite-sent', ...(await getFriendsSnapshot(identity.userId)) });
     }

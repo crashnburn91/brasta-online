@@ -6,6 +6,7 @@ import { getActiveMatch } from './account-active-match';
 import { verifyBrastaAccessToken, type BrastaAuthIdentity } from './supabase-auth';
 import { getExperienceSummariesForPlayers, type PlayerExperienceSummary } from './experience';
 import { rankedSearchAllows, rankedSearchWindow } from './ranked-search-window';
+import { sendRankedMatchPush, sendTurnPush } from './push-notifications';
 import {
   competitiveBackendReady,
   createRankedMatchRecord,
@@ -252,6 +253,12 @@ async function createMatch(entry1: QueueEntry, entry2: QueueEntry): Promise<Reco
     },
   };
   await Promise.all(Object.entries(assignments).map(([userId, assignment]) => writeAssignment(userId, assignment)));
+  await Promise.all(Object.entries(assignments).map(([userId, assignment]) => sendRankedMatchPush({
+    userId,
+    roomCode: assignment.roomCode,
+    mode: '1v1',
+    opponent: assignment.opponent,
+  })));
   return assignments;
 }
 
@@ -439,6 +446,15 @@ export async function monitorRankedRoom(request: Request, roomCode: string) {
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
+        const starter = room.seats[String(room.gameState.currentSeat)];
+        if (starter?.authUserId) {
+          await sendTurnPush({
+            userId: starter.authUserId,
+            roomCode: room.code,
+            phase: 'openingChoice',
+            opponentName: Object.values(room.seats).find((player) => player.authUserId !== starter.authUserId)?.name,
+          });
+        }
         return { state: 'playing' as const, phase: room.gameState.phase, started: true };
       }
       return { state: 'waiting' as const, message: 'Waiting for your opponent to connect.' };
@@ -463,6 +479,15 @@ export async function monitorRankedRoom(request: Request, roomCode: string) {
         applyNames(room);
         room.revision += 1;
         await saveRankedRoom(room);
+        const starter = room.seats[String(room.gameState.currentSeat)];
+        if (starter?.authUserId) {
+          await sendTurnPush({
+            userId: starter.authUserId,
+            roomCode: room.code,
+            phase: 'openingChoice',
+            opponentName: Object.values(room.seats).find((player) => player.authUserId !== starter.authUserId)?.name,
+          });
+        }
         return { state: 'playing' as const, phase: room.gameState.phase, advancedRound: true };
       }
       return { state: 'roundEnd' as const, advanceInMs: remaining };
