@@ -96,7 +96,7 @@ export default function AccountBridge() {
   const [username, setUsername] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileResolvedUserId, setProfileResolvedUserId] = useState<string | null>(null);
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
   const [linkedProviders, setLinkedProviders] = useState<Set<OAuthProvider>>(new Set());
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -155,7 +155,7 @@ export default function AccountBridge() {
       usernameDraftUserId.current = null;
       usernameFocusedUserId.current = null;
       setProfile(null);
-      setProfileLoading(false);
+      setProfileResolvedUserId(null);
       setExperience(null);
       setOtpEmail('');
       setOtpCode('');
@@ -173,19 +173,19 @@ export default function AccountBridge() {
       usernameFocusedUserId.current = null;
       setProfile(null);
       setUsername('');
+      setProfileResolvedUserId(null);
     }
 
     try { localStorage.setItem(BRASTA_AUTH_TOKEN_KEY, nextSession.access_token); } catch {}
     void refreshIdentities();
     void refreshExperience(nextSession.access_token);
-    setProfileLoading(true);
     const { data, error } = await supabase
       .from('profiles')
       .select('id,username,display_name,avatar_url,created_at,updated_at')
       .eq('id', nextSession.user.id)
       .maybeSingle();
     if (syncVersion !== profileSyncVersion.current) return;
-    setProfileLoading(false);
+    setProfileResolvedUserId(nextSession.user.id);
 
     if (error) {
       setProfile(null);
@@ -426,9 +426,7 @@ export default function AccountBridge() {
   const displayName = profile?.display_name || profile?.username || (user ? suggestedDisplayName(user) : '');
   const avatar = profile?.avatar_url || (user ? suggestedAvatar(user) : null);
   // Once a signed-in user has no username, keep the completion flow stable
-  // even while background profile refreshes are running. Tying this to
-  // profileLoading caused the modal to flicker into the normal profile card
-  // during TOKEN_REFRESHED / duplicate session syncs.
+  // even while background profile refreshes are running.
   const needsUsername = Boolean(user && !profile?.username);
 
   useEffect(() => {
@@ -556,7 +554,6 @@ export default function AccountBridge() {
     // Ignore any older profile lookup that may still be completing while the
     // new profile is saved.
     profileSyncVersion.current += 1;
-    setProfileLoading(false);
     setBusy(true);
     setMessage('');
     const fallbackName = suggestedDisplayName(user) || clean;
@@ -711,7 +708,7 @@ export default function AccountBridge() {
                     aria-describedby="brasta-profile-username-help"
                   />
                   <small id="brasta-profile-username-help">3–20 characters · letters, numbers, underscore</small>
-                  <button className="primary" disabled={busy || profileLoading} type="submit">Create Brasta Profile</button>
+                  <button className="primary" disabled={busy || profileResolvedUserId !== user.id} type="submit">Create Brasta Profile</button>
                 </form>
                 <button className="account-guest" disabled={busy} type="button" onClick={() => void signOut()}>Sign out instead</button>
               </>
