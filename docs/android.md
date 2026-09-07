@@ -27,7 +27,7 @@ npm run android:apk
 
 The native source project lives in `android/`. The automatically signed debug APK is produced at `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-The `Android APK` GitHub Actions workflow runs the complete Brasta build and uploads an installable APK plus its SHA-256 checksum. CI caches a dedicated debug key so beta 3 and later test builds can update one another. Android will require uninstalling beta 2 once because it was signed before the persistent test key was introduced.
+The `Android APK` GitHub Actions workflow runs the complete Brasta build and uploads an installable APK plus its SHA-256 checksum. CI generates a dedicated beta-only signing key at an explicit path and caches that exact file so subsequent test builds can update one another. The cache path used through beta 4 did not persist the generated key, so Android requires one final uninstall before installing beta 5; builds after that can update in place.
 
 ## Enable native authentication
 

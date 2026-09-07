@@ -61,8 +61,26 @@ jobs:
       - name: Restore test signing key
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: brasta-android-debug-signing-v1
+          path: ${{ runner.temp }}/brasta-signing/debug.keystore
+          key: brasta-android-debug-signing-v2
+
+      - name: Prepare test signing key
+        shell: bash
+        run: |
+          key_path="$RUNNER_TEMP/brasta-signing/debug.keystore"
+          mkdir -p "$(dirname "$key_path")"
+          if [ ! -f "$key_path" ]; then
+            keytool -genkeypair \
+              -keystore "$key_path" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -dname "CN=Brasta Android Beta,O=Brasta,C=US" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000
+          fi
+          echo "BRASTA_ANDROID_KEYSTORE_PATH=$key_path" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: npm ci
@@ -94,6 +112,13 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify \
+            --verbose \
+            --print-certs \
+            android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Record APK checksum
         run: sha256sum android/app/build/outputs/apk/debug/app-debug.apk > android/app/build/outputs/apk/debug/app-debug.apk.sha256
