@@ -169,6 +169,9 @@ assert(androidBridge.includes('if (pushAvailable) {'), 'Android still subscribes
 assert(capacitorConfig.includes("existsSync('android/app/google-services.json')"), 'Capacitor does not derive push capability from Firebase configuration');
 assert(capacitorConfig.includes("' BrastaPush/1'"), 'Firebase-enabled APKs do not advertise native push capability');
 assert(capacitorConfig.includes("...(pushConfigured ? ['@capacitor/push-notifications'] : [])"), 'Firebase-free APKs still bundle the crashing native push plugin');
+assert(pushNotifications.includes('[brasta push] Delivery skipped.'), 'Push delivery hides missing server configuration');
+assert(pushNotifications.includes('[brasta push] Delivery result.'), 'Push delivery hides Firebase success and rejection counts');
+assert(pushNotifications.includes('errorCodes'), 'Push delivery does not retain privacy-safe Firebase rejection codes');
 assert(androidBridge.includes("syncPushToken('unregister', token, secret)"), 'Android sign-out cannot revoke a notification registration without retaining credentials');
 assert(pushRoute.includes("body.action === 'unregister'"), 'Push API is missing device-capability revocation');
 assert(pushNotifications.includes("createHash('sha256')"), 'Push revocation secrets are not hashed before storage');

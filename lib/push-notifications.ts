@@ -212,15 +212,41 @@ function isExpiredTokenError(code: string | undefined): boolean {
     || code === 'messaging/invalid-registration-token';
 }
 
+function pushErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object' || !('code' in error)) return null;
+  const code = String((error as { code?: unknown }).code || '').trim();
+  return code ? code.slice(0, 120) : null;
+}
+
+function safePushError(error: unknown): { name: string; message: string; code?: string } {
+  const name = error instanceof Error ? error.name : 'Error';
+  const message = error instanceof Error ? error.message : String(error || 'Unknown push delivery error');
+  const code = pushErrorCode(error);
+  return {
+    name: name.slice(0, 80),
+    message: message.slice(0, 500),
+    ...(code ? { code } : {}),
+  };
+}
+
 export async function sendPushToUser(userId: string, payload: BrastaPushPayload): Promise<PushDeliveryResult> {
   const app = messagingApp();
-  if (!app || !pushStorageConfigured()) {
+  const storageConfigured = pushStorageConfigured();
+  if (!app || !storageConfigured) {
+    console.warn('[brasta push] Delivery skipped.', {
+      kind: payload.kind,
+      firebaseConfigured: Boolean(app),
+      storageConfigured,
+    });
     return { configured: false, attempted: 0, delivered: 0, failed: 0 };
   }
 
   try {
     const subscriptions = await activeSubscriptions(userId);
-    if (!subscriptions.length) return { configured: true, attempted: 0, delivered: 0, failed: 0 };
+    if (!subscriptions.length) {
+      console.info('[brasta push] No active Android subscriptions.', { kind: payload.kind });
+      return { configured: true, attempted: 0, delivered: 0, failed: 0 };
+    }
 
     const roomCode = String(payload.roomCode || '').replace(/[^A-Z0-9]/gi, '').slice(0, 6).toUpperCase();
     const route = cleanRoute(payload.route);
@@ -255,6 +281,17 @@ export async function sendPushToUser(userId: string, payload: BrastaPushPayload)
     const expiredIds = response.responses.flatMap((result, index) =>
       !result.success && isExpiredTokenError(result.error?.code) ? [subscriptions[index].id] : []
     );
+    const errorCodes = [...new Set(response.responses.flatMap((result) => {
+      const code = pushErrorCode(result.error);
+      return code ? [code] : [];
+    }))];
+    console.info('[brasta push] Delivery result.', {
+      kind: payload.kind,
+      attempted: subscriptions.length,
+      delivered: response.successCount,
+      failed: response.failureCount,
+      errorCodes,
+    });
     if (expiredIds.length) {
       void removeSubscriptions(expiredIds).catch((error) => {
         console.error('[brasta push] Could not prune invalid FCM registrations.', error);
@@ -268,7 +305,10 @@ export async function sendPushToUser(userId: string, payload: BrastaPushPayload)
       failed: response.failureCount,
     };
   } catch (error) {
-    console.error('[brasta push] Delivery failed.', error);
+    console.error('[brasta push] Delivery failed.', {
+      kind: payload.kind,
+      error: safePushError(error),
+    });
     return { configured: true, attempted: 0, delivered: 0, failed: 0 };
   }
 }
