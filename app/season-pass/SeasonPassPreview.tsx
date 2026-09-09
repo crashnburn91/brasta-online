@@ -5,7 +5,13 @@ import { SEASON_ONE, SEASON_REWARDS, seasonTier, type SeasonReward } from '../..
 
 function RewardArt({ reward }: { reward: SeasonReward }) {
   return <div aria-hidden="true" className={`sp-art sp-${reward.color} sp-art-${reward.kind.replaceAll(' ', '-').toLowerCase()}`}>
-    <span>{reward.motif}</span>
+    {reward.motif === 'wagon-wheel' ? <svg className="sp-wagon-wheel" viewBox="0 0 100 100" focusable="false">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      {Array.from({ length: 12 }, (_, i) => <path key={i} d="M47.5 40 L48.5 15 L51.5 15 L52.5 40 Z" fill="currentColor" transform={`rotate(${i * 30} 50 50)`} />)}
+      <circle cx="50" cy="50" r="10" fill="currentColor" />
+      <circle cx="50" cy="50" r="4" fill="#650f20" stroke="#f0d58a" strokeWidth="1.5" />
+    </svg> : <span>{reward.motif}</span>}
     {reward.kind === 'Card faces' && <small>♠</small>}
   </div>;
 }
@@ -16,6 +22,7 @@ export default function SeasonPassPreview() {
   const [filter, setFilter] = useState('All rewards');
   const [selected, setSelected] = useState(SEASON_REWARDS[1]);
   const tier = seasonTier(xp);
+  const premiumCount = SEASON_REWARDS.filter(r => r.premium).length;
   const visible = SEASON_REWARDS.filter(r => filter === 'All rewards' || (filter === 'Free' ? !r.premium : r.premium));
   return <main className="sp-page">
     <nav className="sp-nav"><a href="/">← Back to Brasta</a><span>DESIGN PREVIEW</span></nav>
@@ -36,7 +43,7 @@ export default function SeasonPassPreview() {
         </button>;
       })}</div>
     </section>
-    <section className="sp-offer"><div><p className="sp-eyebrow">PREMIUM SEASON PASS</p><h2>A little more Brasta.</h2><p>11 premium cosmetics, plus the free reward track. Buying later in the season includes premium rewards for tiers you have already reached.</p></div><div><strong>$4.99</strong><span>One purchase · No automatic renewal</span><button disabled>Purchases open at launch</button></div></section>
+    <section className="sp-offer"><div><p className="sp-eyebrow">PREMIUM SEASON PASS</p><h2>A little more Brasta.</h2><p>{premiumCount} premium cosmetics, plus the free reward track. Buying later in the season includes premium rewards for tiers you have already reached.</p></div><div><strong>$4.99</strong><span>One purchase · No automatic renewal</span><button disabled>Purchases open at launch</button></div></section>
     <footer className="sp-footer">Season dates, artwork, and XP pacing are proposed. Earned cosmetics stay in your collection after the season ends.</footer>
   </main>;
 }

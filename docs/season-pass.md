@@ -8,7 +8,8 @@ XP/Premium controls. All simulated progress is held in component memory. No
 account ownership, payments, season start dates, or live XP awards are enabled.
 
 Proposed offer: $4.99 USD, one purchase per eight-week season, twelve tiers at
-250 XP each. Four free rewards and eleven premium cosmetics. Previously reached
+250 XP each. Four free rewards and twelve premium cosmetics, including the deep
+red Golden Wagon card back with a centered gold wagon wheel at tier six. Previously reached
 premium tiers unlock on purchase. Unlocked cosmetics remain after season end.
 Visuals are CSS concept treatments, not final production artwork.
 
