@@ -8,7 +8,7 @@ XP/Premium controls. All simulated progress is held in component memory. No
 account ownership, payments, season start dates, or live XP awards are enabled.
 
 Proposed offer: $4.99 USD, one purchase per eight-week season, twelve tiers at
-250 XP each. Four free rewards and twelve premium cosmetics, including the deep
+250 XP each. Four free rewards and fifteen premium cosmetics, including the deep
 red Golden Wagon card back with a centered gold wagon wheel at tier six. Previously reached
 premium tiers unlock on purchase. Unlocked cosmetics remain after season end.
 Artwork uses individually drawn SVG designs, with distinct engraving, botanical,
@@ -19,8 +19,22 @@ spokes, an engraved rim, a riveted hub, scrollwork, and a damask pattern. It use
 the same scalable artwork renderer as the other card backs. The Ivory Engraved preview shows one
 ace; the full face deck remains to be drawn. All artwork remains proposed.
 
-Regenerate the sixteen SVG assets with `node scripts/build-season-art.mjs`.
+Regenerate the nineteen SVG assets with `node scripts/build-season-art.mjs`.
 The artwork generator uses no external assets or dependencies.
+
+## Matching card backs and table felts
+
+Each of the five card backs now has a matching felt. The two initial felt rewards
+are replaced by Velvet Conservatory Felt (free, tier 4, stable ID `woven_green`)
+and Golden Wagon Felt (premium, tier 7, stable ID `golden_hour`). Three additional
+premium felts complete the sets: Gilded Court at tier 3, Garnet Mosaic at tier 5,
+and Midnight Observatory at tier 11. This gives 19 rewards: 4 free and 15 premium.
+
+The catalog records each felt's `matchingCardBackId`, and the detail dialog lets
+players switch between both parts of the set. Matching is visual: card back and
+felt ownership/equipment remain separate. Each is one reward. Artwork carries
+the card back's palette and edge motifs, with a low-contrast playing area; Golden
+Wagon Felt reuses the exact engraved wheel geometry from the card back.
 
 ## Profile titles and badges are one reward
 
@@ -33,7 +47,7 @@ The six paired rewards are First Seat, Golden Guest, Season Regular, Fourfold
 Crest, Season Archive, and Golden Brasta. Each unlock includes its matching badge
 and title name and counts as one cosmetic. Golden Guest and Season Regular now
 have badge emblems instead of standalone title plaques. The catalog remains four
-free rewards and twelve premium rewards. The preview shows each pair together.
+free rewards and fifteen premium rewards. The preview shows each pair together.
 
 When implementing season ownership, register each pair as a single profile badge
 definition and grant it through the existing profile title collection. Use the

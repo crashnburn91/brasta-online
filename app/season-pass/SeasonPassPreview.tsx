@@ -10,12 +10,20 @@ export default function SeasonPassPreview() {
   const [filter, setFilter] = useState('All rewards');
   const [selected, setSelected] = useState(SEASON_REWARDS[1]);
   const detailDialog = useRef<HTMLDialogElement>(null);
+  const detailClose = useRef<HTMLButtonElement>(null);
   const tier = seasonTier(xp);
   const premiumCount = SEASON_REWARDS.filter(r => r.premium).length;
   const visible = SEASON_REWARDS.filter(r => filter === 'All rewards' || (filter === 'Free' ? !r.premium : r.premium));
+  const matchingReward = selected.kind === 'Table felt'
+    ? SEASON_REWARDS.find(r => r.kind === 'Card back' && r.id === selected.matchingCardBackId)
+    : selected.kind === 'Card back'
+      ? SEASON_REWARDS.find(r => r.kind === 'Table felt' && r.matchingCardBackId === selected.id)
+      : undefined;
   function inspectReward(reward: SeasonReward) {
     setSelected(reward);
-    detailDialog.current?.showModal();
+    if (!detailDialog.current?.open) detailDialog.current?.showModal();
+    detailDialog.current?.scrollTo({ top: 0 });
+    detailClose.current?.focus();
   }
   return <main className="sp-page">
     <nav className="sp-nav"><a href="/">← Back to Brasta</a><span>DESIGN PREVIEW</span></nav>
@@ -39,11 +47,15 @@ export default function SeasonPassPreview() {
     <section className="sp-offer"><div><p className="sp-eyebrow">PREMIUM SEASON PASS</p><h2>A little more Brasta.</h2><p>{premiumCount} premium cosmetics, plus the free reward track. Buying later in the season includes premium rewards for tiers you have already reached.</p></div><div><strong>$4.99</strong><span>One purchase · No automatic renewal</span><button disabled>Purchases open at launch</button></div></section>
     <footer className="sp-footer">Season dates, artwork, and XP pacing are proposed. Earned cosmetics stay in your collection after the season ends.</footer>
     <dialog className="sp-detail" ref={detailDialog} aria-labelledby="sp-detail-title" aria-describedby="sp-detail-description">
-      <button className="sp-detail-close" aria-label="Close artwork preview" onClick={() => detailDialog.current?.close()} autoFocus>×</button>
+      <button className="sp-detail-close" ref={detailClose} aria-label="Close artwork preview" onClick={() => detailDialog.current?.close()} autoFocus>×</button>
       <div className="sp-detail-art"><RewardArtwork reward={selected} eager /></div>
       <p className="sp-eyebrow">{selected.kind} · Tier {selected.tier} · {selected.premium ? 'Premium' : 'Free'}</p>
       <h2 id="sp-detail-title">{selected.name}</h2>
       <p id="sp-detail-description">{selected.description}</p>
+      {matchingReward ? <button className="sp-matching-reward" onClick={() => inspectReward(matchingReward)}>
+        <RewardArtwork reward={matchingReward} eager />
+        <span><small>Matching {matchingReward.kind.toLowerCase()}</small><strong>{matchingReward.name}</strong><span>View artwork →</span></span>
+      </button> : null}
       {selected.kind === 'Profile title' ? <p className="sp-title-includes">One reward includes this title and its matching badge. They equip together; you can display one profile title at a time.</p> : null}
       <p className="sp-detail-note">{selected.kind === 'Card faces' ? 'Ace design preview. Full deck artwork is still in development.' : 'Artwork preview. Equipping cosmetics will be available at launch.'}</p>
     </dialog>
