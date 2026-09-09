@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome silhouette of the B in the existing Brasta app logo. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2C10.7,4.8 5,8.4 5,13c0,2.5 2,4.5 4.5,4.5c0.8,0 1.5,-0.2 2.1,-0.6c-0.3,1.6 -1.1,3 -2.6,4.1h6c-1.5,-1.1 -2.3,-2.5 -2.6,-4.1c0.6,0.4 1.3,0.6 2.1,0.6c2.5,0 4.5,-2 4.5,-4.5C19,8.4 13.3,4.8 12,2z" />
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="240" android:viewportHeight="240">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M36,18 L115,18 C167,18 189,34 189,65 C189,88 174,105 143,111 C181,114 206,132 206,165 C206,204 173,222 119,222 L36,222 L36,218 C56,215 61,209 61,191 L61,49 C61,30 55,24 36,22 Z M101,28 L101,108 L116,108 C143,108 157,92 157,66 C157,40 143,28 116,28 Z M101,119 L101,187 C101,205 108,212 125,212 C156,212 173,194 173,167 C173,138 154,119 123,119 Z" />
 </vector>

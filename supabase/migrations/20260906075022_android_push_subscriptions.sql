@@ -23,7 +23,7 @@ alter table public.push_subscriptions enable row level security;
 -- Device registrations are managed only by Brasta server routes. Creation
 -- requires an account; deletion requires the matching device capability hash.
 -- Browser roles never receive direct Data API access to FCM tokens.
-revoke all on table public.push_subscriptions from anon, authenticated;
+revoke all on table public.push_subscriptions from public, anon, authenticated;
 grant select, insert, update, delete on table public.push_subscriptions to service_role;
 
 comment on table public.push_subscriptions is

@@ -20,7 +20,7 @@ const config: CapacitorConfig = {
     errorPath: 'offline.html',
   },
   android: {
-    appendUserAgent: ` BrastaAndroid/0.1.0-beta.5${pushConfigured ? ' BrastaPush/1' : ''}`,
+    appendUserAgent: ` BrastaAndroid/0.1.0-beta.6${pushConfigured ? ' BrastaPush/1' : ''}`,
     backgroundColor: '#071b13',
     includePlugins: [
       '@capacitor/app',
@@ -37,7 +37,8 @@ const config: CapacitorConfig = {
       presentationOptions: [],
     },
     SystemBars: {
-      insetsHandling: 'css',
+      // MainActivity reserves the cutout and keyboard space natively.
+      insetsHandling: 'disable',
       style: 'DARK',
       hidden: true,
     },

@@ -4,6 +4,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import android.view.View;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -32,6 +35,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureSafeViewport();
         configurePreviewWebView();
         applyImmersiveMode();
     }
@@ -46,6 +50,28 @@ public class MainActivity extends BridgeActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) applyImmersiveMode();
+    }
+
+    private void configureSafeViewport() {
+        View container = (View) getBridge().getWebView().getParent();
+        // Reserve physical cutouts even when system bars are hidden. Padding
+        // the native container also protects fixed-position web controls.
+        ViewCompat.setOnApplyWindowInsetsListener(container, (view, insets) -> {
+            Insets safe = insets.getInsets(WindowInsetsCompat.Type.displayCutout()
+                | WindowInsetsCompat.Type.systemBars());
+            Insets keyboard = insets.getInsets(WindowInsetsCompat.Type.ime());
+            view.setPadding(safe.left, safe.top, safe.right,
+                Math.max(safe.bottom, keyboard.bottom));
+            // The viewport already excludes these areas; prevent CSS safe-area
+            // rules and the WebView from reserving the same space twice.
+            return new WindowInsetsCompat.Builder(insets)
+                .setInsets(WindowInsetsCompat.Type.displayCutout()
+                    | WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.ime(), Insets.NONE)
+                .setDisplayCutout(null)
+                .build();
+        });
+        ViewCompat.requestApplyInsets(container);
     }
 
     private void applyImmersiveMode() {
