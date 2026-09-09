@@ -104,30 +104,31 @@ wagon += repeat(2, i => rotate(i * 180,
   path('M150 36C139 48 140 63 150 70C160 63 161 48 150 36ZM150 42V65M96 95Q121 98 134 108M204 95Q179 98 166 108', `fill="none" stroke="${light}" stroke-width=".8"`) +
   circle(150, 83, 2, `fill="${gold}"`)));
 // Inset wheel face and shadow; all wheel detail stays within the outer tire.
-wagon += circle(150, 213, 104, 'fill="#250910" opacity=".55"') +
+let wagonWheel = circle(150, 213, 104, 'fill="#250910" opacity=".55"') +
   circle(150, 210, 103, 'fill="#4a0e1c" stroke="#d5b46e" stroke-width="1.5"') +
   circle(150, 210, 98, 'fill="none" stroke="#936932" stroke-width="9"') +
   circle(150, 210, 93, 'fill="#601426" stroke="#e0c689" stroke-width="1.5"');
 // Twelve fitted rim sections, each with a fine grain line and a flush gold pin.
-wagon += repeat(12, i => rotate(i * 30,
+wagonWheel += repeat(12, i => rotate(i * 30,
   path('M125.5 118.5A94.7 94.7 0 0 1 174.5 118.5L171.1 131.4A81.4 81.4 0 0 0 128.9 131.4Z', 'fill="url(#wagon-brass)" stroke="#795525" stroke-width=".7"') +
   path('M128 121.5Q150 115.6 172 121.5M130 126Q150 120.7 170 126', 'fill="none" stroke="#eed296" stroke-width=".55" opacity=".7"') +
   circle(150, 122, 1.65, 'fill="#f0d799" stroke="#785328" stroke-width=".6"') +
   path('M149 122H151', 'stroke="#785328" stroke-width=".45"')));
-wagon += circle(150, 210, 81.5, 'fill="none" stroke="#e1c183" stroke-width="1.5"');
+wagonWheel += circle(150, 210, 81.5, 'fill="none" stroke="#e1c183" stroke-width="1.5"');
 // Tapered, turned spokes have carved collars and an engraved center line.
-wagon += repeat(12, i => rotate(i * 30,
+wagonWheel += repeat(12, i => rotate(i * 30,
   path('M144 191Q144 183 146 177L147.5 145Q144 141 147 137L147 129H153V137Q156 141 152.5 145L154 177Q156 183 156 191Z', 'fill="url(#wagon-brass)" stroke="#795525" stroke-width=".9"') +
   path('M150 147V176M147 139H153M147 143H153M145 182Q150 184 155 182M145 187H155', 'fill="none" stroke="#efda9d" stroke-width=".65"') +
   path('M148 148L147 175M152 148L153 175', 'stroke="#916a35" stroke-width=".5"')));
 // A machined axle boss, six rivets and a small engraved end cap.
-wagon += circle(150, 210, 26, 'fill="#805926" stroke="#e6cb8c" stroke-width="1"') +
+wagonWheel += circle(150, 210, 26, 'fill="#805926" stroke="#e6cb8c" stroke-width="1"') +
   circle(150, 210, 22, 'fill="url(#wagon-brass)" stroke="#6b4925" stroke-width="1.2"') +
   repeat(6, i => rotate(i * 60, circle(150, 193.5, 2.2, 'fill="#e9cf8f" stroke="#8c6532" stroke-width=".65"'))) +
   circle(150, 210, 12, 'fill="#6a4424" stroke="#efd99e" stroke-width=".8"') +
   circle(150, 210, 9.5, 'fill="url(#wagon-brass)" stroke="#c49b54" stroke-width=".8"') +
   rosette(150, 210, 5.1, 1.4, 6, 2, '#795026') +
   circle(150, 210, 2, 'fill="#e9ce8a"');
+wagon += wagonWheel;
 await save('golden_wagon', 'Golden Wagon: engraved twelve-spoke gold wheel, riveted hub, scrollwork and deep red damask', 300, 420, wagon);
 
 // Midnight Observatory: plotted stars, orbit rings and an engraved spade lens.
@@ -201,11 +202,70 @@ regular += repeat(3, i => rotate((i - 1) * 19, '<rect x="91" y="62" width="58" h
 regular += suit('club', 120, 109, .67, '#274b39') + path('M70 178Q120 200 170 178M84 188Q120 204 156 188', 'fill="none" stroke="#91ac91" stroke-width="1.5"') + circle(120, 40, 3, 'fill="#bdc8a1"');
 await save('season_regular', 'Season Regular title badge: a fan of cards with a clover crest', 240, 240, regular);
 
-// Felt is a wide table surface, with detail kept to the perimeter for legibility.
-let woven = '<rect x="10" y="10" width="580" height="340" rx="164" fill="#19382c" stroke="#6d7154" stroke-width="8"/><rect x="24" y="24" width="552" height="312" rx="152" fill="url(#felt)" stroke="#809676" stroke-width="1.5"/><rect x="24" y="24" width="552" height="312" rx="152" fill="url(#weave)"/>';
-woven += '<rect x="32" y="32" width="536" height="296" rx="143" fill="none" stroke="#9ba586" stroke-width="1" stroke-dasharray="3 5"/>' + suit('club', 300, 57, .3, '#71866a') + suit('club', 300, 298, .3, '#71866a');
-await save('woven_green', 'Woven Green: herringbone felt with hand-stitched sage edging', 600, 360, woven);
-let hour = '<rect x="10" y="10" width="580" height="340" rx="164" fill="#735b32"/><rect x="17" y="17" width="566" height="326" rx="157" fill="#153628" stroke="#c8a45b" stroke-width="2"/><rect x="27" y="27" width="546" height="306" rx="147" fill="url(#felt)"/><rect x="27" y="27" width="546" height="306" rx="147" fill="url(#weave)"/>';
-hour += repeat(2, i => rotate(i * 180, '<path d="M136 55H260L300 39L340 55H464M153 64H261L300 48L339 64H447M290 63L300 56L310 63" fill="none" stroke="#b69856" stroke-width="1.2"/>', 300, 180)) + repeat(2, i => rotate(i * 180, '<path d="M56 132L42 180L56 228M64 141L53 180L64 219M70 168L64 180L70 192" fill="none" stroke="#b69856" stroke-width="1.2"/>', 300, 180));
-await save('golden_hour', 'Golden Hour: dark felt with an Art Deco sunrise rail', 600, 360, hour);
-console.log(`Wrote 16 Season 1 SVG designs to ${fileURLToPath(destination)}`);
+// Matching table felts. All ornament is clipped to the playing surface and
+// strongest at the perimeter; the middle remains low contrast for card legibility.
+function feltBase(center, edge, rail, content) {
+  return `<defs>
+    <radialGradient id="table-field"><stop stop-color="${center}"/><stop offset="1" stop-color="${edge}"/></radialGradient>
+    <clipPath id="table-clip"><rect x="28" y="28" width="544" height="304" rx="146"/></clipPath>
+    <mask id="table-perimeter"><rect width="600" height="360" fill="white"/><rect x="95" y="84" width="410" height="192" rx="91" fill="black"/></mask>
+  </defs>
+  <rect x="9" y="9" width="582" height="342" rx="164" fill="${rail}"/>
+  <rect x="15" y="15" width="570" height="330" rx="158" fill="none" stroke="${gold}" stroke-width="1.5"/>
+  <rect x="24" y="24" width="552" height="312" rx="150" fill="url(#table-field)" stroke="${gold}" stroke-width="1.5"/>
+  <rect x="28" y="28" width="544" height="304" rx="146" fill="url(#weave)"/>
+  <g clip-path="url(#table-clip)">${content}</g>`;
+}
+function opposing(content) { return content + rotate(180, content, 300, 180); }
+function at(x, y, scale, content, cx = 150, cy = 210) {
+  return `<g transform="translate(${x} ${y}) scale(${scale}) translate(${-cx} ${-cy})">${content}</g>`;
+}
+
+// Gilded Court pairs engraved scrolls and guilloche with the card's spade inlay.
+let courtFelt = opposing(path('M130 57C150 39 181 43 174 59C170 70 156 63 162 55M178 57C213 36 244 78 275 53M470 57C450 39 419 43 426 59C430 70 444 63 438 55M422 57C387 36 356 78 325 53M187 67C207 46 231 51 236 66M413 67C393 46 369 51 364 66', `stroke="${gold}" stroke-width="1" fill="none"`));
+courtFelt += opposing(at(300, 53, .32, rosette(150, 210, 42, 7, 10, 4) + circle(150, 210, 35, `fill="#0b281f" stroke="${gold}"`) + suit('spade', 150, 205, .76)));
+courtFelt += opposing(path('M58 123C37 150 42 188 56 198C71 210 68 228 51 231M58 143C47 161 52 174 62 169C70 164 61 155 57 162M65 191C83 181 79 155 67 144', `stroke="${gold}" stroke-width=".9" fill="none"`));
+courtFelt += '<rect x="34" y="34" width="532" height="292" rx="140" fill="none" stroke="#cfb070" stroke-width=".7" stroke-dasharray="1 4"/>';
+await save('gilded_felt', 'Gilded Court Felt: matching engraved scrollwork, gold spade inlays and deep green cloth', 600, 360, feltBase('#173b2c', '#0b281f', '#38402b', courtFelt));
+
+// Velvet Conservatory carries the same branching leaves and clover blossoms.
+let conservatory = opposing(path('M116 72C179 15 227 83 286 47M314 47C373 83 421 15 484 72', 'fill="none" stroke="#a7b17b" stroke-width="1.3"'));
+conservatory += opposing(repeat(10, i => {
+  const x = 155 + i * 32, y = 52 + Math.sin(i * .9) * 9;
+  return `<g transform="translate(${n(x)} ${n(y)}) rotate(${i < 5 ? -45 : 45})">${path('M0 0Q-10 -16 -22 -13Q-18 0 0 0M0 0Q3 14 17 18Q20 4 0 0', 'fill="#355c43" stroke="#a7b17b" stroke-width=".8"')}${path('M0 0L-18 -10M0 0L15 15', 'stroke="#a7b17b" stroke-width=".6"')}</g>`;
+}));
+conservatory += opposing(suit('club', 300, 48, .45, '#c9ca94'));
+conservatory += opposing(path('M53 126Q26 180 55 229M47 147Q66 132 61 119Q40 127 47 147M43 171Q25 153 28 143Q49 149 43 171M45 197Q64 180 61 169Q39 177 45 197M52 219Q31 205 34 192Q54 199 52 219', 'stroke="#9cab7a" fill="none" stroke-width=".9"'));
+await save('woven_green', 'Velvet Conservatory Felt: botanical vines and clover embroidery matching the green card back', 600, 360, feltBase('#234d38', '#163d30', '#2a4430', conservatory));
+
+// Garnet Mosaic repeats its faceted red glass as a quiet band around plum felt.
+let garnetFelt = '<g mask="url(#table-perimeter)">' + repeat(7, row => repeat(15, col => {
+  const x = col * 42, y = row * 48;
+  return path(`M${x} ${y}l21 24l-21 24l-21 -24Z`, `fill="${(row + col) % 2 ? '#572433' : '#331b27'}" stroke="#b58f61" stroke-width=".5"`);
+})) + '</g>';
+garnetFelt += opposing('<path d="M300 32L322 55L300 78L278 55Z" fill="#782b44" stroke="#d7b77b" stroke-width="1.3"/><path d="M300 32V78L278 55Z" fill="#b56573"/><path d="M300 40L312 55L300 70L288 55Z" fill="#d69896"/>' + path('M191 49H263M337 49H409M207 56H260M340 56H393', `stroke="${gold}" stroke-width=".8"`));
+garnetFelt += opposing(suit('diamond', 47, 179, .47, '#c68a88', 'stroke="#e1c082" stroke-width="1.5"'));
+await save('garnet_felt', 'Garnet Mosaic Felt: faceted garnet border and gold geometry matching the ruby card back', 600, 360, feltBase('#482331', '#28131e', '#442936', garnetFelt));
+
+// Golden Wagon reuses the exact engraved wheel artwork at the ends of the rail.
+let wagonFelt = wagonDefs + '<rect width="600" height="360" fill="url(#wagon-damask)" mask="url(#table-perimeter)"/>';
+wagonFelt += opposing(at(300, 55, .235, wagonWheel));
+wagonFelt += opposing(path('M130 59C149 33 177 37 179 54C180 67 159 67 162 55C165 49 171 53 169 57M191 55C220 29 242 69 266 55M470 59C451 33 423 37 421 54C420 67 441 67 438 55C435 49 429 53 431 57M409 55C380 29 358 69 334 55', `fill="none" stroke="${gold}" stroke-width="1.1"`));
+wagonFelt += '<rect x="35" y="35" width="530" height="290" rx="139" fill="none" stroke="#be9954" stroke-width=".85" stroke-dasharray="1 4"/>';
+wagonFelt += opposing(repeat(9, i => path(`M${n(50 - Math.sin(i / 8 * Math.PI) * 8)} ${133 + i * 10}q-5 3 0 7q5 -3 0 -7Z`, `fill="none" stroke="${gold}" stroke-width=".85"`)));
+await save('golden_hour', 'Golden Wagon Felt: deep red damask, engraved wheel medallions and gold carriage scrolls', 600, 360, feltBase('#65192a', '#420d1c', '#734c30', wagonFelt));
+
+// Midnight Observatory places the star chart and instrument ticks at the rail.
+let observatory = '<g mask="url(#table-perimeter)">' + repeat(96, i => {
+  const x = 30 + i * 73 % 540, y = 35 + i * 59 % 290;
+  return i % 8 === 0 ? path(`M${x - 2} ${y}h4M${x} ${y - 2}v4`, 'stroke="#c5c8a7" stroke-width=".6"') : circle(x, y, .55, 'fill="#a4bcad"');
+}) + '<path d="M131 61L193 49L229 66L271 40M372 55L420 44L467 73M46 144L66 185L48 218" stroke="#839e91" stroke-width=".6" fill="none"/></g>';
+observatory += opposing(circle(300, 54, 23, `fill="#0b2528" stroke="${gold}" stroke-width=".9"`) + circle(300, 54, 19, 'fill="none" stroke="#759287" stroke-width=".65"') + '<ellipse cx="300" cy="54" rx="10" ry="21" transform="rotate(30 300 54)" fill="none" stroke="#bdc5a5" stroke-width=".7"/>' + suit('spade', 300, 50, .43, '#142f30', `stroke="${gold}" stroke-width="1.5"`) + circle(300, 51, 3.5, 'fill="#d8c894"'));
+observatory += opposing(repeat(19, i => {
+  const a = (128 + i * 7) * Math.PI / 180;
+  const [x, y] = point(130, a, 170, 180);
+  const [xx, yy] = point(i % 3 === 0 ? 121 : 126, a, 170, 180);
+  return line(x, y, xx, yy, `stroke="${gold}" stroke-width=".75"`);
+}));
+await save('midnight_felt', 'Midnight Observatory Felt: deep teal cloth with celestial charts and astrolabe rail inlays', 600, 360, feltBase('#15383a', '#081f22', '#30403a', observatory));
+console.log(`Wrote 19 Season 1 SVG designs to ${fileURLToPath(destination)}`);

@@ -60,3 +60,13 @@
 .sp-detail-art .sp-profile-title-name{font-size:28px}
 .sp-title-includes{max-width:440px;margin:18px auto 0;padding:14px;border:1px solid #c8a45b33;border-radius:10px;background:#c8a45b0d;color:#ddcda7;font-size:13px;line-height:1.6}
 @media(max-width:540px){.sp-reward-art .sp-artwork-profile-title{width:96px}.sp-reward-art .sp-profile-title-name{font-size:12px}.sp-detail-art .sp-artwork-profile-title{width:225px}.sp-detail-art .sp-profile-title-name{font-size:24px}}
+
+.sp-matching-reward{display:flex;align-items:center;gap:18px;width:100%;max-width:440px;margin:22px auto 0;padding:14px 18px;border:1px solid #c8a45b44;border-radius:12px;background:#15372a;color:#e3d2a7;text-align:left;cursor:pointer;font:inherit}
+.sp-matching-reward:hover{border-color:#d8b75e;background:#1d4432}
+.sp-matching-reward>.sp-artwork-card-back{width:44px;flex:none}
+.sp-matching-reward>.sp-artwork-table-felt{width:92px;flex:none}
+.sp-matching-reward>span{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sp-matching-reward small{font-size:10px;letter-spacing:.8px;color:#a9bcaa;text-transform:uppercase}
+.sp-matching-reward strong{font-family:var(--font-brasta-display),Georgia,serif;font-size:17px;line-height:1.25}
+.sp-matching-reward>span>span{font-size:11px;color:#d8b75e}
+@media(max-width:400px){.sp-matching-reward{gap:12px;padding:12px}.sp-matching-reward>.sp-artwork-table-felt{width:72px}.sp-matching-reward strong{font-size:15px}}
