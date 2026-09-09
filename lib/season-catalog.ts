@@ -28,6 +28,7 @@ export const SEASON_REWARDS: SeasonReward[] = [
   { id: 'woven_green', name: 'Woven Green', kind: 'Table felt', tier: 4, premium: false, motif: '♣', color: 'green', description: 'A subtle woven texture for your own table view.' },
   { id: 'laurel', name: 'Golden Laurel', kind: 'Avatar frame', tier: 4, premium: true, motif: 'B', color: 'gold', description: 'A warm gold frame around your profile picture.' },
   { id: 'ruby_diamond', name: 'Ruby Diamond', kind: 'Card back', tier: 5, premium: true, motif: '♦', color: 'ruby', description: 'Deep burgundy with a repeating diamond pattern.' },
+  { id: 'golden_wagon', name: 'Golden Wagon', kind: 'Card back', tier: 6, premium: true, motif: 'wagon-wheel', color: 'deep-red', description: 'A golden twelve-spoke wagon wheel centered on deep red, framed by a fine gold border.' },
   { id: 'ivory_faces', name: 'Ivory Classic', kind: 'Card faces', tier: 6, premium: true, motif: 'A', color: 'ivory', description: 'Cream card faces with familiar ranks and red/black suits.' },
   { id: 'season_regular', name: 'Season Regular', kind: 'Title', tier: 7, premium: false, motif: 'S', color: 'green', description: 'A little recognition for time spent at the table.' },
   { id: 'golden_hour', name: 'Golden Hour', kind: 'Table felt', tier: 7, premium: true, motif: '♦', color: 'gold', description: 'Dark green felt with a quiet gold edge.' },
