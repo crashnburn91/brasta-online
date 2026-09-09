@@ -11,7 +11,14 @@ Proposed offer: $4.99 USD, one purchase per eight-week season, twelve tiers at
 250 XP each. Four free rewards and twelve premium cosmetics, including the deep
 red Golden Wagon card back with a centered gold wagon wheel at tier six. Previously reached
 premium tiers unlock on purchase. Unlocked cosmetics remain after season end.
-Visuals are CSS concept treatments, not final production artwork.
+Artwork uses individually drawn SVG designs, with distinct engraving, botanical,
+geometric, and celestial themes. Badges, frames, title plaques, and table felts
+have artwork suited to their own shapes; selecting a reward opens a larger detail
+view. The Golden Wagon design is retained. The Ivory Engraved preview shows one
+ace; the full face deck remains to be drawn. All artwork remains proposed.
+
+Regenerate the fifteen SVG assets with `node scripts/build-season-art.mjs`.
+The artwork generator uses no external assets or dependencies.
 
 ## Production implementation requirements
 
