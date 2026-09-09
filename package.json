@@ -18,12 +18,20 @@
     "start": "next start",
     "test:rules": "npm run build:client && npm run verify:rules",
     "test:bot": "tsc -p tsconfig.bot-tests.json && node public/dist/bot-tests-bundle.js",
-    "test:online": "npm run sync:engine && npm run build:server-tests && npm run verify:online"
+    "test:online": "npm run sync:engine && npm run build:server-tests && npm run verify:online",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "engines": {
     "node": "24.x"
   },
   "dependencies": {
+    "@capacitor/app": "8.1.1",
+    "@capacitor/browser": "8.0.4",
+    "@capacitor/core": "8.5.1",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/push-notifications": "8.1.2",
     "@supabase/supabase-js": "latest",
     "@vercel/functions": "latest",
     "firebase-admin": "14.3.0",
@@ -35,6 +43,8 @@
     "ws": "latest"
   },
   "devDependencies": {
+    "@capacitor/android": "8.5.1",
+    "@capacitor/cli": "8.5.1",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Cinzel } from 'next/font/google';
 import type { ReactNode } from 'react';
 import PresenceTracker from './PresenceTracker';
+import AndroidBridge from './AndroidBridge';
 import './special-move-effects.css';
 
 const brastaDisplay = Cinzel({
@@ -101,6 +102,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <PresenceTracker />
         {children}
+        <AndroidBridge />
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/live-score-ui.js?v=0.15.4" strategy="beforeInteractive" />

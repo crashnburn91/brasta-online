@@ -14,6 +14,13 @@ const specialMoves = readFileSync('public/brasta-special-moves.js', 'utf8');
 const specialMoveStyles = readFileSync('app/special-move-effects.css', 'utf8');
 const lobbyPolish = readFileSync('public/lobby-polish.js', 'utf8');
 const tutorial = readFileSync('public/tutorial.js', 'utf8');
+const androidBridge = readFileSync('app/AndroidBridge.tsx', 'utf8');
+const accountBridge = readFileSync('app/AccountBridge.tsx', 'utf8');
+const pushNotifications = readFileSync('lib/push-notifications.ts', 'utf8');
+const pushRoute = readFileSync('app/api/push/route.ts', 'utf8');
+const androidManifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
+const androidActivity = readFileSync('android/app/src/main/java/app/brasta/MainActivity.java', 'utf8');
+const capacitorConfig = readFileSync('capacitor.config.ts', 'utf8');
 
 assert(/latestState\.score/.test(liveStatus), 'Live header no longer renders the completed-round match score');
 assert(liveStatus.includes('match-score-live'), 'Live header is missing the match-score group');
@@ -142,6 +149,36 @@ assert(tutorial.includes("title: 'Capture Both Prizes'"), 'Tutorial is missing t
 assert(tutorial.includes("scenario: 'big2'"), 'Big 2 tutorial step does not load its standalone scenario');
 assert(tutorial.includes("scenario: 'big10'"), 'Big 10 tutorial step does not load its standalone scenario');
 assert(tutorial.includes("scenario: 'big2big10'"), 'Power Pair tutorial step does not load its combined scenario');
+
+assert(androidBridge.includes("Capacitor.getPlatform() !== 'android'"), 'Native bridge is not isolated to Android');
+assert(androidBridge.includes('SystemBars.hide()'), 'Android bridge no longer reapplies immersive mode');
+assert(androidBridge.includes('Haptics.impact'), 'Android bridge is missing tactile interaction feedback');
+assert(accountBridge.includes('skipBrowserRedirect: native'), 'Native social authentication can still open inside the Android WebView');
+assert(accountBridge.includes('await Browser.open'), 'Native social authentication does not use an Android Custom Tab');
+assert(androidBridge.includes('Browser.close()'), 'Native authentication callbacks do not close the Android Custom Tab');
+assert(androidBridge.includes('BRASTA_NATIVE_AUTH_CALLBACK_EVENT'), 'Native authentication callbacks are not delivered to the app session');
+assert(accountBridge.includes('flowId ? { flowId } : undefined'), 'Native authentication does not select its matching PKCE verifier');
+assert(accountBridge.includes('exchangeCodeForSession'), 'Native authentication does not exchange the callback code inside the app');
+assert(androidActivity.includes('"x-vercel-skip-toolbar", "1"'), 'Android preview requests no longer suppress the Vercel toolbar');
+assert(androidActivity.includes('loadUrl(appUrl, PREVIEW_HEADERS)'), 'The initial Android preview request is missing toolbar-suppression headers');
+assert(androidActivity.includes('vercel.live/_next-live/feedback'), 'Android is missing its preview-toolbar rendering fallback');
+assert(androidBridge.includes("PushNotifications.requestPermissions()"), 'Android notification permission is not requested at runtime');
+assert(androidBridge.includes('nativePushAvailable()'), 'Android push registration is not guarded by an APK capability check');
+assert(androidBridge.includes('BrastaPush\\/1'), 'Android cannot detect whether Firebase configuration was embedded in the APK');
+assert(androidBridge.includes('if (pushAvailable) {'), 'Android still subscribes to native push events when Firebase is unavailable');
+assert(capacitorConfig.includes("existsSync('android/app/google-services.json')"), 'Capacitor does not derive push capability from Firebase configuration');
+assert(capacitorConfig.includes("' BrastaPush/1'"), 'Firebase-enabled APKs do not advertise native push capability');
+assert(capacitorConfig.includes("...(pushConfigured ? ['@capacitor/push-notifications'] : [])"), 'Firebase-free APKs still bundle the crashing native push plugin');
+assert(pushNotifications.includes('[brasta push] Delivery skipped.'), 'Push delivery hides missing server configuration');
+assert(pushNotifications.includes('[brasta push] Delivery result.'), 'Push delivery hides Firebase success and rejection counts');
+assert(pushNotifications.includes('errorCodes'), 'Push delivery does not retain privacy-safe Firebase rejection codes');
+assert(androidBridge.includes("syncPushToken('unregister', token, secret)"), 'Android sign-out cannot revoke a notification registration without retaining credentials');
+assert(pushRoute.includes("body.action === 'unregister'"), 'Push API is missing device-capability revocation');
+assert(pushNotifications.includes("createHash('sha256')"), 'Push revocation secrets are not hashed before storage');
+assert(pushNotifications.includes('sendEachForMulticast'), 'Push delivery is no longer using FCM multicast');
+assert(pushNotifications.includes("route: '/?push=ranked'"), 'Ranked notifications bypass authoritative assignment restoration');
+assert(androidManifest.includes('android.permission.POST_NOTIFICATIONS'), 'Android 13 notification permission is missing from the manifest');
+assert(androidManifest.includes('android:usesCleartextTraffic="false"'), 'Android shell allows cleartext network traffic');
 
 function motionPreferenceSandbox(savedPreference = null) {
   const documentElement = { dataset: {} };

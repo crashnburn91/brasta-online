@@ -165,6 +165,7 @@ function normalizeRoom(room: StoredRoom): StoredRoom {
   if (room.callableBurn === undefined) room.callableBurn = null;
   return room;
 }
+
 function turnSnapshot(room: StoredRoom): TurnSnapshot {
   return room.gameState
     ? { phase: room.gameState.phase, currentSeat: room.gameState.currentSeat }

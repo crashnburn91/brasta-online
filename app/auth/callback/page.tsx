@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BRASTA_AUTH_RETURN_KEY, getSupabaseBrowserClient } from '../../../lib/supabase-browser';
+import {
+  BRASTA_AUTH_FLOW_ID_KEY,
+  BRASTA_AUTH_RETURN_KEY,
+  getSupabaseBrowserClient,
+} from '../../../lib/supabase-browser';
 
 export default function AuthCallbackPage() {
   const [status, setStatus] = useState('Finishing sign in…');
@@ -26,7 +30,13 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      let flowId = '';
+      try { flowId = sessionStorage.getItem(BRASTA_AUTH_FLOW_ID_KEY) || ''; } catch {}
+      const { error } = await supabase.auth.exchangeCodeForSession(
+        code,
+        flowId ? { flowId } : undefined,
+      );
+      try { sessionStorage.removeItem(BRASTA_AUTH_FLOW_ID_KEY); } catch {}
       if (error) {
         setStatus(error.message);
         return;

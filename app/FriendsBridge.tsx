@@ -85,6 +85,21 @@ export default function FriendsBridge({ accessToken }: { accessToken: string }) 
   const [loaded, setLoaded] = useState(false);
   const [openInviteFor, setOpenInviteFor] = useState<string | null>(null);
 
+  useEffect(() => {
+    let shouldOpen = false;
+    try {
+      const params = new URLSearchParams(location.search);
+      shouldOpen = params.get('open') === 'friends';
+      if (shouldOpen) {
+        params.delete('open');
+        params.delete('push');
+        const query = params.toString();
+        history.replaceState({}, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+      }
+    } catch {}
+    if (shouldOpen) setOpen(true);
+  }, []);
+
   const applySnapshot = useCallback((data: Partial<Snapshot>) => {
     setSnapshot({
       friends: data.friends || [],
