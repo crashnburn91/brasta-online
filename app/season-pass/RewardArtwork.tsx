@@ -10,18 +10,6 @@ const dimensions: Record<SeasonReward['kind'], [number, number]> = {
 };
 
 export default function RewardArtwork({ reward, eager = false }: { reward: SeasonReward; eager?: boolean }) {
-  if (reward.id === 'golden_wagon') {
-    return <div aria-hidden="true" className="sp-art sp-deep-red sp-art-card-back">
-      <svg className="sp-wagon-wheel" viewBox="0 0 100 100" focusable="false">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" />
-        <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        {Array.from({ length: 12 }, (_, i) => <path key={i} d="M47.5 40 L48.5 15 L51.5 15 L52.5 40 Z" fill="currentColor" transform={`rotate(${i * 30} 50 50)`} />)}
-        <circle cx="50" cy="50" r="10" fill="currentColor" />
-        <circle cx="50" cy="50" r="4" fill="#650f20" stroke="#f0d58a" strokeWidth="1.5" />
-      </svg>
-    </div>;
-  }
-
   const [width, height] = dimensions[reward.kind];
   if (reward.kind === 'Profile title') {
     return <div className="sp-profile-title-pair" aria-hidden="true">

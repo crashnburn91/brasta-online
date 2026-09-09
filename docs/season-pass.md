@@ -14,10 +14,12 @@ premium tiers unlock on purchase. Unlocked cosmetics remain after season end.
 Artwork uses individually drawn SVG designs, with distinct engraving, botanical,
 geometric, and celestial themes. Profile titles with matching badges, frames, and table felts
 have artwork suited to their own shapes; selecting a reward opens a larger detail
-view. The Golden Wagon design is retained. The Ivory Engraved preview shows one
+view. Golden Wagon keeps its centered gold wheel and deep red field, with carved
+spokes, an engraved rim, a riveted hub, scrollwork, and a damask pattern. It uses
+the same scalable artwork renderer as the other card backs. The Ivory Engraved preview shows one
 ace; the full face deck remains to be drawn. All artwork remains proposed.
 
-Regenerate the fifteen SVG assets with `node scripts/build-season-art.mjs`.
+Regenerate the sixteen SVG assets with `node scripts/build-season-art.mjs`.
 The artwork generator uses no external assets or dependencies.
 
 ## Profile titles and badges are one reward

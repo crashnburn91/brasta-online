@@ -87,6 +87,49 @@ mosaic += '<path d="M150 136L210 210L150 284L90 210Z" fill="#9b3a53"/>' +
   repeat(4, i => rotate(i * 90, path('M150 92l5 -7l-5 -7l-5 7Z', `fill="${gold}"`)));
 await save('ruby_diamond', 'Garnet Mosaic: faceted ruby glass with geometric gold inlay', 300, 420, card('#37151f', `<svg x="20" y="20" width="260" height="380" viewBox="20 20 260 380">${mosaic}</svg>`));
 
+// Golden Wagon: a twelve-spoke carriage wheel with turned spokes, a segmented
+// rim and a riveted axle hub. The deep red field and centered wheel remain key.
+const wagonDefs = `<defs>
+<radialGradient id="wagon-red"><stop stop-color="#811e30"/><stop offset=".65" stop-color="#621223"/><stop offset="1" stop-color="#400b18"/></radialGradient>
+<linearGradient id="wagon-brass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ddc283"/><stop offset=".45" stop-color="#c29b51"/><stop offset="1" stop-color="#9a7035"/></linearGradient>
+<pattern id="wagon-damask" width="38" height="52" patternUnits="userSpaceOnUse"><path d="M19 4C16 14 4 17 7 27C10 35 20 29 15 25M19 4C22 14 34 17 31 27C28 35 18 29 23 25M19 10V45M13 38L19 45L25 38" fill="none" stroke="#c77568" stroke-width=".65" opacity=".22"/></pattern>
+</defs>`;
+let wagon = wagonDefs + '<rect width="300" height="420" rx="18" fill="url(#wagon-red)"/><rect x="23" y="23" width="254" height="374" rx="9" fill="url(#wagon-damask)"/>' + border();
+// Engraved side rails and opposing scrolls frame the wheel without obscuring it.
+wagon += repeat(2, side => `<g transform="translate(${side ? 300 : 0} 0) scale(${side ? -1 : 1} 1)">` +
+  line(26, 78, 26, 342, `stroke="${gold}" stroke-width=".6"`) +
+  repeat(23, i => path(`M30 ${86 + i * 11}q-6 4 0 8q6 -4 0 -8Z`, `fill="none" stroke="${gold}" stroke-width=".7"`)) + '</g>');
+wagon += repeat(2, i => rotate(i * 180,
+  path('M63 104C43 74 67 49 88 58C107 67 87 86 77 75C72 68 78 62 85 65M237 104C257 74 233 49 212 58C193 67 213 86 223 75C228 68 222 62 215 65M91 56C119 57 125 92 150 94C175 92 181 57 209 56M112 68C110 49 130 45 138 58C147 70 133 77 127 68M188 68C190 49 170 45 162 58C153 70 167 77 173 68', `fill="none" stroke="${gold}" stroke-width="1.1"`) +
+  path('M150 36C139 48 140 63 150 70C160 63 161 48 150 36ZM150 42V65M96 95Q121 98 134 108M204 95Q179 98 166 108', `fill="none" stroke="${light}" stroke-width=".8"`) +
+  circle(150, 83, 2, `fill="${gold}"`)));
+// Inset wheel face and shadow; all wheel detail stays within the outer tire.
+wagon += circle(150, 213, 104, 'fill="#250910" opacity=".55"') +
+  circle(150, 210, 103, 'fill="#4a0e1c" stroke="#d5b46e" stroke-width="1.5"') +
+  circle(150, 210, 98, 'fill="none" stroke="#936932" stroke-width="9"') +
+  circle(150, 210, 93, 'fill="#601426" stroke="#e0c689" stroke-width="1.5"');
+// Twelve fitted rim sections, each with a fine grain line and a flush gold pin.
+wagon += repeat(12, i => rotate(i * 30,
+  path('M125.5 118.5A94.7 94.7 0 0 1 174.5 118.5L171.1 131.4A81.4 81.4 0 0 0 128.9 131.4Z', 'fill="url(#wagon-brass)" stroke="#795525" stroke-width=".7"') +
+  path('M128 121.5Q150 115.6 172 121.5M130 126Q150 120.7 170 126', 'fill="none" stroke="#eed296" stroke-width=".55" opacity=".7"') +
+  circle(150, 122, 1.65, 'fill="#f0d799" stroke="#785328" stroke-width=".6"') +
+  path('M149 122H151', 'stroke="#785328" stroke-width=".45"')));
+wagon += circle(150, 210, 81.5, 'fill="none" stroke="#e1c183" stroke-width="1.5"');
+// Tapered, turned spokes have carved collars and an engraved center line.
+wagon += repeat(12, i => rotate(i * 30,
+  path('M144 191Q144 183 146 177L147.5 145Q144 141 147 137L147 129H153V137Q156 141 152.5 145L154 177Q156 183 156 191Z', 'fill="url(#wagon-brass)" stroke="#795525" stroke-width=".9"') +
+  path('M150 147V176M147 139H153M147 143H153M145 182Q150 184 155 182M145 187H155', 'fill="none" stroke="#efda9d" stroke-width=".65"') +
+  path('M148 148L147 175M152 148L153 175', 'stroke="#916a35" stroke-width=".5"')));
+// A machined axle boss, six rivets and a small engraved end cap.
+wagon += circle(150, 210, 26, 'fill="#805926" stroke="#e6cb8c" stroke-width="1"') +
+  circle(150, 210, 22, 'fill="url(#wagon-brass)" stroke="#6b4925" stroke-width="1.2"') +
+  repeat(6, i => rotate(i * 60, circle(150, 193.5, 2.2, 'fill="#e9cf8f" stroke="#8c6532" stroke-width=".65"'))) +
+  circle(150, 210, 12, 'fill="#6a4424" stroke="#efd99e" stroke-width=".8"') +
+  circle(150, 210, 9.5, 'fill="url(#wagon-brass)" stroke="#c49b54" stroke-width=".8"') +
+  rosette(150, 210, 5.1, 1.4, 6, 2, '#795026') +
+  circle(150, 210, 2, 'fill="#e9ce8a"');
+await save('golden_wagon', 'Golden Wagon: engraved twelve-spoke gold wheel, riveted hub, scrollwork and deep red damask', 300, 420, wagon);
+
 // Midnight Observatory: plotted stars, orbit rings and an engraved spade lens.
 let cosmos = repeat(72, i => {
   const x = 30 + (i * 61 % 240), y = 35 + (i * 97 % 350);
@@ -165,4 +208,4 @@ await save('woven_green', 'Woven Green: herringbone felt with hand-stitched sage
 let hour = '<rect x="10" y="10" width="580" height="340" rx="164" fill="#735b32"/><rect x="17" y="17" width="566" height="326" rx="157" fill="#153628" stroke="#c8a45b" stroke-width="2"/><rect x="27" y="27" width="546" height="306" rx="147" fill="url(#felt)"/><rect x="27" y="27" width="546" height="306" rx="147" fill="url(#weave)"/>';
 hour += repeat(2, i => rotate(i * 180, '<path d="M136 55H260L300 39L340 55H464M153 64H261L300 48L339 64H447M290 63L300 56L310 63" fill="none" stroke="#b69856" stroke-width="1.2"/>', 300, 180)) + repeat(2, i => rotate(i * 180, '<path d="M56 132L42 180L56 228M64 141L53 180L64 219M70 168L64 180L70 192" fill="none" stroke="#b69856" stroke-width="1.2"/>', 300, 180));
 await save('golden_hour', 'Golden Hour: dark felt with an Art Deco sunrise rail', 600, 360, hour);
-console.log(`Wrote 15 Season 1 SVG designs to ${fileURLToPath(destination)}`);
+console.log(`Wrote 16 Season 1 SVG designs to ${fileURLToPath(destination)}`);
