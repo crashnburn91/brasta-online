@@ -36,6 +36,12 @@ felt ownership/equipment remain separate. Each is one reward. Artwork carries
 the card back's palette and edge motifs, with a low-contrast playing area; Golden
 Wagon Felt reuses the exact engraved wheel geometry from the card back.
 
+Felt previews match the game’s slightly rounded rectangular table. The 600 × 360
+artwork uses a 24-unit outer corner radius with concentric inset borders, straight
+side decorations, and rectangular quiet-area masks. This follows the desktop
+table’s 24px radius; compact gameplay uses 12–17px corners. Corners have their own
+matching ornaments, and the observatory markings follow the straight rails.
+
 ## Profile titles and badges are one reward
 
 Brasta already owns and equips profile identities as one item: a title name plus
