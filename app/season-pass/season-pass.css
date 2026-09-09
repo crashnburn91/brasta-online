@@ -7,10 +7,9 @@
 .sp-artwork{position:relative;flex:none;width:108px;max-width:100%;line-height:0;isolation:isolate}
 .sp-artwork img{display:block;width:100%;height:auto;position:relative;z-index:1}
 .sp-artwork-card-back,.sp-artwork-card-faces{border-radius:7px;filter:drop-shadow(0 10px 9px #0005)}
-.sp-artwork-badge{width:122px;filter:drop-shadow(0 6px 6px #0004)}
+.sp-artwork-profile-title{width:112px;filter:drop-shadow(0 6px 6px #0004)}
 .sp-artwork-avatar-frame{width:138px}
 .sp-artwork-table-felt{width:100%;max-width:210px}
-.sp-artwork-title{width:100%;max-width:230px}
 .sp-avatar-sample{position:absolute;inset:17%;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 25%,#496454,#162f29)}
 .sp-avatar-sample svg{width:100%;height:100%;fill:#799180;opacity:.8}
 .sp-reward-art{display:flex;align-items:center;justify-content:center;height:190px;width:100%;margin:8px 0 16px}
@@ -19,9 +18,8 @@
 .sp-showcase{padding:20px 0}
 .sp-showcase-art{display:flex;align-items:center;justify-content:center;min-height:310px;margin-bottom:22px}
 .sp-showcase-art>.sp-artwork-card-back,.sp-showcase-art>.sp-artwork-card-faces{width:205px;transform:rotate(-6deg)}
-.sp-showcase-art>.sp-artwork-badge{width:240px}
 .sp-showcase-art>.sp-artwork-avatar-frame{width:270px}
-.sp-showcase-art>.sp-artwork-table-felt,.sp-showcase-art>.sp-artwork-title{width:100%;max-width:400px}
+.sp-showcase-art>.sp-artwork-table-felt{width:100%;max-width:400px}
 .sp-showcase-art>.sp-art{width:205px;height:287px;transform:rotate(-6deg);margin:0}
 .sp-inspect{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 16px;margin-top:10px;background:#183629;color:#e4cd8b;border:1px solid #bfa15d77;border-radius:24px;font-size:12px;cursor:pointer}
 .sp-inspect:hover{background:#254531}
@@ -30,9 +28,8 @@
 .sp-detail-close{position:absolute;right:10px;top:10px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid #ffffff25;border-radius:50%;background:#18372b;color:#ebd7a1;font-size:27px;cursor:pointer;z-index:2}
 .sp-detail-art{display:flex;justify-content:center;align-items:center;min-height:320px;margin:8px 0 30px}
 .sp-detail-art>.sp-artwork-card-back,.sp-detail-art>.sp-artwork-card-faces{width:250px;max-width:80%}
-.sp-detail-art>.sp-artwork-badge{width:290px;max-width:85%}
 .sp-detail-art>.sp-artwork-avatar-frame{width:340px;max-width:95%}
-.sp-detail-art>.sp-artwork-table-felt,.sp-detail-art>.sp-artwork-title{width:100%;max-width:520px}
+.sp-detail-art>.sp-artwork-table-felt{width:100%;max-width:520px}
 .sp-detail-art>.sp-art{width:250px;height:350px;max-width:80%;margin:0}
 .sp-detail h2{font-family:var(--font-brasta-display),Georgia,serif;font-size:30px;line-height:1.2;margin:8px 0 14px}
 .sp-detail #sp-detail-description{max-width:440px;margin:0 auto;color:#c0cbbb;font-size:14px;line-height:1.65}
@@ -51,3 +48,15 @@
   .sp-detail-art>.sp-art{width:210px;height:294px}
   .sp-detail h2{font-size:26px}
 }
+
+/* A profile title and its badge are one equipped identity. */
+.sp-profile-title-pair{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%;max-width:100%;min-width:0}
+.sp-profile-title-name{font-family:var(--font-brasta-display),Georgia,serif;font-size:14px;line-height:1.25;color:#e1cd96;text-align:center;overflow-wrap:anywhere}
+.sp-showcase-art>.sp-profile-title-pair{gap:14px}
+.sp-showcase-art .sp-artwork-profile-title{width:215px}
+.sp-showcase-art .sp-profile-title-name{font-size:25px}
+.sp-detail-art>.sp-profile-title-pair{gap:18px}
+.sp-detail-art .sp-artwork-profile-title{width:280px;max-width:85%}
+.sp-detail-art .sp-profile-title-name{font-size:28px}
+.sp-title-includes{max-width:440px;margin:18px auto 0;padding:14px;border:1px solid #c8a45b33;border-radius:10px;background:#c8a45b0d;color:#ddcda7;font-size:13px;line-height:1.6}
+@media(max-width:540px){.sp-reward-art .sp-artwork-profile-title{width:96px}.sp-reward-art .sp-profile-title-name{font-size:12px}.sp-detail-art .sp-artwork-profile-title{width:225px}.sp-detail-art .sp-profile-title-name{font-size:24px}}

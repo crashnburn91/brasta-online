@@ -146,12 +146,17 @@ halo += repeat(16, i => rotate(i * 22.5, '<path d="M150 20L163 34L150 48L137 34Z
 halo += repeat(16, i => rotate(i * 22.5 + 11.25, circle(150, 34, 3, 'fill="#fff0c4"'), 150, 150));
 await save('ruby_frame', 'Garnet Halo: faceted garnet stones and gold milgrain around a portrait', 300, 300, halo);
 
-// Title plaques display the title itself with their own ornamental silhouette.
-let guest = '<path d="M24 60L52 21H368L396 60L368 99H52Z" fill="#153a2b" stroke="url(#gold)" stroke-width="3"/><path d="M41 60L62 31H358L379 60L358 89H62Z" fill="url(#hatch)" stroke="#b89b5d" stroke-width=".8"/>';
-guest += suit('diamond', 62, 58, .4) + suit('diamond', 358, 58, .4) + text(210, 67, 'GOLDEN GUEST', 23, 'letter-spacing="2"') + '<path d="M124 18H296M155 105H265" stroke="#b89b5d" stroke-width="1"/>';
-await save('golden_guest', 'Golden Guest: a gold-inlaid invitation plaque', 420, 120, guest);
-let regular = '<rect x="24" y="25" width="372" height="70" rx="32" fill="#203c32" stroke="#88a28d" stroke-width="2"/><path d="M81 34H339M81 86H339" stroke="#728f7a" stroke-width=".7"/>' + suit('club', 62, 57, .47, '#b7c6a0') + suit('club', 358, 57, .47, '#b7c6a0') + text(210, 67, 'SEASON REGULAR', 21, 'letter-spacing="1.5" style="fill:#d2dbc0"');
-await save('season_regular', 'Season Regular: a sage enamel plaque with clover endcaps', 420, 120, regular);
+// Profile titles use a matching badge emblem; their name is rendered by the UI.
+let guest = path('M120 16L196 48L216 120L196 192L120 224L44 192L24 120L44 48Z', 'fill="#14382b" stroke="url(#gold)" stroke-width="4"');
+guest += path('M120 26L188 55L205 120L188 185L120 214L52 185L35 120L52 55Z', `fill="url(#hatch)" stroke="${gold}" stroke-width="1"`);
+guest += '<rect x="65" y="68" width="110" height="96" rx="5" fill="#d5bd82" stroke="#efe0b4" stroke-width="2"/><path d="M66 72L120 117L174 72M66 162L107 122M174 162L133 122" fill="none" stroke="#8f713e" stroke-width="2"/>';
+guest += circle(120, 120, 19, 'fill="#7b2940" stroke="#e6c988" stroke-width="2"') + suit('diamond', 120, 119, .35, light);
+guest += repeat(4, i => rotate(i * 90, path('M120 37l4 7l-4 7l-4 -7Z', `fill="${gold}"`), 120, 120));
+await save('golden_guest', 'Golden Guest title badge: engraved invitation with a garnet seal', 240, 240, guest);
+let regular = circle(120, 120, 102, 'fill="#203c32" stroke="#91ac91" stroke-width="3"') + circle(120, 120, 93, 'fill="url(#weave)" stroke="#748e77" stroke-dasharray="2 5"');
+regular += repeat(3, i => rotate((i - 1) * 19, '<rect x="91" y="62" width="58" height="104" rx="5" fill="#b9c6a2" stroke="#294b39" stroke-width="2"/><rect x="96" y="67" width="48" height="94" rx="3" fill="none" stroke="#708a6c" stroke-width=".8"/>', 120, 157));
+regular += suit('club', 120, 109, .67, '#274b39') + path('M70 178Q120 200 170 178M84 188Q120 204 156 188', 'fill="none" stroke="#91ac91" stroke-width="1.5"') + circle(120, 40, 3, 'fill="#bdc8a1"');
+await save('season_regular', 'Season Regular title badge: a fan of cards with a clover crest', 240, 240, regular);
 
 // Felt is a wide table surface, with detail kept to the perimeter for legibility.
 let woven = '<rect x="10" y="10" width="580" height="340" rx="164" fill="#19382c" stroke="#6d7154" stroke-width="8"/><rect x="24" y="24" width="552" height="312" rx="152" fill="url(#felt)" stroke="#809676" stroke-width="1.5"/><rect x="24" y="24" width="552" height="312" rx="152" fill="url(#weave)"/>';
