@@ -1,4 +1,10 @@
 .brasta-site-nav{height:58px;position:sticky;top:0;z-index:1100;background:rgba(5,22,16,.96);border-bottom:1px solid rgba(255,255,255,.09);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+/* Match beta 6's native cutout surround (res/values/colors.xml: brasta_green).
+   An opaque fill keeps the join seamless as content scrolls beneath the bar. */
+html[data-brasta-native="android"] .brasta-site-nav{
+  background:#071b13;
+  backdrop-filter:none;
+}
 .brasta-site-nav-inner{height:100%;max-width:1400px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .brasta-site-brand{display:inline-flex;align-items:center;color:#f7f2df;text-decoration:none;font-size:22px;font-weight:900;letter-spacing:.035em;line-height:1}
 .brasta-site-brand:hover{color:#fff8e8}
