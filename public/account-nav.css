@@ -5,6 +5,10 @@ html[data-brasta-native="android"] .brasta-site-nav{
   background:#071b13;
   backdrop-filter:none;
 }
+html[data-brasta-native="android"],
+html[data-brasta-native="android"] body{
+  background:#071b13;
+}
 .brasta-site-nav-inner{height:100%;max-width:1400px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .brasta-site-brand{display:inline-flex;align-items:center;color:#f7f2df;text-decoration:none;font-size:22px;font-weight:900;letter-spacing:.035em;line-height:1}
 .brasta-site-brand:hover{color:#fff8e8}

@@ -35,6 +35,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setBackgroundDrawableResource(R.color.brasta_green);
+        getWindow().setStatusBarColor(getResources().getColor(R.color.brasta_green));
+        getWindow().setNavigationBarColor(getResources().getColor(R.color.brasta_green));
         configureSafeViewport();
         configurePreviewWebView();
         applyImmersiveMode();
