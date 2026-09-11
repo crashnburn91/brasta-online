@@ -3,18 +3,18 @@
 ## Reviewable first delivery
 
 `/season-pass` is an interactive design preview. It contains a typed reward catalog,
-free/premium filters, artwork treatments, a selected reward showcase, and sample
+set and free/premium filters, artwork treatments, a selected reward showcase, and sample
 XP/Premium controls. All simulated progress is held in component memory. No
 account ownership, payments, season start dates, or live XP awards are enabled.
 
 Proposed offer: $4.99 USD, one purchase per eight-week season, twelve tiers at
 250 XP each. Four free rewards and fifteen premium cosmetics, including the deep
-red Golden Wagon card back with a centered gold wagon wheel at tier six. Previously reached
+red Romani Heritage card back with a centered gold wagon wheel at tier six. Previously reached
 premium tiers unlock on purchase. Unlocked cosmetics remain after season end.
 Artwork uses individually drawn SVG designs, with distinct engraving, botanical,
 geometric, and celestial themes. Profile titles with matching badges, frames, and table felts
 have artwork suited to their own shapes; selecting a reward opens a larger detail
-view. Golden Wagon keeps its centered gold wheel and deep red field, with carved
+view. Romani Heritage keeps its centered gold wheel and deep red field, with carved
 spokes, an engraved rim, a riveted hub, scrollwork, and a damask pattern. It uses
 the same scalable artwork renderer as the other card backs. The Ivory Engraved preview shows one
 ace; the full face deck remains to be drawn. All artwork remains proposed.
@@ -22,25 +22,47 @@ ace; the full face deck remains to be drawn. All artwork remains proposed.
 Regenerate the nineteen SVG assets with `node scripts/build-season-art.mjs`.
 The artwork generator uses no external assets or dependencies.
 
+## Cosmetic sets
+
+Every reward belongs to one named set through its required `setId`. The catalog
+groups rewards by set and offers a set selector alongside the free/premium
+filters. Every detail preview lists the other pieces in its set, with each
+piece's reward type, tier, and access shown. Tier and access remain per item.
+
+| Set | Cosmetics |
+| --- | --- |
+| Gilded Court | Gilded Court card back and felt, Ivory Engraved faces, First Seat, Golden Guest, Fourfold Crest (6) |
+| Velvet Conservatory | Velvet Conservatory card back and felt, Season Regular, Season Archive (4) |
+| Garnet Mosaic | Garnet Mosaic card back and felt, Garnet Halo frame (3) |
+| Romani Heritage | Romani Heritage card back and felt, Romani Heritage title with wheel badge, Gold Coin Bezel frame (4) |
+| Astrology | Astrology card back and felt (2) |
+
+Romani Heritage replaces the Golden Wagon set name. Its profile title replaces
+Golden Brasta with the exact engraved wheel from the matching card back. Gold
+Coin Bezel replaces Laureate Wreath: sixteen gold coins, each with a beaded rim
+and a small wheel engraving, surround a red enamel bezel and transparent portrait
+opening. Astrology replaces Midnight Observatory. Stable reward IDs, unlock
+tiers, and free/premium access are unchanged by these presentation updates.
+
 ## Matching card backs and table felts
 
 Each of the five card backs now has a matching felt. The two initial felt rewards
 are replaced by Velvet Conservatory Felt (free, tier 4, stable ID `woven_green`)
-and Golden Wagon Felt (premium, tier 7, stable ID `golden_hour`). Three additional
+and Romani Heritage Felt (premium, tier 7, stable ID `golden_hour`). Three additional
 premium felts complete the sets: Gilded Court at tier 3, Garnet Mosaic at tier 5,
-and Midnight Observatory at tier 11. This gives 19 rewards: 4 free and 15 premium.
+and Astrology at tier 11. This gives 19 rewards: 4 free and 15 premium.
 
 The catalog records each felt's `matchingCardBackId`, and the detail dialog lets
-players switch between both parts of the set. Matching is visual: card back and
+players browse every item in the set. Matching is visual: card back and
 felt ownership/equipment remain separate. Each is one reward. Artwork carries
-the card back's palette and edge motifs, with a low-contrast playing area; Golden
-Wagon Felt reuses the exact engraved wheel geometry from the card back.
+the card back's palette and edge motifs, with a low-contrast playing area; Romani
+Heritage Felt reuses the exact engraved wheel geometry from the card back.
 
 Felt previews match the game’s slightly rounded rectangular table. The 600 × 360
 artwork uses a 24-unit outer corner radius with concentric inset borders, straight
 side decorations, and rectangular quiet-area masks. This follows the desktop
 table’s 24px radius; compact gameplay uses 12–17px corners. Corners have their own
-matching ornaments, and the observatory markings follow the straight rails.
+matching ornaments, and the Astrology markings follow the straight rails.
 
 ## Profile titles and badges are one reward
 
@@ -50,7 +72,7 @@ Season rewards follow that same model. There is one `Profile title` reward kind;
 there are no separate badge-only or title-only ownership/equipment slots.
 
 The six paired rewards are First Seat, Golden Guest, Season Regular, Fourfold
-Crest, Season Archive, and Golden Brasta. Each unlock includes its matching badge
+Crest, Season Archive, and Romani Heritage. Each unlock includes its matching badge
 and title name and counts as one cosmetic. Golden Guest and Season Regular now
 have badge emblems instead of standalone title plaques. The catalog remains four
 free rewards and fifteen premium rewards. The preview shows each pair together.

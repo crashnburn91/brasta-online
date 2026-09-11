@@ -87,7 +87,7 @@ mosaic += '<path d="M150 136L210 210L150 284L90 210Z" fill="#9b3a53"/>' +
   repeat(4, i => rotate(i * 90, path('M150 92l5 -7l-5 -7l-5 7Z', `fill="${gold}"`)));
 await save('ruby_diamond', 'Garnet Mosaic: faceted ruby glass with geometric gold inlay', 300, 420, card('#37151f', `<svg x="20" y="20" width="260" height="380" viewBox="20 20 260 380">${mosaic}</svg>`));
 
-// Golden Wagon: a twelve-spoke carriage wheel with turned spokes, a segmented
+// Romani Heritage: a twelve-spoke carriage wheel with turned spokes, a segmented
 // rim and a riveted axle hub. The deep red field and centered wheel remain key.
 const wagonDefs = `<defs>
 <radialGradient id="wagon-red"><stop stop-color="#811e30"/><stop offset=".65" stop-color="#621223"/><stop offset="1" stop-color="#400b18"/></radialGradient>
@@ -129,9 +129,9 @@ wagonWheel += circle(150, 210, 26, 'fill="#805926" stroke="#e6cb8c" stroke-width
   rosette(150, 210, 5.1, 1.4, 6, 2, '#795026') +
   circle(150, 210, 2, 'fill="#e9ce8a"');
 wagon += wagonWheel;
-await save('golden_wagon', 'Golden Wagon: engraved twelve-spoke gold wheel, riveted hub, scrollwork and deep red damask', 300, 420, wagon);
+await save('golden_wagon', 'Romani Heritage: engraved twelve-spoke gold wheel, riveted hub, scrollwork and deep red damask', 300, 420, wagon);
 
-// Midnight Observatory: plotted stars, orbit rings and an engraved spade lens.
+// Astrology: plotted stars, orbit rings and an engraved spade lens.
 let cosmos = repeat(72, i => {
   const x = 30 + (i * 61 % 240), y = 35 + (i * 97 % 350);
   return i % 9 === 0 ? path(`M${x - 3} ${y}h6M${x} ${y - 3}v6`, 'stroke="#ddcea6" stroke-width=".7"') : circle(x, y, i % 3 === 0 ? .9 : .45, 'fill="#b8c8bc"');
@@ -145,7 +145,7 @@ cosmos += '<path d="M53 98L97 78L126 121L177 102L239 149M50 300L85 335L162 355L2
   path('M150 168V222M126 198H174', 'stroke="#b9be9d" stroke-width=".6"') + circle(150, 198, 9, `fill="#dcc58d"`) +
   path('M141 198A9 9 0 00153 189A9 9 0 10141 198', 'fill="#15312c"') +
   text(150, 67, 'XII', 10, 'letter-spacing="2"') + text(150, 366, 'VI', 10, 'letter-spacing="2"');
-await save('midnight', 'Midnight Observatory: celestial chart, orbit rings and a crescent spade', 300, 420, card('#081f22', cosmos));
+await save('midnight', 'Astrology: celestial chart, orbit rings and a crescent spade', 300, 420, card('#081f22', cosmos));
 
 // Ivory Engraved: actual card face with legible corners and a custom ace engraving.
 let ivory = '<rect width="300" height="420" rx="18" fill="#f4ead2"/><rect x="11" y="11" width="278" height="398" rx="12" fill="none" stroke="#b6a177" stroke-width=".8"/>';
@@ -175,16 +175,29 @@ archive += '<path d="M79 66H156Q176 66 171 86H163V154Q163 173 141 173H81Q98 170 
 archive += text(126, 132, '01', 37, 'style="fill:#355340"') + path('M107 92H145M106 140H146', 'stroke="#b89a59"') + text(120, 205, 'SEASON ARCHIVE', 9, 'letter-spacing="1.2" style="fill:#355340"');
 await save('season_keepsake', 'Season Archive: porcelain keepsake with a season scroll and olive sprigs', 240, 240, archive);
 
-// Golden Brasta: a layered sun seal distinct from competitive rank shields.
-let seal = repeat(24, i => rotate(i * 15, path('M120 6L127 33L120 42L113 33Z', 'fill="url(#gold)"'), 120, 120));
-seal += circle(120, 120, 88, 'fill="#b5914c" stroke="#e6cd8d" stroke-width="2"') + rosette(120, 120, 70, 5, 16, 7) + circle(120, 120, 60, 'fill="#163b2b" stroke="#e9d49c" stroke-width="2"');
-seal += text(120, 143, 'B', 74, 'font-weight="bold"') + path('M83 155Q120 171 157 155', `fill="none" stroke="${gold}" stroke-width="2"`) + repeat(3, i => suit('diamond', 105 + i * 15, 174, .13));
-await save('golden_brasta', 'Golden Brasta: layered sunburst seal with engraved gold and a central B', 240, 240, seal);
+// The Romani Heritage profile title uses the same wheel as its card back.
+const heritageBadge = wagonDefs + at(120, 120, 1.02, wagonWheel);
+await save('golden_brasta', 'Romani Heritage title badge: carved gold wagon wheel with an engraved rim and riveted hub', 240, 240, heritageBadge);
 
-// Avatar frames have transparent centers. The preview supplies a neutral portrait behind them.
-let wreath = circle(150, 150, 108, `fill="none" stroke="${gold}" stroke-width="3"`) + circle(150, 150, 102, 'fill="none" stroke="#597160" stroke-width="2"') + laurel(150, 150, 113);
-wreath += path('M127 275L150 258L173 275L161 291L150 283L139 291Z', 'fill="#294c36" stroke="#c8a45b" stroke-width="1.5"') + suit('diamond', 150, 20, .4, light);
-await save('laurel', 'Laureate Wreath: layered gold leaves with an emerald ribbon', 300, 300, wreath);
+// Gold Coin Bezel: transparent portrait opening, red enamel bezel and sixteen
+// minted gold coins. Every coin has a beaded rim and a small wheel engraving.
+let coinFrame = circle(150, 150, 105, 'fill="none" stroke="#601b2c" stroke-width="11"') +
+  circle(150, 150, 99, 'fill="none" stroke="#d8b971" stroke-width="1.5"') +
+  circle(150, 150, 116, 'fill="none" stroke="#ad8545" stroke-width="7"') +
+  circle(150, 150, 124, 'fill="none" stroke="#c8a45b" stroke-width="1"');
+const coin = circle(150, 34, 19, 'fill="url(#gold)" stroke="#75522c" stroke-width="1.2"') +
+  circle(150, 34, 16.3, 'fill="none" stroke="#f0dba2" stroke-width=".9"') +
+  circle(150, 34, 13.3, 'fill="none" stroke="#987039" stroke-width=".7"') +
+  repeat(24, j => rotate(j * 15, circle(150, 19.4, .65, 'fill="#77522c"'), 150, 34)) +
+  circle(150, 34, 9.4, 'fill="none" stroke="#a27b40" stroke-width="1.4"') +
+  circle(150, 34, 8, 'fill="none" stroke="#f0d99c" stroke-width=".65"') +
+  repeat(12, j => rotate(j * 30, path('M149.55 31.5L149.15 26H150.85L150.45 31.5Z', 'fill="#98703a"'), 150, 34)) +
+  circle(150, 34, 2.5, 'fill="#ccaa64" stroke="#8f6532" stroke-width=".75"');
+coinFrame += repeat(16, i => rotate(i * 22.5, coin, 150, 150));
+coinFrame += repeat(16, i => rotate(i * 22.5 + 11.25, circle(150, 34, 2.1, 'fill="#e4c988" stroke="#8c6332" stroke-width=".65"'), 150, 150));
+await save('laurel', 'Gold Coin Bezel: sixteen engraved gold coins around a red enamel portrait frame, Romani Heritage set', 300, 300, coinFrame);
+
+// The Garnet Halo frame retains its matching gemstone design.
 let halo = circle(150, 150, 116, 'fill="none" stroke="#c3a366" stroke-width="18"') + circle(150, 150, 126, 'fill="none" stroke="#e3c989" stroke-width="2"') + circle(150, 150, 105, 'fill="none" stroke="#e3c989" stroke-width="2"');
 halo += repeat(16, i => rotate(i * 22.5, '<path d="M150 20L163 34L150 48L137 34Z" fill="#762c43" stroke="#efd29a" stroke-width="1"/><path d="M150 20V48L137 34Z" fill="#b06070"/><path d="M150 25L158 34L150 42L142 34Z" fill="#df9b9c"/>', 150, 150));
 halo += repeat(16, i => rotate(i * 22.5 + 11.25, circle(150, 34, 3, 'fill="#fff0c4"'), 150, 150));
@@ -255,16 +268,16 @@ garnetFelt += opposing(suit('diamond', 47, 179, .47, '#c68a88', 'stroke="#e1c082
 garnetFelt += '<rect x="76" y="84" width="448" height="192" rx="10" fill="none" stroke="#a97862" stroke-width=".7"/>';
 await save('garnet_felt', 'Garnet Mosaic Felt: faceted garnet border and gold geometry matching the ruby card back', 600, 360, feltBase('#482331', '#28131e', '#442936', garnetFelt));
 
-// Golden Wagon reuses the exact engraved wheel artwork at the ends of the rail.
+// Romani Heritage reuses the exact engraved wheel artwork at the ends of the rail.
 let wagonFelt = wagonDefs + '<rect width="600" height="360" fill="url(#wagon-damask)" mask="url(#table-perimeter)"/>';
 wagonFelt += opposing(at(300, 55, .235, wagonWheel));
 wagonFelt += opposing(path('M130 59C149 33 177 37 179 54C180 67 159 67 162 55C165 49 171 53 169 57M191 55C220 29 242 69 266 55M470 59C451 33 423 37 421 54C420 67 441 67 438 55C435 49 429 53 431 57M409 55C380 29 358 69 334 55', `fill="none" stroke="${gold}" stroke-width="1.1"`));
 wagonFelt += '<rect x="35" y="35" width="530" height="290" rx="4" fill="none" stroke="#be9954" stroke-width=".85" stroke-dasharray="1 4"/>';
 wagonFelt += opposing(repeat(9, i => path(`M49 ${133 + i * 10}q-5 3 0 7q5 -3 0 -7Z`, `fill="none" stroke="${gold}" stroke-width=".85"`)));
 wagonFelt += feltCorners(path('M48 88V62Q48 46 65 49C79 51 76 68 65 64C57 61 67 54 70 59M79 48Q102 44 103 60Q103 72 91 69M48 85Q67 96 77 78M47 47H86', `fill="none" stroke="${gold}" stroke-width=".95"`));
-await save('golden_hour', 'Golden Wagon Felt: deep red damask, engraved wheel medallions and gold carriage scrolls', 600, 360, feltBase('#65192a', '#420d1c', '#734c30', wagonFelt));
+await save('golden_hour', 'Romani Heritage Felt: deep red damask, engraved wheel medallions and gold carriage scrolls', 600, 360, feltBase('#65192a', '#420d1c', '#734c30', wagonFelt));
 
-// Midnight Observatory places the star chart and instrument ticks at the rail.
+// Astrology places the star chart and instrument ticks at the rail.
 let observatory = '<g mask="url(#table-perimeter)">' + repeat(96, i => {
   const x = 30 + i * 73 % 540, y = 35 + i * 59 % 290;
   return i % 8 === 0 ? path(`M${x - 2} ${y}h4M${x} ${y - 2}v4`, 'stroke="#c5c8a7" stroke-width=".6"') : circle(x, y, .55, 'fill="#a4bcad"');
@@ -273,5 +286,5 @@ observatory += opposing(circle(300, 54, 23, `fill="#0b2528" stroke="${gold}" str
 // Instrument ticks follow straight rails instead of an oval dial.
 observatory += opposing(repeat(17, i => line(40, 92 + i * 11, i % 4 === 0 ? 50 : 45, 92 + i * 11, `stroke="${gold}" stroke-width=".75"`)));
 observatory += feltCorners(path('M41 74V44Q41 41 44 41H74M49 64V49H64M60 55L66 61M63 52L63 64', `fill="none" stroke="${gold}" stroke-width=".8"`));
-await save('midnight_felt', 'Midnight Observatory Felt: deep teal cloth with celestial charts and astrolabe rail inlays', 600, 360, feltBase('#15383a', '#081f22', '#30403a', observatory));
+await save('midnight_felt', 'Astrology Felt: deep teal cloth with celestial charts and astrolabe rail inlays', 600, 360, feltBase('#15383a', '#081f22', '#30403a', observatory));
 console.log(`Wrote 19 Season 1 SVG designs to ${fileURLToPath(destination)}`);
