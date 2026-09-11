@@ -70,3 +70,30 @@
 .sp-matching-reward strong{font-family:var(--font-brasta-display),Georgia,serif;font-size:17px;line-height:1.25}
 .sp-matching-reward>span>span{font-size:11px;color:#d8b75e}
 @media(max-width:400px){.sp-matching-reward{gap:12px;padding:12px}.sp-matching-reward>.sp-artwork-table-felt{width:72px}.sp-matching-reward strong{font-size:15px}}
+
+/* Each reward belongs to one named cosmetic set; tier and access stay per item. */
+.sp-catalog-controls{display:flex;flex-direction:column;align-items:flex-end;gap:14px;flex:none}
+.sp-set-picker{display:flex;align-items:center;gap:10px;color:#b9c8b9;font-size:12px}
+.sp-set-picker select{min-height:42px;max-width:100%;padding:8px 34px 8px 12px;border:1px solid #c8a45b55;border-radius:9px;background:#102c20;color:#eee3c7;font:inherit;cursor:pointer}
+.sp-set-picker select:focus-visible{outline:3px solid #f1d77a;outline-offset:4px}
+.sp-set-group{padding:22px 0 30px;border-top:1px solid #d8b75e30;--sp-set-accent:#c8a45b}
+.sp-set-velvet_conservatory{--sp-set-accent:#a9b984}
+.sp-set-garnet_mosaic{--sp-set-accent:#d1969e}
+.sp-set-romani_heritage{--sp-set-accent:#ddbd76}
+.sp-set-astrology{--sp-set-accent:#91b6b0}
+.sp-set-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:18px;padding-left:14px;border-left:3px solid var(--sp-set-accent)}
+.sp-set-heading h3{font-family:var(--font-brasta-display),Georgia,serif;color:var(--sp-set-accent);font-size:25px;line-height:1.2;margin:0 0 8px}
+.sp-set-heading p{font-size:12px;color:#aebfac;max-width:570px;margin:0}
+.sp-set-heading>span{flex:none;font-size:10px;color:#c2c7af;padding:5px 9px;border:1px solid #ffffff1c;border-radius:20px}
+.sp-showcase .sp-set-label,.sp-detail .sp-set-label{color:#dbc084;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 6px}
+.sp-empty-set{text-align:center;padding:35px 18px;color:#aebfac;border:1px solid #ffffff20;border-radius:14px;font-size:13px}
+.sp-set-related{margin:24px auto 0;max-width:440px;border-top:1px solid #c8a45b33;padding-top:18px}
+.sp-set-related>h3{text-align:left;font-size:14px;line-height:1.35;color:#d9c495;margin:0 0 12px}
+.sp-set-related .sp-matching-reward{margin-top:10px}
+.sp-set-related .sp-artwork-card-faces{width:44px;flex:none}
+.sp-set-related .sp-artwork-avatar-frame{width:60px;flex:none}
+.sp-set-related .sp-profile-title-pair{width:60px;flex:none}
+.sp-set-related .sp-profile-title-pair .sp-artwork-profile-title{width:60px}
+.sp-set-related .sp-profile-title-name{display:none}
+@media(max-width:850px){.sp-catalog-controls{align-items:flex-start;width:100%}.sp-set-picker{flex-wrap:wrap}}
+@media(max-width:540px){.sp-set-heading h3{font-size:22px}.sp-set-heading{gap:10px}.sp-set-heading>span{font-size:9px}.sp-set-picker{width:100%}.sp-set-picker select{flex:1;min-width:0}.sp-set-group{padding-top:20px}}

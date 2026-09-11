@@ -1,8 +1,19 @@
+export const SEASON_SETS = {
+  gilded_court: { name: 'Gilded Court', description: 'Engraved gold, warm ivory, and the emblems of a classic card room.' },
+  velvet_conservatory: { name: 'Velvet Conservatory', description: 'Rich green fabric, curling vines, and botanical keepsakes.' },
+  garnet_mosaic: { name: 'Garnet Mosaic', description: 'Faceted garnets, burgundy enamel, and geometric gold inlays.' },
+  romani_heritage: { name: 'Romani Heritage', description: 'Deep red damask, engraved gold wagon wheels, and a bezel of gold coins.' },
+  astrology: { name: 'Astrology', description: 'Deep teal, celestial charts, orbital rings, and gold instrument markings.' },
+} as const;
+
+export type SeasonSetId = keyof typeof SEASON_SETS;
+
 export type SeasonReward = {
   id: string;
   name: string;
   kind: 'Card back' | 'Card faces' | 'Profile title' | 'Avatar frame' | 'Table felt';
   tier: number;
+  setId: SeasonSetId;
   premium: boolean;
   motif: string;
   color: string;
@@ -24,25 +35,25 @@ export const SEASON_ONE = {
 } as const;
 
 export const SEASON_REWARDS: SeasonReward[] = [
-  { id: 'first_seat', name: 'First Seat', kind: 'Profile title', tier: 1, premium: false, motif: 'I', color: 'green', description: 'An engraved chair medallion with a dotted coin edge, made to mark your first seat at the table.' },
-  { id: 'gilded_suits', name: 'Gilded Court', kind: 'Card back', tier: 1, premium: true, motif: '♠', color: 'gold', description: 'Mirrored scrollwork and fine guilloche lines surround a spade medallion on a deep green field.' },
-  { id: 'velvet_club', name: 'Velvet Conservatory', kind: 'Card back', tier: 2, premium: true, motif: '♣', color: 'green', description: 'Interwoven vines, engraved leaf veins, and clover blossoms frame a botanical club centerpiece.' },
-  { id: 'golden_guest', name: 'Golden Guest', kind: 'Profile title', tier: 3, premium: true, motif: 'G', color: 'gold', description: 'The Golden Guest title with an engraved invitation badge, a gold border, and a garnet seal.' },
-  { id: 'gilded_felt', name: 'Gilded Court Felt', kind: 'Table felt', tier: 3, premium: true, motif: '♠', color: 'gold', matchingCardBackId: 'gilded_suits', description: 'Deep green cloth with engraved gold scrolls and spade inlays, matching the Gilded Court card back. Fine ornament follows the rail around a quiet playing surface.' },
-  { id: 'woven_green', name: 'Velvet Conservatory Felt', kind: 'Table felt', tier: 4, premium: false, motif: '♣', color: 'green', matchingCardBackId: 'velvet_club', description: 'Rich green fabric with curling vines, engraved leaf veins, and clover embroidery, matching the Velvet Conservatory card back.' },
-  { id: 'laurel', name: 'Laureate Wreath', kind: 'Avatar frame', tier: 4, premium: true, motif: 'B', color: 'gold', description: 'Layered gold leaves circle your portrait, tied with an emerald ribbon and crowned by a small gold diamond.' },
-  { id: 'ruby_diamond', name: 'Garnet Mosaic', kind: 'Card back', tier: 5, premium: true, motif: '♦', color: 'ruby', description: 'Faceted garnet glass sits within angular gold inlays and a repeating burgundy mosaic.' },
-  { id: 'garnet_felt', name: 'Garnet Mosaic Felt', kind: 'Table felt', tier: 5, premium: true, motif: '♦', color: 'ruby', matchingCardBackId: 'ruby_diamond', description: 'A faceted garnet mosaic and geometric gold inlays surround deep plum felt, matching the Garnet Mosaic card back. The central area stays subdued for card visibility.' },
-  { id: 'golden_wagon', name: 'Golden Wagon', kind: 'Card back', tier: 6, premium: true, motif: 'wagon-wheel', color: 'deep-red', description: 'A twelve-spoke gold wagon wheel with carved spokes, an engraved rim, and a riveted hub. Ornamental scrollwork and braided borders frame a deep red damask field.' },
-  { id: 'ivory_faces', name: 'Ivory Engraved', kind: 'Card faces', tier: 6, premium: true, motif: 'A', color: 'ivory', description: 'An engraved botanical ace on warm ivory, with clear corner indices. The full deck will retain familiar ranks and red/black suits.' },
-  { id: 'season_regular', name: 'Season Regular', kind: 'Profile title', tier: 7, premium: false, motif: 'S', color: 'green', description: 'The Season Regular title with a sage enamel badge showing a fan of cards and a clover crest.' },
-  { id: 'golden_hour', name: 'Golden Wagon Felt', kind: 'Table felt', tier: 7, premium: true, motif: 'wagon-wheel', color: 'deep-red', matchingCardBackId: 'golden_wagon', description: 'Deep red fabric with damask edging, gold carriage scrolls, and the same engraved wheel medallions as the Golden Wagon card back.' },
-  { id: 'four_suits', name: 'Fourfold Crest', kind: 'Profile title', tier: 8, premium: true, motif: '♠♦♣♥', color: 'gold', description: 'An octagonal seal holds four enamel inlays: spade, diamond, club, heart. Black and red suits sit against brushed gold.' },
-  { id: 'ruby_frame', name: 'Garnet Halo', kind: 'Avatar frame', tier: 9, premium: true, motif: 'B', color: 'ruby', description: 'Sixteen faceted garnets and tiny gold beads form a jeweled halo around your portrait.' },
-  { id: 'midnight', name: 'Midnight Observatory', kind: 'Card back', tier: 10, premium: true, motif: '♠', color: 'green', description: 'A crescent moon set inside a spade lens, surrounded by orbital rings, star charts, and an instrument dial.' },
-  { id: 'midnight_felt', name: 'Midnight Observatory Felt', kind: 'Table felt', tier: 11, premium: true, motif: '♠', color: 'green', matchingCardBackId: 'midnight', description: 'Deep teal cloth bordered by fine star charts, instrument markings, and orbital spade inlays, matching the Midnight Observatory card back.' },
-  { id: 'season_keepsake', name: 'Season Archive', kind: 'Profile title', tier: 11, premium: false, motif: 'I', color: 'ivory', description: 'A porcelain keepsake with an engraved Season 01 scroll and olive sprigs.' },
-  { id: 'golden_brasta', name: 'Golden Brasta', kind: 'Profile title', tier: 12, premium: true, motif: 'B', color: 'gold', description: 'A layered sunburst seal with intricate gold engraving, a deep green center, and a raised Brasta B.' },
+  { id: 'first_seat', setId: 'gilded_court', name: 'First Seat', kind: 'Profile title', tier: 1, premium: false, motif: 'I', color: 'green', description: 'An engraved chair medallion with a dotted coin edge, made to mark your first seat at the table.' },
+  { id: 'gilded_suits', setId: 'gilded_court', name: 'Gilded Court', kind: 'Card back', tier: 1, premium: true, motif: '♠', color: 'gold', description: 'Mirrored scrollwork and fine guilloche lines surround a spade medallion on a deep green field.' },
+  { id: 'velvet_club', setId: 'velvet_conservatory', name: 'Velvet Conservatory', kind: 'Card back', tier: 2, premium: true, motif: '♣', color: 'green', description: 'Interwoven vines, engraved leaf veins, and clover blossoms frame a botanical club centerpiece.' },
+  { id: 'golden_guest', setId: 'gilded_court', name: 'Golden Guest', kind: 'Profile title', tier: 3, premium: true, motif: 'G', color: 'gold', description: 'The Golden Guest title with an engraved invitation badge, a gold border, and a garnet seal.' },
+  { id: 'gilded_felt', setId: 'gilded_court', name: 'Gilded Court Felt', kind: 'Table felt', tier: 3, premium: true, motif: '♠', color: 'gold', matchingCardBackId: 'gilded_suits', description: 'Deep green cloth with engraved gold scrolls and spade inlays, matching the Gilded Court card back. Fine ornament follows the rail around a quiet playing surface.' },
+  { id: 'woven_green', setId: 'velvet_conservatory', name: 'Velvet Conservatory Felt', kind: 'Table felt', tier: 4, premium: false, motif: '♣', color: 'green', matchingCardBackId: 'velvet_club', description: 'Rich green fabric with curling vines, engraved leaf veins, and clover embroidery, matching the Velvet Conservatory card back.' },
+  { id: 'laurel', setId: 'romani_heritage', name: 'Gold Coin Bezel', kind: 'Avatar frame', tier: 4, premium: true, motif: 'gold-coins', color: 'gold', description: 'Sixteen individually engraved gold coins surround a deep red bezel, with tiny wheel stamps that match the Romani Heritage set.' },
+  { id: 'ruby_diamond', setId: 'garnet_mosaic', name: 'Garnet Mosaic', kind: 'Card back', tier: 5, premium: true, motif: '♦', color: 'ruby', description: 'Faceted garnet glass sits within angular gold inlays and a repeating burgundy mosaic.' },
+  { id: 'garnet_felt', setId: 'garnet_mosaic', name: 'Garnet Mosaic Felt', kind: 'Table felt', tier: 5, premium: true, motif: '♦', color: 'ruby', matchingCardBackId: 'ruby_diamond', description: 'A faceted garnet mosaic and geometric gold inlays surround deep plum felt, matching the Garnet Mosaic card back. The central area stays subdued for card visibility.' },
+  { id: 'golden_wagon', setId: 'romani_heritage', name: 'Romani Heritage', kind: 'Card back', tier: 6, premium: true, motif: 'wagon-wheel', color: 'deep-red', description: 'A twelve-spoke gold wagon wheel with carved spokes, an engraved rim, and a riveted hub. Ornamental scrollwork and braided borders frame a deep red damask field.' },
+  { id: 'ivory_faces', setId: 'gilded_court', name: 'Ivory Engraved', kind: 'Card faces', tier: 6, premium: true, motif: 'A', color: 'ivory', description: 'An engraved botanical ace on warm ivory, with clear corner indices. The full deck will retain familiar ranks and red/black suits.' },
+  { id: 'season_regular', setId: 'velvet_conservatory', name: 'Season Regular', kind: 'Profile title', tier: 7, premium: false, motif: 'S', color: 'green', description: 'The Season Regular title with a sage enamel badge showing a fan of cards and a clover crest.' },
+  { id: 'golden_hour', setId: 'romani_heritage', name: 'Romani Heritage Felt', kind: 'Table felt', tier: 7, premium: true, motif: 'wagon-wheel', color: 'deep-red', matchingCardBackId: 'golden_wagon', description: 'Deep red fabric with damask edging, gold carriage scrolls, and the same engraved wheel medallions as the Romani Heritage card back.' },
+  { id: 'four_suits', setId: 'gilded_court', name: 'Fourfold Crest', kind: 'Profile title', tier: 8, premium: true, motif: '♠♦♣♥', color: 'gold', description: 'An octagonal seal holds four enamel inlays: spade, diamond, club, heart. Black and red suits sit against brushed gold.' },
+  { id: 'ruby_frame', setId: 'garnet_mosaic', name: 'Garnet Halo', kind: 'Avatar frame', tier: 9, premium: true, motif: 'B', color: 'ruby', description: 'Sixteen faceted garnets and tiny gold beads form a jeweled halo around your portrait.' },
+  { id: 'midnight', setId: 'astrology', name: 'Astrology', kind: 'Card back', tier: 10, premium: true, motif: '♠', color: 'green', description: 'A crescent moon set inside a spade lens, surrounded by orbital rings, star charts, and an instrument dial.' },
+  { id: 'midnight_felt', setId: 'astrology', name: 'Astrology Felt', kind: 'Table felt', tier: 11, premium: true, motif: '♠', color: 'green', matchingCardBackId: 'midnight', description: 'Deep teal cloth bordered by fine star charts, instrument markings, and orbital spade inlays, matching the Astrology card back.' },
+  { id: 'season_keepsake', setId: 'velvet_conservatory', name: 'Season Archive', kind: 'Profile title', tier: 11, premium: false, motif: 'I', color: 'ivory', description: 'A porcelain keepsake with an engraved Season 01 scroll and olive sprigs.' },
+  { id: 'golden_brasta', setId: 'romani_heritage', name: 'Romani Heritage', kind: 'Profile title', tier: 12, premium: true, motif: 'wagon-wheel', color: 'gold', description: 'The Romani Heritage title with a matching gold wagon-wheel badge, using the same carved spokes, engraved rim, and riveted hub as the card back.' },
 ];
 
 export function seasonTier(xp: number): number {
