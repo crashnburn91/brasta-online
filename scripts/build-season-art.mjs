@@ -131,21 +131,58 @@ wagonWheel += circle(150, 210, 26, 'fill="#805926" stroke="#e6cb8c" stroke-width
 wagon += wagonWheel;
 await save('golden_wagon', 'Romani Heritage: engraved twelve-spoke gold wheel, riveted hub, scrollwork and deep red damask', 300, 420, wagon);
 
+// Shared Astrology engraving keeps the card back, title badge and frame crest
+// on the same crescent-spade geometry and instrument palette.
+const astrologyLens = suit('spade', 150, 198, 1.8, '#0c2725', `stroke="${gold}" stroke-width=".8"`) +
+  path('M150 168V222M126 198H174', 'stroke="#b9be9d" stroke-width=".6"') + circle(150, 198, 9, `fill="#dcc58d"`) +
+  path('M141 198A9 9 0 00153 189A9 9 0 10141 198', 'fill="#15312c"');
+const astrologyDial = repeat(3, i => circle(150, 210, 78 + i * 10, `fill="none" stroke="${i === 1 ? '#6a887e' : gold}" stroke-width="${i === 1 ? .6 : 1}"`)) +
+  repeat(60, i => rotate(i * 6, line(150, 111, 150, i % 5 === 0 ? 102 : 108, `stroke="${gold}" stroke-width=".8"`))) +
+  '<ellipse cx="150" cy="210" rx="46" ry="94" transform="rotate(35 150 210)" stroke="#b1bba0" stroke-width=".8" fill="none"/>' +
+  '<ellipse cx="150" cy="210" rx="94" ry="37" transform="rotate(-25 150 210)" stroke="#b1bba0" stroke-width=".8" fill="none"/>' + astrologyLens;
+
 // Astrology: plotted stars, orbit rings and an engraved spade lens.
 let cosmos = repeat(72, i => {
   const x = 30 + (i * 61 % 240), y = 35 + (i * 97 % 350);
   return i % 9 === 0 ? path(`M${x - 3} ${y}h6M${x} ${y - 3}v6`, 'stroke="#ddcea6" stroke-width=".7"') : circle(x, y, i % 3 === 0 ? .9 : .45, 'fill="#b8c8bc"');
 });
 cosmos += '<path d="M53 98L97 78L126 121L177 102L239 149M50 300L85 335L162 355L221 315" fill="none" stroke="#6a887e" stroke-width=".6"/>' +
-  repeat(3, i => circle(150, 210, 78 + i * 10, `fill="none" stroke="${i === 1 ? '#6a887e' : gold}" stroke-width="${i === 1 ? .6 : 1}"`)) +
-  repeat(60, i => rotate(i * 6, line(150, 111, 150, i % 5 === 0 ? 102 : 108, `stroke="${gold}" stroke-width=".8"`))) +
-  '<ellipse cx="150" cy="210" rx="46" ry="94" transform="rotate(35 150 210)" stroke="#b1bba0" stroke-width=".8" fill="none"/>' +
-  '<ellipse cx="150" cy="210" rx="94" ry="37" transform="rotate(-25 150 210)" stroke="#b1bba0" stroke-width=".8" fill="none"/>' +
-  suit('spade', 150, 198, 1.8, '#0c2725', `stroke="${gold}" stroke-width=".8"`) +
-  path('M150 168V222M126 198H174', 'stroke="#b9be9d" stroke-width=".6"') + circle(150, 198, 9, `fill="#dcc58d"`) +
-  path('M141 198A9 9 0 00153 189A9 9 0 10141 198', 'fill="#15312c"') +
+  astrologyDial +
   text(150, 67, 'XII', 10, 'letter-spacing="2"') + text(150, 366, 'VI', 10, 'letter-spacing="2"');
 await save('midnight', 'Astrology: celestial chart, orbit rings and a crescent spade', 300, 420, card('#081f22', cosmos));
+
+// Astrology title badge: the card's complete astrolabe in a teal enamel seal.
+let astrologyBadge = circle(120, 120, 110, `fill="#081f22" stroke="url(#gold)" stroke-width="2.5"`) +
+  circle(120, 120, 106, `fill="url(#hatch)" stroke="${gold}" stroke-width=".65"`);
+astrologyBadge += repeat(20, i => {
+  const [x, y] = point(54 + i % 4 * 6, (i * 137.5) * Math.PI / 180, 120, 120);
+  return i % 5 === 0 ? path(`M${x - 2} ${y}h4M${x} ${y - 2}v4`, 'stroke="#ddcea6" stroke-width=".7"') : circle(x, y, .65, 'fill="#b8c8bc"');
+});
+astrologyBadge += at(120, 120, .96, astrologyDial);
+await save('astrology_title', 'Astrology title badge: gold orbital instrument dial and crescent spade on deep teal enamel', 240, 240, astrologyBadge);
+
+// Orbital Halo: an engraved teal instrument band with a transparent portrait
+// opening. Orbit arcs are masked to the bezel so they never cross the avatar.
+let orbitalFrame = '<defs><mask id="orbital-bezel"><rect width="300" height="300" fill="white"/><circle cx="150" cy="150" r="104" fill="black"/></mask></defs>' +
+  circle(150, 150, 116, 'fill="none" stroke="#081f22" stroke-width="32"') +
+  circle(150, 150, 132, 'fill="none" stroke="url(#gold)" stroke-width="2.5"') +
+  circle(150, 150, 128, `fill="none" stroke="${gold}" stroke-width=".65"`) +
+  circle(150, 150, 104, 'fill="none" stroke="#6a887e" stroke-width=".8"') +
+  circle(150, 150, 100, 'fill="none" stroke="url(#gold)" stroke-width="2"');
+orbitalFrame += repeat(72, i => rotate(i * 5,
+  line(150, 23, 150, i % 6 === 0 ? 31 : 27, `stroke="${gold}" stroke-width="${i % 6 === 0 ? 1.1 : .65}"`), 150, 150));
+orbitalFrame += '<g mask="url(#orbital-bezel)"><ellipse cx="150" cy="150" rx="141" ry="109" transform="rotate(32 150 150)" fill="none" stroke="#b1bba0" stroke-width="1"/><ellipse cx="150" cy="150" rx="141" ry="109" transform="rotate(-32 150 150)" fill="none" stroke="#c8a45b" stroke-width="1"/></g>';
+orbitalFrame += repeat(4, sector => {
+  const points = [0, 1, 2, 3].map(i => point(i % 2 ? 119 : 111, (sector * 90 + 20 + i * 16) * Math.PI / 180, 150, 150));
+  return path(points.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(''), 'fill="none" stroke="#6a887e" stroke-width=".7"') +
+    points.map(([x, y], i) => i === 1 ? path(`M${x - 2.5} ${y}h5M${x} ${y - 2.5}v5`, 'stroke="#ddcea6" stroke-width=".9"') : circle(x, y, 1.1, 'fill="#b8c8bc"')).join('');
+});
+orbitalFrame += circle(150, 31, 17, 'fill="#081f22" stroke="url(#gold)" stroke-width="1.5"') +
+  circle(150, 31, 14, `fill="none" stroke="${gold}" stroke-width=".5"`) + at(150, 29, .24, astrologyLens, 150, 198);
+orbitalFrame += repeat(3, i => rotate(90 + i * 90,
+  path('M150 13L153 23L163 27L153 31L150 41L147 31L137 27L147 23Z', 'fill="url(#gold)" stroke="#80683d" stroke-width=".6"') +
+  circle(150, 27, 2, 'fill="#15383a"'), 150, 150));
+await save('astrology_frame', 'Orbital Halo avatar frame: deep teal bezel, gold instrument markings, star charts and a crescent-spade crest with a transparent portrait opening', 300, 300, orbitalFrame);
 
 // Ivory Engraved: actual card face with legible corners and a custom ace engraving.
 let ivory = '<rect width="300" height="420" rx="18" fill="#f4ead2"/><rect x="11" y="11" width="278" height="398" rx="12" fill="none" stroke="#b6a177" stroke-width=".8"/>';
@@ -287,4 +324,4 @@ observatory += opposing(circle(300, 54, 23, `fill="#0b2528" stroke="${gold}" str
 observatory += opposing(repeat(17, i => line(40, 92 + i * 11, i % 4 === 0 ? 50 : 45, 92 + i * 11, `stroke="${gold}" stroke-width=".75"`)));
 observatory += feltCorners(path('M41 74V44Q41 41 44 41H74M49 64V49H64M60 55L66 61M63 52L63 64', `fill="none" stroke="${gold}" stroke-width=".8"`));
 await save('midnight_felt', 'Astrology Felt: deep teal cloth with celestial charts and astrolabe rail inlays', 600, 360, feltBase('#15383a', '#081f22', '#30403a', observatory));
-console.log(`Wrote 19 Season 1 SVG designs to ${fileURLToPath(destination)}`);
+console.log(`Wrote 21 Season 1 SVG designs to ${fileURLToPath(destination)}`);
