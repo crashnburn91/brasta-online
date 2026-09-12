@@ -19,7 +19,7 @@
   }
 
   function currentAvatarUrl() {
-    const image = document.querySelector('.account-profile-head img');
+    const image = document.querySelector('.account-profile-head img.brasta-avatar-portrait');
     if (image instanceof HTMLImageElement && image.src) return image.src;
     return activeAvatarUrl || '';
   }
@@ -79,7 +79,7 @@
   function applyVisibleAvatar(value) {
     activeAvatarUrl = value || null;
     if (value) {
-      document.querySelectorAll('.account-profile-head img,.account-dock img').forEach((node) => {
+      document.querySelectorAll('.account-profile-head img.brasta-avatar-portrait,.account-dock img.brasta-avatar-portrait').forEach((node) => {
         if (node instanceof HTMLImageElement) node.src = value;
       });
       document.querySelectorAll('.account-profile-avatar,.account-avatar-fallback').forEach((node) => {

@@ -63,8 +63,11 @@
 
   function avatarHtml(profile, username) {
     const initial = esc((username || 'B').slice(0, 1).toUpperCase());
-    if (!profile?.avatarUrl) return `<div class="player-profile-avatar-fallback">${initial}</div>`;
-    return `<div class="player-profile-avatar"><img src="${esc(profile.avatarUrl)}" alt="" referrerpolicy="no-referrer"><span>${initial}</span></div>`;
+    const account = document.querySelector('.account-dock[data-brasta-username]');
+    const ownPhoto = profile?.relationship === 'self' && account?.dataset.brastaUsername?.toLowerCase() === username?.toLowerCase()
+      ? account.querySelector('img')?.src : null;
+    const avatarUrl = ownPhoto || profile?.avatarUrl;
+    return `<div class="player-profile-avatar"><span class="brasta-avatar-portrait">${initial}</span>${avatarUrl ? `<img class="brasta-avatar-portrait" src="${esc(avatarUrl)}" alt="" referrerpolicy="no-referrer">` : ''}</div>`;
   }
 
   function rankHtml(rank, label) {
@@ -148,7 +151,7 @@
   function guestBody(username) {
     return `
       <div class="player-profile-head">
-        <div class="player-profile-avatar-fallback">${esc((username || 'B').slice(0,1).toUpperCase())}</div>
+        ${avatarHtml(null, username)}
         <div class="player-profile-identity">
           <div class="player-profile-eyebrow">BRASTA PLAYER</div>
           <h2 id="player-profile-title">${esc(username)}</h2>

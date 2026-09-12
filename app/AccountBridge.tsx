@@ -496,8 +496,10 @@ export default function AccountBridge() {
       <div className="account-nav-controls">
         <TournamentBridge accessToken={session?.access_token || ''} userId={session?.user.id || ''} />
         {user && profile?.username && <FriendsBridge accessToken={session?.access_token || ''} />}
-        <button className="account-dock" type="button" onClick={() => setOpen(true)} aria-label={user ? 'Open Brasta account' : 'Sign in to Brasta'}>
-          {avatar ? <img src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-avatar-fallback">{user ? (displayName || user.email || 'B').slice(0, 1).toUpperCase() : 'B'}</span>}
+        <button className="account-dock" data-brasta-username={profile?.username || ''} type="button" onClick={() => setOpen(true)} aria-label={user ? 'Open Brasta account' : 'Sign in to Brasta'}>
+          <span className="brasta-avatar-shell" aria-hidden="true">
+            {avatar ? <img className="brasta-avatar-portrait" src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-avatar-fallback brasta-avatar-portrait">{user ? (displayName || user.email || 'B').slice(0, 1).toUpperCase() : 'B'}</span>}
+          </span>
           <span className="account-dock-copy">
             <b>{user ? (profile?.username || 'Finish Profile') : 'Sign In'}</b>
             {user && experience && (
@@ -587,7 +589,9 @@ export default function AccountBridge() {
             ) : (
               <>
                 <div className="account-profile-head">
-                  {avatar ? <img src={avatar} alt="" referrerPolicy="no-referrer" /> : <div className="account-profile-avatar">{(displayName || profile?.username || 'B').slice(0, 1).toUpperCase()}</div>}
+                  <span className="brasta-avatar-shell" aria-hidden="true">
+                    {avatar ? <img className="brasta-avatar-portrait" src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-profile-avatar brasta-avatar-portrait">{(displayName || profile?.username || 'B').slice(0, 1).toUpperCase()}</span>}
+                  </span>
                   <div><div className="account-eyebrow">SIGNED IN</div><h2>{profile?.username}</h2><p>{user.email || 'Brasta account'}</p></div>
                 </div>
                 <div className="account-experience-card">

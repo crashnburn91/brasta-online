@@ -5,6 +5,9 @@
 
   const CACHE_MS = 60_000;
   const avatarCache = new Map();
+  const pendingLookups = new WeakMap();
+  const renderedAvatars = new WeakMap();
+  let ownAvatarOverride = null;
   let queued = false;
 
   function usernameFor(card) {
@@ -15,9 +18,9 @@
     return String(username || '').trim().toLowerCase();
   }
 
-  async function avatarFor(username) {
+  function avatarFor(username) {
     const key = cacheKey(username);
-    if (!key) return null;
+    if (!key) return Promise.resolve(null);
     const cached = avatarCache.get(key);
     if (cached && Date.now() - cached.at < CACHE_MS) return cached.promise;
 
@@ -37,23 +40,41 @@
 
   function renderAvatar(holder, username, avatarUrl) {
     if (!(holder instanceof HTMLElement)) return;
-    holder.replaceChildren();
+    const initial = (String(username || 'B').trim().slice(0, 1) || 'B').toUpperCase();
+    const renderKey = avatarUrl || `initial:${initial}`;
+    // Keep a loaded image alive across game renders and cosmetic DOM updates.
+    // Replacing it on every observer scan can prevent it from ever painting.
+    if (renderedAvatars.get(holder) === renderKey) return;
+    renderedAvatars.set(holder, renderKey);
+    const fallback = document.createElement('span');
+    fallback.className = 'player-card-avatar-fallback brasta-avatar-portrait';
+    fallback.textContent = initial;
+    holder.replaceChildren(fallback);
+    holder.classList.remove('has-image');
     if (avatarUrl) {
       const image = document.createElement('img');
+      image.className = 'brasta-avatar-portrait';
       image.src = avatarUrl;
       image.alt = '';
       image.referrerPolicy = 'no-referrer';
       image.draggable = false;
+      image.addEventListener('error', () => {
+        if (image.parentElement !== holder) return;
+        image.remove();
+        holder.classList.remove('has-image');
+      }, { once: true });
       holder.appendChild(image);
       holder.classList.add('has-image');
-      return;
     }
+  }
 
-    const fallback = document.createElement('span');
-    fallback.className = 'player-card-avatar-fallback';
-    fallback.textContent = (String(username || 'B').trim().slice(0, 1) || 'B').toUpperCase();
-    holder.appendChild(fallback);
-    holder.classList.remove('has-image');
+  function ownAvatarFor(card, key) {
+    if (card.dataset.you !== '1') return undefined;
+    if (ownAvatarOverride?.username === key) return ownAvatarOverride.avatarUrl;
+    const account = document.querySelector('.account-dock[data-brasta-username]');
+    if (cacheKey(account?.dataset.brastaUsername) !== key) return undefined;
+    const photo = account.querySelector('img');
+    return photo?.src?.startsWith('https://') ? photo.src : undefined;
   }
 
   function enhanceCard(card) {
@@ -76,12 +97,20 @@
       top.prepend(holder);
     }
 
-    const requestKey = `${key}:${Date.now()}`;
-    holder.dataset.playerCardAvatarRequest = requestKey;
-    void avatarFor(username).then((avatarUrl) => {
+    const ownAvatar = ownAvatarFor(card, key);
+    if (ownAvatar !== undefined) {
+      pendingLookups.delete(holder);
+      renderAvatar(holder, username, ownAvatar);
+      return;
+    }
+
+    const lookup = avatarFor(username);
+    if (pendingLookups.get(holder) === lookup) return;
+    pendingLookups.set(holder, lookup);
+    void lookup.then((avatarUrl) => {
       if (!card.isConnected || !holder?.isConnected) return;
       if (usernameFor(card).toLowerCase() !== key) return;
-      if (holder.dataset.playerCardAvatarRequest !== requestKey) return;
+      if (pendingLookups.get(holder) !== lookup) return;
       renderAvatar(holder, username, avatarUrl);
     });
   }
@@ -100,7 +129,10 @@
   }
 
   const observer = new MutationObserver(schedule);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, {
+    childList: true, subtree: true, attributes: true,
+    attributeFilter: ['src', 'data-brasta-username', 'data-you', 'data-player-profile'],
+  });
 
   window.addEventListener('brasta-profile-avatar-changed', (event) => {
     const ownCard = document.querySelector('.player-chip.player-card[data-you="1"]');
@@ -109,9 +141,18 @@
     const avatarUrl = typeof event?.detail?.avatarUrl === 'string' && event.detail.avatarUrl.startsWith('https://')
       ? event.detail.avatarUrl
       : null;
+    ownAvatarOverride = key ? { username: key, avatarUrl } : null;
     if (key) avatarCache.set(key, { at: Date.now(), promise: Promise.resolve(avatarUrl) });
     const holder = ownCard?.querySelector?.('[data-player-card-avatar]');
-    if (holder instanceof HTMLElement) renderAvatar(holder, username, avatarUrl);
+    if (holder instanceof HTMLElement) {
+      pendingLookups.delete(holder);
+      renderAvatar(holder, username, avatarUrl);
+    }
+    schedule();
+  });
+
+  window.addEventListener('brasta-auth-changed', () => {
+    ownAvatarOverride = null;
     schedule();
   });
 

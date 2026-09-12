@@ -31,30 +31,77 @@ html[data-brasta-table-felt] .table {
 }
 html[data-brasta-table-felt] .table::before { display: none !important; }
 
-html[data-brasta-avatar-frame] .player-card-avatar,
-html[data-brasta-avatar-frame] .account-dock img,
-html[data-brasta-avatar-frame] .account-dock .account-avatar-fallback,
-html[data-brasta-avatar-frame] .account-profile-head > img,
-html[data-brasta-avatar-frame] .account-profile-head > .account-profile-avatar,
-html[data-brasta-avatar-frame] .player-profile-avatar,
-html[data-brasta-avatar-frame] .player-profile-avatar-fallback {
-  position: relative !important;
-  isolation: isolate;
+/* Only the portrait is circularly clipped. The frame has its own full square
+   canvas, including its projecting orbit lines and crest. */
+.brasta-avatar-shell { position:relative; display:inline-grid; flex:none; width:30px; height:30px; }
+.account-profile-head .brasta-avatar-shell { width:60px; height:60px; }
+.brasta-avatar-shell > .brasta-avatar-portrait { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+html[data-brasta-avatar-frame] :is(
+  .player-chip.player-card[data-you="1"] .player-card-avatar,
+  .account-dock[data-brasta-username]:not([data-brasta-username=""]) .brasta-avatar-shell,
+  .account-profile-head .brasta-avatar-shell,
+  .player-profile-head[data-beta-cosmetic-self] .player-profile-avatar
+) {
+  position:relative;
+  isolation:isolate;
+  overflow:visible;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
 }
-html[data-brasta-avatar-frame] .player-card-avatar::after,
-html[data-brasta-avatar-frame] .account-dock img::after,
-html[data-brasta-avatar-frame] .account-dock .account-avatar-fallback::after,
-html[data-brasta-avatar-frame] .account-profile-head > img::after,
-html[data-brasta-avatar-frame] .account-profile-head > .account-profile-avatar::after,
-html[data-brasta-avatar-frame] .player-profile-avatar::after,
-html[data-brasta-avatar-frame] .player-profile-avatar-fallback::after {
-  content:""; position:absolute; inset:-8%; z-index:2; pointer-events:none;
-  background: var(--brasta-avatar-frame-art) center/100% 100% no-repeat;
+html[data-brasta-avatar-frame] :is(
+  .player-chip.player-card[data-you="1"] .player-card-avatar,
+  .account-dock[data-brasta-username]:not([data-brasta-username=""]) .brasta-avatar-shell,
+  .account-profile-head .brasta-avatar-shell,
+  .player-profile-head[data-beta-cosmetic-self] .player-profile-avatar
+) > .brasta-avatar-portrait {
+  position:absolute;
+  inset:17%;
+  width:66%;
+  height:66%;
+  border-radius:50%;
+  clip-path:circle(50%);
+  object-fit:cover;
 }
-.beta-cosmetic-title { display:block; color:#e5ce91; font-size:.72em; font-weight:800; letter-spacing:.02em; line-height:1.1; }
-html[data-brasta-avatar-frame] .player-card-avatar::after { inset:-18%; }
-html[data-brasta-avatar-frame] .player-card-avatar img,
-html[data-brasta-avatar-frame] .player-card-avatar > span { position:relative; z-index:1; }
+html[data-brasta-avatar-frame] :is(
+  .player-chip.player-card[data-you="1"] .player-card-avatar,
+  .account-dock[data-brasta-username]:not([data-brasta-username=""]) .brasta-avatar-shell,
+  .account-profile-head .brasta-avatar-shell,
+  .player-profile-head[data-beta-cosmetic-self] .player-profile-avatar
+)::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+  background:var(--brasta-avatar-frame-art) center / contain no-repeat;
+}
+html[data-brasta-avatar-frame] .player-chip.player-card[data-you="1"] .player-card-avatar {
+  width:42px; height:42px; flex-basis:42px; margin-top:0;
+}
+.player-card-avatar.has-image > .player-card-avatar-fallback { visibility:hidden; }
+html[data-brasta-avatar-frame] .account-profile-head .brasta-avatar-shell { width:82px; height:82px; }
+@media(max-width:700px) {
+  .account-dock .brasta-avatar-shell { width:28px; height:28px; }
+  html[data-brasta-avatar-frame] .player-chip.player-card[data-you="1"] .player-card-avatar { width:38px; height:38px; flex-basis:38px; }
+}
+@media(max-width:600px) {
+  html[data-brasta-avatar-frame] .players-2v2 .player-chip.player-card[data-you="1"] .player-card-avatar {
+    display:grid!important; width:30px; height:30px; flex-basis:30px;
+  }
+}
+
+.beta-cosmetic-title { display:inline-flex; align-items:center; gap:6px; max-width:100%; color:#e5ce91; font-size:12px; font-weight:800; line-height:1.2; }
+.beta-cosmetic-title-copy { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.beta-cosmetic-badge-art { display:block; width:26px; height:26px; object-fit:contain; }
+.player-chip.player-card .beta-cosmetic-title { display:flex; margin-top:3px; font-size:10px; }
+.player-card-profile-badge > .beta-cosmetic-badge-art { width:100%; height:100%; }
+.account-profile-head .beta-cosmetic-badge-art { width:26px; height:26px; border-radius:0; background:none; }
+/* The test title temporarily occupies the existing title slot; clearing it
+   reveals the account's earned title again. */
+html[data-brasta-profile-title] .player-chip.player-card[data-you="1"] [data-player-card-profile-badge],
+html[data-brasta-profile-title] [data-beta-cosmetic-self] [data-profile-equipped-badge] { display:none!important; }
 
 .brasta-cosmetics-launcher { position:fixed; right:18px; bottom:18px; z-index:6400; border:1px solid #d4af3788; border-radius:999px; padding:9px 14px; background:#09251ddd; color:#f6e4b0; font:800 12px/1 system-ui,sans-serif; letter-spacing:.04em; cursor:pointer; box-shadow:0 8px 28px #0008; }
 .brasta-cosmetics-modal { position:fixed; inset:0; z-index:6500; display:grid; place-items:center; padding:18px; background:#020d0acc; }
