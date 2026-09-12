@@ -23,10 +23,10 @@
   function url(id) { return ART + id + '.svg'; }
   function apply(value) {
     var root = document.documentElement;
-    root.dataset.brastaCardBack = value.cardBack || '';
-    root.dataset.brastaTableFelt = value.tableFelt || '';
-    root.dataset.brastaProfileTitle = value.profileTitle || '';
-    root.dataset.brastaAvatarFrame = value.avatarFrame || '';
+    if (value.cardBack) root.dataset.brastaCardBack = value.cardBack; else delete root.dataset.brastaCardBack;
+    if (value.tableFelt) root.dataset.brastaTableFelt = value.tableFelt; else delete root.dataset.brastaTableFelt;
+    if (value.profileTitle) root.dataset.brastaProfileTitle = value.profileTitle; else delete root.dataset.brastaProfileTitle;
+    if (value.avatarFrame) root.dataset.brastaAvatarFrame = value.avatarFrame; else delete root.dataset.brastaAvatarFrame;
     root.style.setProperty('--brasta-card-back-art', 'url("' + url(value.cardBack) + '")');
     root.style.setProperty('--brasta-table-felt-art', 'url("' + url(value.tableFelt) + '")');
     root.style.setProperty('--brasta-avatar-frame-art', 'url("' + url(value.avatarFrame) + '")');
@@ -57,7 +57,7 @@
     modal.querySelector('.brasta-cosmetics-close').addEventListener('click', function () { modal.hidden = true; });
     modal.addEventListener('click', function (event) { if (event.target === modal) modal.hidden = true; });
     modal.querySelector('[data-cosmetics-equip-set]').addEventListener('click', function () { write(defaults); renderPanel(); status('Astrology set equipped for this browser.'); });
-    modal.querySelector('[data-cosmetics-clear]').addEventListener('click', function () { write({}); renderPanel(); status('Test cosmetics cleared.'); });
+    modal.querySelector('[data-cosmetics-clear]').addEventListener('click', function () { write({ cardBack: null, tableFelt: null, profileTitle: null, avatarFrame: null }); renderPanel(); status('Test cosmetics cleared.'); });
     Object.keys(slots).forEach(function (slot) {
       var wrapper = document.createElement('label'); wrapper.className = 'brasta-cosmetics-slot'; wrapper.innerHTML = '<h3>' + slots[slot].label + '</h3><select class="brasta-cosmetics-select" data-cosmetics-slot="' + slot + '">' + optionMarkup(slot, read()[slot]) + '</select>';
       wrapper.querySelector('select').addEventListener('change', function (event) { var next = read(); next[slot] = event.target.value; write(next); status(slots[slot].label + ' updated.'); });
