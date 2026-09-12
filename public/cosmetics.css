@@ -118,6 +118,10 @@ html[data-brasta-profile-title] [data-beta-cosmetic-self] [data-profile-equipped
 .brasta-cosmetics-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
 .brasta-cosmetics-actions button { border:1px solid #d4af3766; border-radius:10px; min-height:40px; padding:0 13px; background:#d4af37; color:#101b13; font-weight:800; cursor:pointer; }
 .brasta-cosmetics-actions button.secondary { background:#ffffff0d; color:#f8f1df; }
+.brasta-cosmetics-actions button:disabled { opacity:.45; cursor:default; }
+.brasta-cosmetics-set { align-items:end; margin:0 0 18px; }
+.brasta-cosmetics-set .brasta-cosmetics-slot { flex:1; min-width:160px; }
+.brasta-cosmetics-set button { margin-bottom:12px; }
 .brasta-cosmetics-status { min-height:18px; margin-top:12px; color:#d5c59a; font-size:12px; }
 body:has(.table) .brasta-cosmetics-launcher { bottom:92px; }
 @media(max-width:600px){ .brasta-cosmetics-launcher{right:12px;bottom:12px}.brasta-cosmetics-grid{grid-template-columns:1fr}.brasta-cosmetics-panel{padding:17px} }

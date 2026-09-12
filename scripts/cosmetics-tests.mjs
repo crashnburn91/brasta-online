@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
+import ts from 'typescript';
+
+const catalogSource = ts.transpileModule(readFileSync('lib/season-catalog.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+const { SEASON_REWARDS, SEASON_SETS } = await import('data:text/javascript;base64,' + Buffer.from(catalogSource).toString('base64'));
+const slotKinds = { cardBack: 'Card back', tableFelt: 'Table felt', profileTitle: 'Profile title', avatarFrame: 'Avatar frame' };
 
 const storageKey = 'brasta-beta-cosmetics-v1';
 const ownSelector = '.player-card[data-you="1"]';
@@ -63,9 +68,9 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved } = {}) {
 test('each title equips its badge, preserves usernames, and clearing restores the earned badge', async (t) => {
   const { document, window, requests, select, settle } = await fixture(t);
   const own = document.querySelector(ownSelector);
-  for (const id of ['astrology_title', 'first_seat', 'four_suits', 'golden_guest', 'season_regular', 'season_keepsake', 'golden_brasta']) {
+  for (const { id } of SEASON_REWARDS.filter((reward) => reward.kind === 'Profile title')) {
     await select('profileTitle', id);
-    assert.equal(own.querySelector('.beta-cosmetic-badge-art').getAttribute('src'), `/cosmetics/season-1/${id}.svg`);
+    assert.equal(own.querySelector('.beta-cosmetic-badge-art').getAttribute('src'), `/cosmetics/season-1/${id}.svg?v=2`);
     assert.equal(own.querySelectorAll('[data-beta-cosmetic-title]').length, 1);
     assert.equal(document.querySelector('.account-profile-head h2').textContent, 'Tester');
     assert.equal(document.querySelector('.player-profile-identity h2').textContent, 'Tester');
@@ -101,7 +106,7 @@ test('a fetched photo survives DOM changes and switching or removing every frame
   const own = document.querySelector(ownSelector);
   const photo = own.querySelector('.player-card-avatar img');
   assert.equal(photo.src, 'https://example.test/Tester.jpg');
-  for (const frame of ['ruby_frame', 'laurel', 'astrology_frame', '']) {
+  for (const frame of [...SEASON_REWARDS.filter((reward) => reward.kind === 'Avatar frame').map((reward) => reward.id), '']) {
     await select('avatarFrame', frame);
     document.body.appendChild(document.createElement('div'));
     await settle();
@@ -150,4 +155,48 @@ test('failed images fall back once and invalid saved reward IDs are ignored', as
   assert.equal(ownAvatar.querySelector('.player-card-avatar-fallback').textContent, 'T');
   assert.equal(document.documentElement.hasAttribute('data-brasta-avatar-frame'), false);
   assert.equal(document.querySelector('[data-beta-cosmetic-title]'), null);
+});
+
+test('every catalog set equips exactly four matching rewards and preserves the photo', async (t) => {
+  const { document, window, settle, select } = await fixture(t, { accountPhoto: 'https://example.test/provider-photo.jpg' });
+  assert.equal(SEASON_REWARDS.length, 20);
+  assert.equal(new Set(SEASON_REWARDS.map((reward) => reward.id)).size, 20);
+  assert.deepEqual(readdirSync('public/cosmetics/season-1').filter((file) => file.endsWith('.svg')).sort(), SEASON_REWARDS.map((reward) => `${reward.id}.svg`).sort());
+  for (const [slot, kind] of Object.entries(slotKinds)) {
+    const options = [...document.querySelector(`[data-cosmetics-slot="${slot}"]`).options].filter((option) => option.value);
+    const rewards = SEASON_REWARDS.filter((reward) => reward.kind === kind);
+    assert.deepEqual(options.map((option) => [option.value, option.textContent]).sort(), rewards.map((reward) => [reward.id, reward.name]).sort());
+  }
+  const photo = document.querySelector(`${ownSelector} .player-card-avatar img`);
+  const setSelect = document.querySelector('[data-cosmetics-set]');
+  assert.deepEqual([...setSelect.options].filter((option) => option.value).map((option) => [option.value, option.textContent]), Object.entries(SEASON_SETS).map(([id, set]) => [id, set.name]));
+  for (const [setId, set] of Object.entries(SEASON_SETS)) {
+    const rewards = SEASON_REWARDS.filter((reward) => reward.setId === setId);
+    assert.deepEqual(rewards.map((reward) => reward.kind).sort(), Object.values(slotKinds).sort(), `${set.name} needs one reward of each kind`);
+    const expected = Object.fromEntries(Object.entries(slotKinds).map(([slot, kind]) => [slot, rewards.find((reward) => reward.kind === kind).id]));
+    assert.equal(rewards.find((reward) => reward.kind === 'Table felt').matchingCardBackId, expected.cardBack);
+    setSelect.value = setId;
+    setSelect.dispatchEvent(new window.Event('change', { bubbles: true }));
+    document.querySelector('[data-cosmetics-equip-set]').click();
+    await settle();
+    assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), expected);
+    for (const [slot, id] of Object.entries(expected)) {
+      assert.equal(document.documentElement.getAttribute('data-brasta-' + slot.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase())), id);
+      assert.equal(document.querySelector(`[data-cosmetics-slot="${slot}"]`).value, id);
+    }
+    assert.equal(document.querySelector(`${ownSelector} .player-card-avatar img`), photo);
+    assert.equal(document.querySelector(`${ownSelector} .beta-cosmetic-title-copy`).textContent, set.name);
+    assert.equal(setSelect.value, setId);
+  }
+  await select('avatarFrame', 'gilded_frame');
+  assert.equal(setSelect.value, '', 'Mixed sets should not be labelled as a complete matching set');
+});
+
+test('retired badges and face choices are removed from saved equipment without clearing valid choices', async (t) => {
+  for (const id of ['golden_guest', 'four_suits', 'season_regular', 'season_keepsake']) {
+    const { document, window } = await fixture(t, { saved: { cardBack: 'velvet_club', tableFelt: 'woven_green', profileTitle: id, avatarFrame: 'laurel', cardFaces: 'ivory_faces' } });
+    assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), { cardBack: 'velvet_club', tableFelt: 'woven_green', profileTitle: null, avatarFrame: 'laurel' });
+    assert.equal(document.querySelector('[data-beta-cosmetic-title]'), null);
+    assert.equal(document.querySelector('[data-cosmetics-slot="profileTitle"]').value, '');
+  }
 });
