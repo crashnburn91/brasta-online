@@ -97,7 +97,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/chat-ui.css?v=0.2.2" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.6" />
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
-        <link rel="stylesheet" href="/cosmetics.css?v=0.1.0" />
+        <link rel="stylesheet" href="/cosmetics.css?v=0.1.1" />
       </head>
       <body>
         <PresenceTracker />
