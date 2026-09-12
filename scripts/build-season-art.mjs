@@ -57,6 +57,23 @@ function laurel(cx, cy, radius, leafColor = gold) {
     }) + '</g>');
 }
 
+// Royal Crown: an original heraldic crown mark built from simple engraved
+// geometry. It is shared by the card back, matching felt, and the two badges
+// that occupy the former Velvet Conservatory slots.
+function crownMark(cx, cy, scale = 1) {
+  const crown =
+    path('M-62 -35L-43 18H43L62 -35L28 -15L0 -58L-28 -15Z', 'fill="#caa45d" stroke="#f0d79a" stroke-width="2.2" stroke-linejoin="round"') +
+    path('M-49 -27L-39 9H39L49 -27L27 -8L0 -46L-27 -8Z', 'fill="#4a2362" stroke="#795a2f" stroke-width="1.2" stroke-linejoin="round"') +
+    path('M-45 18H45V33Q0 43 -45 33Z', 'fill="#caa45d" stroke="#8e672f" stroke-width="1.5"') +
+    path('M-37 23Q0 35 37 23M-32 29Q0 39 32 29', 'fill="none" stroke="#f1d99a" stroke-width="1"') +
+    circle(-28, -12, 5, 'fill="#a82f45" stroke="#f4d99b" stroke-width="1"') +
+    circle(0, -42, 6, 'fill="#a82f45" stroke="#f4d99b" stroke-width="1"') +
+    circle(28, -12, 5, 'fill="#a82f45" stroke="#f4d99b" stroke-width="1"') +
+    circle(0, 6, 5, 'fill="#d8bd70" stroke="#734b28" stroke-width="1"') +
+    path('M0 -58V-68M-5 -64H5', 'fill="none" stroke="#f0d79a" stroke-width="2" stroke-linecap="round"');
+  return `<g transform="translate(${cx} ${cy}) scale(${scale})">${crown}</g>`;
+}
+
 // Gilded Court: engraved scrollwork, guilloche medallion, mirrored suit inlays.
 let court = repeat(2, i => rotate(i * 180,
   path('M73 190C38 144 41 91 84 73C123 57 121 109 95 109C71 109 87 80 99 88M227 190C262 144 259 91 216 73C177 57 179 109 205 109C229 109 213 80 201 88', `fill="none" stroke="${gold}" stroke-width="2"`) +
@@ -66,13 +83,20 @@ court += rosette(150, 210, 56, 10, 12, 9) + circle(150, 210, 50, `fill="${green}
 court += suit('spade', 150, 199, 1.1, '#d2b470') + path('M116 240Q150 226 184 240M126 247H174', `fill="none" stroke="${gold}"`);
 await save('gilded_suits', 'Gilded Court: engraved scrolls and a guilloche spade medallion', 300, 420, card('#0b281f', court));
 
-// Velvet Club: four interwoven branches, fine leaf veins and clover blossoms.
-let garden = repeat(4, i => `<g transform="translate(${i % 2 ? 300 : 0} ${i > 1 ? 420 : 0}) scale(${i % 2 ? -1 : 1} ${i > 1 ? -1 : 1})">` +
-  path('M150 210C88 188 130 147 80 123C37 103 66 62 122 47M150 210C113 152 51 177 46 211', `fill="none" stroke="#acb080" stroke-width="2"`) +
-  repeat(7, j => `<g transform="translate(${80 + Math.sin(j * .7) * 19} ${70 + j * 17}) rotate(${j * 25 - 35})">${path('M0 0Q-37 -30 -34 -48Q3 -35 0 0Z', 'fill="#305342" stroke="#a7b17b" stroke-width=".8"')}${path('M0 0L-30 -42M-11 -15L-29 -23M-18 -25L-19 -38', 'stroke="#93a976" stroke-width=".6" fill="none"')}</g>`) + '</g>');
-garden += `<path d="M150 144Q187 151 197 210Q187 269 150 276Q113 269 103 210Q113 151 150 144Z" fill="#12382c" stroke="${gold}" stroke-width="2"/>` + suit('club', 150, 198, 1.1, '#b9bd85') + circle(150, 239, 3, `fill="${gold}"`);
-garden += repeat(4, i => suit('club', i % 2 ? 251 : 49, i > 1 ? 363 : 57, .24, '#dfd8a2'));
-await save('velvet_club', 'Velvet Conservatory: interwoven vines, engraved leaves and clover blossoms', 300, 420, card('#163d30', garden));
+// Royal Crown replaces the former Velvet Conservatory card back. The mark is
+// intentionally original: a ruby-and-gold crown on a restrained purple field,
+// with a rope border and small heraldic corner flourishes.
+let royalCrown = '<rect x="38" y="38" width="224" height="344" rx="9" fill="none" stroke="#9f7b45" stroke-width=".8" stroke-dasharray="2 5"/>';
+royalCrown += repeat(2, i => rotate(i * 180,
+  path('M58 112C40 83 64 62 87 72C106 80 93 99 81 90C75 84 80 77 87 80M242 112C260 83 236 62 213 72C194 80 207 99 219 90C225 84 220 77 213 80', 'fill="none" stroke="#caa45d" stroke-width="1.15"') +
+  path('M82 73Q113 49 150 66Q187 49 218 73M103 91Q128 73 150 84Q172 73 197 91', 'fill="none" stroke="#8e672f" stroke-width=".8"')));
+royalCrown += circle(150, 210, 104, 'fill="#321743" stroke="#caa45d" stroke-width="2.2"') + circle(150, 210, 95, 'fill="none" stroke="#75502e" stroke-width="1" stroke-dasharray="1 4"');
+royalCrown += repeat(4, i => rotate(i * 90, path('M150 104L155 112L150 120L145 112Z', 'fill="#a82f45" stroke="#efd398" stroke-width=".8"'), 150, 210));
+royalCrown += crownMark(150, 208, 1.08);
+royalCrown += path('M91 294Q150 273 209 294M105 305Q150 289 195 305', 'fill="none" stroke="#caa45d" stroke-width="1.2"');
+royalCrown += text(150, 331, 'ROYAL CROWN', 10, 'letter-spacing="2.8" style="fill:#e5ce91"');
+royalCrown += repeat(4, i => suit(['spade', 'diamond', 'club', 'heart'][i], 55 + i * 63, 364, .18, i % 2 ? '#a82f45' : '#caa45d'));
+await save('velvet_club', 'Royal Crown: original ruby-and-gold crown crest on a royal purple field', 300, 420, card('#241034', royalCrown));
 
 // Garnet Mosaic: jewel facets and angular enamel inlays, not filigree.
 let mosaic = repeat(8, row => repeat(5, col => {
@@ -206,11 +230,12 @@ crest += suit('spade', 89, 82, .64, '#10231c') + suit('diamond', 151, 81, .64, '
 crest += repeat(4, i => circle(i % 2 ? 193 : 47, i > 1 ? 175 : 58, 3, `fill="${light}"`));
 await save('four_suits', 'Fourfold Crest: four enamel suits set into an octagonal seal', 240, 240, crest);
 
-// Season Archive: pale porcelain keepsake, engraved season scroll and leaf sprigs.
-let archive = circle(120, 120, 101, 'fill="#e8dcc0" stroke="#b89a59" stroke-width="4"') + circle(120, 120, 91, 'fill="url(#hatch)" stroke="#b89a59" stroke-width="1"') + laurel(120, 113, 70, '#345744');
-archive += '<path d="M79 66H156Q176 66 171 86H163V154Q163 173 141 173H81Q98 170 96 153V86Q76 90 79 66ZM96 153H153Q153 168 141 173" fill="#f6edd8" stroke="#9c8049" stroke-width="2"/>';
-archive += text(126, 132, '01', 37, 'style="fill:#355340"') + path('M107 92H145M106 140H146', 'stroke="#b89a59"') + text(120, 205, 'SEASON ARCHIVE', 9, 'letter-spacing="1.2" style="fill:#355340"');
-await save('season_keepsake', 'Season Archive: porcelain keepsake with a season scroll and olive sprigs', 240, 240, archive);
+// Season Archive keeps its stable reward ID but now belongs visually to Royal
+// Crown: a purple seal, gold crown, and ruby enamel details.
+let archive = circle(120, 120, 101, 'fill="#281238" stroke="#caa45d" stroke-width="4"') + circle(120, 120, 91, 'fill="url(#hatch)" stroke="#7e5b35" stroke-width="1"');
+archive += crownMark(120, 105, .67) + path('M64 164Q120 143 176 164M72 174Q120 157 168 174', 'fill="none" stroke="#caa45d" stroke-width="1.3"');
+archive += text(120, 197, 'SEASON ARCHIVE', 8.5, 'letter-spacing="1.2" style="fill:#e5ce91"');
+await save('season_keepsake', 'Season Archive: Royal Crown seal with a gold crown and ruby accents', 240, 240, archive);
 
 // The Romani Heritage profile title uses the same wheel as its card back.
 const heritageBadge = wagonDefs + at(120, 120, 1.02, wagonWheel);
@@ -247,10 +272,10 @@ guest += '<rect x="65" y="68" width="110" height="96" rx="5" fill="#d5bd82" stro
 guest += circle(120, 120, 19, 'fill="#7b2940" stroke="#e6c988" stroke-width="2"') + suit('diamond', 120, 119, .35, light);
 guest += repeat(4, i => rotate(i * 90, path('M120 37l4 7l-4 7l-4 -7Z', `fill="${gold}"`), 120, 120));
 await save('golden_guest', 'Golden Guest title badge: engraved invitation with a garnet seal', 240, 240, guest);
-let regular = circle(120, 120, 102, 'fill="#203c32" stroke="#91ac91" stroke-width="3"') + circle(120, 120, 93, 'fill="url(#weave)" stroke="#748e77" stroke-dasharray="2 5"');
-regular += repeat(3, i => rotate((i - 1) * 19, '<rect x="91" y="62" width="58" height="104" rx="5" fill="#b9c6a2" stroke="#294b39" stroke-width="2"/><rect x="96" y="67" width="48" height="94" rx="3" fill="none" stroke="#708a6c" stroke-width=".8"/>', 120, 157));
-regular += suit('club', 120, 109, .67, '#274b39') + path('M70 178Q120 200 170 178M84 188Q120 204 156 188', 'fill="none" stroke="#91ac91" stroke-width="1.5"') + circle(120, 40, 3, 'fill="#bdc8a1"');
-await save('season_regular', 'Season Regular title badge: a fan of cards with a clover crest', 240, 240, regular);
+let regular = circle(120, 120, 102, 'fill="#281238" stroke="#caa45d" stroke-width="3"') + circle(120, 120, 93, 'fill="url(#weave)" stroke="#7e5b35" stroke-dasharray="2 5"');
+regular += repeat(3, i => rotate((i - 1) * 19, '<rect x="91" y="62" width="58" height="104" rx="5" fill="#4a2362" stroke="#caa45d" stroke-width="1.5"/><rect x="96" y="67" width="48" height="94" rx="3" fill="none" stroke="#8b6b3b" stroke-width=".8"/>', 120, 157));
+regular += crownMark(120, 106, .54) + path('M70 178Q120 199 170 178M84 188Q120 203 156 188', 'fill="none" stroke="#caa45d" stroke-width="1.5"') + circle(120, 40, 3, 'fill="#a82f45" stroke="#ecd095" stroke-width=".7"');
+await save('season_regular', 'Season Regular title badge: Royal Crown fan with a gold crown crest', 240, 240, regular);
 
 // Matching table felts. All ornament is clipped to the playing surface and
 // strongest at the perimeter; the middle remains low contrast for card legibility.
@@ -284,16 +309,18 @@ courtFelt += '<rect x="34" y="34" width="532" height="292" rx="4" fill="none" st
 courtFelt += feltCorners(path('M47 92V54Q47 47 54 47H98M55 84V58H90M59 75Q80 74 83 57Q62 63 59 75', `fill="none" stroke="${gold}" stroke-width=".9"`));
 await save('gilded_felt', 'Gilded Court Felt: matching engraved scrollwork, gold spade inlays and deep green cloth', 600, 360, feltBase('#173b2c', '#0b281f', '#38402b', courtFelt));
 
-// Velvet Conservatory carries the same branching leaves and clover blossoms.
-let conservatory = opposing(path('M116 72C179 15 227 83 286 47M314 47C373 83 421 15 484 72', 'fill="none" stroke="#a7b17b" stroke-width="1.3"'));
-conservatory += opposing(repeat(10, i => {
-  const x = 155 + i * 32, y = 52 + Math.sin(i * .9) * 9;
-  return `<g transform="translate(${n(x)} ${n(y)}) rotate(${i < 5 ? -45 : 45})">${path('M0 0Q-10 -16 -22 -13Q-18 0 0 0M0 0Q3 14 17 18Q20 4 0 0', 'fill="#355c43" stroke="#a7b17b" stroke-width=".8"')}${path('M0 0L-18 -10M0 0L15 15', 'stroke="#a7b17b" stroke-width=".6"')}</g>`;
-}));
-conservatory += opposing(suit('club', 300, 48, .45, '#c9ca94'));
-conservatory += opposing(path('M53 126Q26 180 55 229M47 147Q66 132 61 119Q40 127 47 147M43 171Q25 153 28 143Q49 149 43 171M45 197Q64 180 61 169Q39 177 45 197M52 219Q31 205 34 192Q54 199 52 219', 'stroke="#9cab7a" fill="none" stroke-width=".9"'));
-conservatory += feltCorners(path('M49 90Q45 57 86 48M50 74Q48 58 60 50Q65 67 50 74M65 58Q69 42 83 44Q83 57 65 58M53 86Q70 81 72 68Q57 68 53 86', 'fill="#355c43" stroke="#a7b17b" stroke-width=".85"'));
-await save('woven_green', 'Velvet Conservatory Felt: botanical vines and clover embroidery matching the green card back', 600, 360, feltBase('#234d38', '#163d30', '#2a4430', conservatory));
+// Royal Crown carries the same crown and rope language into the responsive
+// felt. Ornament hugs the rail; the center stays quiet for card readability.
+let royalFelt = '<g mask="url(#table-perimeter)">' + repeat(12, i => {
+  const x = 18 + i * 52, y = 24 + (i % 2) * 20;
+  return path(`M${x} ${y}l18 14l-18 14l-18 -14Z`, 'fill="#3f1e59" stroke="#8f6a3a" stroke-width=".65"');
+}) + '</g>';
+royalFelt += opposing(crownMark(300, 59, .42));
+royalFelt += opposing(path('M111 58C143 29 177 31 186 49M414 58C457 29 477 31 489 49M146 67Q165 48 184 67M454 67Q435 48 416 67', 'fill="none" stroke="#caa45d" stroke-width="1.1"'));
+royalFelt += opposing(path('M51 127Q26 153 51 180Q74 205 51 231M549 127Q574 153 549 180Q526 205 549 231', 'fill="none" stroke="#8f6a3a" stroke-width="1"'));
+royalFelt += feltCorners(path('M49 90V52Q49 46 55 46H95M56 82V57H87M62 72L73 61L84 72', 'fill="none" stroke="#caa45d" stroke-width=".9"'));
+royalFelt += '<rect x="35" y="35" width="530" height="290" rx="4" fill="none" stroke="#caa45d" stroke-width=".8" stroke-dasharray="1 4"/>';
+await save('woven_green', 'Royal Crown Felt: deep royal purple cloth with gold rope rails and crown medallions', 600, 360, feltBase('#2a1640', '#170d27', '#3b2450', royalFelt));
 
 // Garnet Mosaic repeats its faceted red glass as a quiet band around plum felt.
 let garnetFelt = '<g mask="url(#table-perimeter)">' + repeat(7, row => repeat(15, col => {

@@ -80,6 +80,20 @@ test('each title equips its badge, preserves usernames, and clearing restores th
   assert.notEqual(window.getComputedStyle(own.querySelector('[data-player-card-profile-badge]')).display, 'none');
 });
 
+test('the former Velvet Conservatory slots now equip the Royal Crown artwork', async (t) => {
+  const { document, select } = await fixture(t);
+  const cardBack = document.querySelector('[data-cosmetics-slot="cardBack"]');
+  const tableFelt = document.querySelector('[data-cosmetics-slot="tableFelt"]');
+  assert.equal([...cardBack.options].find((option) => option.value === 'velvet_club')?.textContent, 'Royal Crown');
+  assert.equal([...tableFelt.options].find((option) => option.value === 'woven_green')?.textContent, 'Royal Crown Felt');
+  await select('cardBack', 'velvet_club');
+  await select('tableFelt', 'woven_green');
+  assert.equal(document.documentElement.dataset.brastaCardBack, 'velvet_club');
+  assert.equal(document.documentElement.dataset.brastaTableFelt, 'woven_green');
+  assert.match(document.documentElement.style.getPropertyValue('--brasta-card-back-art'), /velvet_club\.svg/);
+  assert.match(document.documentElement.style.getPropertyValue('--brasta-table-felt-art'), /woven_green\.svg/);
+});
+
 test('a fetched photo survives DOM changes and switching or removing every frame', async (t) => {
   const { document, requests, settle, select } = await fixture(t, {
     avatarResponse: async (username) => ({ avatarUrl: `https://example.test/${username}.jpg` }),

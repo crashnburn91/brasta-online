@@ -5,10 +5,10 @@
   var ART = '/cosmetics/season-1/';
   var slots = {
     cardBack: { label: 'Card back', items: [
-      ['gilded_suits', 'Gilded Court'], ['velvet_club', 'Velvet Conservatory'], ['ruby_diamond', 'Garnet Mosaic'], ['golden_wagon', 'Romani Heritage'], ['midnight', 'Astrology']
+      ['gilded_suits', 'Gilded Court'], ['velvet_club', 'Royal Crown'], ['ruby_diamond', 'Garnet Mosaic'], ['golden_wagon', 'Romani Heritage'], ['midnight', 'Astrology']
     ] },
     tableFelt: { label: 'Table felt', items: [
-      ['gilded_felt', 'Gilded Court Felt'], ['woven_green', 'Velvet Conservatory Felt'], ['garnet_felt', 'Garnet Mosaic Felt'], ['golden_hour', 'Romani Heritage Felt'], ['midnight_felt', 'Astrology Felt']
+      ['gilded_felt', 'Gilded Court Felt'], ['woven_green', 'Royal Crown Felt'], ['garnet_felt', 'Garnet Mosaic Felt'], ['golden_hour', 'Romani Heritage Felt'], ['midnight_felt', 'Astrology Felt']
     ] },
     profileTitle: { label: 'Profile title + badge', items: [
       ['first_seat', 'First Seat'], ['golden_guest', 'Golden Guest'], ['season_regular', 'Season Regular'], ['four_suits', 'Fourfold Crest'], ['golden_brasta', 'Romani Heritage'], ['season_keepsake', 'Season Archive'], ['astrology_title', 'Astrology']

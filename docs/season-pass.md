@@ -32,7 +32,7 @@ piece's reward type, tier, and access shown. Tier and access remain per item.
 | Set | Cosmetics |
 | --- | --- |
 | Gilded Court | Gilded Court card back and felt, Ivory Engraved faces, First Seat, Golden Guest, Fourfold Crest (6) |
-| Velvet Conservatory | Velvet Conservatory card back and felt, Season Regular, Season Archive (4) |
+| Royal Crown | Royal Crown card back and felt, Season Regular, Season Archive (4) |
 | Garnet Mosaic | Garnet Mosaic card back and felt, Garnet Halo frame (3) |
 | Romani Heritage | Romani Heritage card back and felt, Romani Heritage title with wheel badge, Gold Coin Bezel frame (4) |
 | Astrology | Astrology card back and felt, Astrology title with crescent-spade badge, Orbital Halo frame (4) |
@@ -41,7 +41,8 @@ Romani Heritage replaces the Golden Wagon set name. Its profile title replaces
 Golden Brasta with the exact engraved wheel from the matching card back. Gold
 Coin Bezel replaces Laureate Wreath: sixteen gold coins, each with a beaded rim
 and a small wheel engraving, surround a red enamel bezel and transparent portrait
-opening. Astrology replaces Midnight Observatory. Stable reward IDs, unlock
+opening. Astrology replaces Midnight Observatory. Royal Crown replaces Velvet
+Conservatory while preserving its stable reward IDs. Stable reward IDs, unlock
 tiers, and free/premium access are unchanged by these presentation updates.
 
 ### Astrology badge and avatar frame
@@ -60,7 +61,7 @@ previews. The catalog now has 21 rewards: 4 free and 17 premium.
 ## Matching card backs and table felts
 
 Each of the five card backs now has a matching felt. The two initial felt rewards
-are replaced by Velvet Conservatory Felt (free, tier 4, stable ID `woven_green`)
+are replaced by Royal Crown Felt (free, tier 4, stable ID `woven_green`)
 and Romani Heritage Felt (premium, tier 7, stable ID `golden_hour`). Three additional
 premium felts complete the sets: Gilded Court at tier 3, Garnet Mosaic at tier 5,
 and Astrology at tier 11. Including the Astrology title and frame, the catalog
