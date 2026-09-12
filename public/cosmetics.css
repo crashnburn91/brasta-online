@@ -15,14 +15,18 @@ html[data-brasta-card-back] .table-deck-card > span,
 html[data-brasta-card-back] .deal-flight-card::before,
 html[data-brasta-card-back] .deal-flight-card > span { display:none !important; }
 html[data-brasta-table-felt] .table {
-  background-image: var(--brasta-table-felt-art) !important;
-  background-size: 100% 100% !important;
-  background-origin: border-box !important;
-  background-clip: border-box !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-color: transparent !important;
+  /* Treat the artwork as a responsive nine-slice: the rail stays on the
+     perimeter while the center stretches with the game table. */
+  background-image: none !important;
+  background-color: #081f22 !important;
   border-color: transparent !important;
+  border-style: solid !important;
+  border-width: clamp(6px, 1.2vw, 10px) !important;
+  border-image-source: var(--brasta-table-felt-art) !important;
+  border-image-slice: 24 fill !important;
+  border-image-width: clamp(6px, 1.2vw, 10px) !important;
+  border-image-outset: 0 !important;
+  border-image-repeat: stretch !important;
   box-shadow: 0 18px 45px #0007 !important;
 }
 html[data-brasta-table-felt] .table::before { display: none !important; }
