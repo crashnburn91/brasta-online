@@ -476,3 +476,17 @@
   .player-rank-detail-backdrop{align-items:end;padding:10px}
   .player-rank-detail{width:100%;padding-bottom:max(22px,env(safe-area-inset-bottom));border-radius:20px 20px 14px 14px}
 }
+/* Keep the table close to the player cards and reserve a stable hand shelf. */
+main > .players { margin-bottom: clamp(4px, .6vw, 8px) !important; }
+main > .table { margin-top: 0 !important; }
+.hand-area { min-height: 156px !important; }
+.hand-area .hand { min-height: 120px; align-items: center; }
+@media (max-width: 800px) {
+  main > .players { margin-bottom: 3px !important; }
+  .hand-area { min-height: 126px !important; }
+  .hand-area .hand { min-height: 86px; }
+}
+@media (max-height: 820px) {
+  .hand-area { min-height: 112px !important; }
+  .hand-area .hand { min-height: 74px; }
+}

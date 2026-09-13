@@ -98,55 +98,31 @@ html[data-brasta-avatar-frame] .account-profile-head .brasta-avatar-shell { widt
 .player-chip.player-card .beta-cosmetic-title { display:flex; margin-top:3px; font-size:10px; }
 .player-card-profile-badge > .beta-cosmetic-badge-art { width:100%; height:100%; }
 .account-profile-head .beta-cosmetic-badge-art { width:26px; height:26px; border-radius:0; background:none; }
-/* A cosmetic title or an explicit None occupies the same slot as an earned title. */
-html:is([data-brasta-title-source="season"],[data-brasta-title-source="none"]) .player-chip.player-card[data-you="1"] [data-player-card-profile-badge],
-html:is([data-brasta-title-source="season"],[data-brasta-title-source="none"]) [data-beta-cosmetic-self] [data-profile-equipped-badge] { display:none!important; }
+/* The test title temporarily occupies the existing title slot; clearing it
+   reveals the account's earned title again. */
+html[data-brasta-profile-title] .player-chip.player-card[data-you="1"] [data-player-card-profile-badge],
+html[data-brasta-profile-title] [data-beta-cosmetic-self] [data-profile-equipped-badge] { display:none!important; }
 
-.account-portrait-controls { display:grid; justify-items:center; gap:6px; flex:none; }
-[data-cosmetics-frame-open] { border:1px solid #d8b75e55; border-radius:9px; background:#d8b75e12; color:#ead994; padding:8px; font:700 10px/1.2 system-ui,sans-serif; cursor:pointer; }
-.player-profile-head [data-cosmetics-frame-open] { margin-left:auto; max-width:76px; }
-.ppg-tabs[data-cosmetics-tabs="true"] { grid-template-columns:repeat(6,minmax(0,1fr)); }
-.ppg-tabs[data-cosmetics-guest-tabs] { grid-template-columns:repeat(3,minmax(0,1fr)); }
-.cosmetic-table-panel[hidden] { display:none!important; }
-.cosmetic-beta-note { margin:0 0 16px; color:#afc1b6; font:400 12px/1.55 system-ui,sans-serif; }
-.cosmetic-table-panel section + section { margin-top:24px; padding-top:20px; border-top:1px solid #ffffff16; }
-.cosmetic-table-panel h3 { margin:0; color:#f4e2ad; font:700 19px/1.3 Georgia,serif; }
-.cosmetic-table-panel section > p { margin:4px 0 12px; color:#97ada0; font-size:12px; }
-.cosmetic-choice-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-.cosmetic-choice { display:flex; flex-direction:column; align-items:center; min-width:0; gap:5px; padding:12px 8px 10px; border:1px solid #ffffff20; border-radius:12px; background:#0003; color:#f6eed9; font-family:system-ui,sans-serif; text-align:center; cursor:pointer; }
-.cosmetic-choice:hover { background:#d8b75e10; border-color:#d8b75e77; }
-.cosmetic-choice[aria-pressed="true"] { border-color:#e5c361; background:#d8b75e15; box-shadow:inset 0 0 0 1px #d8b75e55; }
-.cosmetic-choice:focus-visible,[data-cosmetics-frame-open]:focus-visible,.cosmetic-frame-dialog button:focus-visible { outline:2px solid #fff1b8; outline-offset:3px; }
-.cosmetic-choice-preview { width:100%; height:94px; display:grid; place-items:center; margin-bottom:4px; }
-.cosmetic-choice-art { display:block; max-width:100%; max-height:100%; object-fit:contain; }
-.cardBack .cosmetic-choice-art { height:90px; width:64px; }
-.tableFelt .cosmetic-choice-art { width:100%; height:84px; }
-.cosmetic-choice strong { font-size:12px; line-height:1.3; }
-.cosmetic-choice small { color:#a6b8ac; font-size:10px; line-height:1.3; }
-.cosmetic-access { margin-top:auto; padding-top:4px; color:#abd6bb; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; }
-.cosmetic-access.premium { color:#e7cd85; }
-.cosmetic-choice-state { min-width:58px; border-radius:6px; padding:4px 7px; background:#ffffff0d; color:#bbcabf; font-size:10px; font-weight:700; }
-.cosmetic-choice[aria-pressed="true"] .cosmetic-choice-state { background:#e5c361; color:#102219; }
-.cosmetic-classic-art { width:62px; height:88px; display:grid; place-items:center; border:2px solid #b79b48; border-radius:7px; background:repeating-linear-gradient(45deg,#123d2d 0 3px,#103424 3px 6px); color:#dcc478; font:700 26px Georgia,serif; }
-.tableFelt .cosmetic-classic-art { width:90%; height:68px; border-width:5px; border-radius:12px; background:#11452e; }
-.cosmetic-frame-preview { position:relative; display:block; width:94px; height:94px; }
-.cosmetic-preview-portrait { position:absolute; inset:12%; display:grid; place-items:center; border-radius:50%; overflow:hidden; background:#174331; color:#ead08c; font:700 24px Georgia,serif; }
-.has-frame .cosmetic-preview-portrait { inset:17%; }
-.cosmetic-preview-portrait img { width:100%; height:100%; object-fit:cover; }
-.cosmetic-frame-preview > .cosmetic-choice-art { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-.cosmetic-status { min-height:18px; margin:12px 0 0; color:#e4d198; font:400 12px/1.4 system-ui,sans-serif; }
-.cosmetic-frame-dialog { box-sizing:border-box; width:min(620px,calc(100vw - 28px)); max-height:calc(100dvh - 40px); margin:auto; padding:22px; overflow:auto; border:1px solid #d8b75e66; border-radius:20px; background:linear-gradient(145deg,#123628,#071a12); color:#f6eed9; box-shadow:0 24px 80px #000a; }
-.cosmetic-frame-dialog::backdrop { background:#020d0bd9; }
-.cosmetic-section-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
-.cosmetic-section-heading h2 { margin:0; font:700 25px Georgia,serif; }
-.cosmetic-section-heading button { width:36px; height:36px; border:1px solid #ffffff22; border-radius:50%; background:#ffffff0b; color:#f6eed9; font-size:24px; cursor:pointer; }
-.cosmetic-done { display:block; min-height:40px; margin:12px 0 0 auto; padding:8px 22px; border:1px solid #e5c361; border-radius:9px; background:#e5c361; color:#102219; font:800 12px system-ui,sans-serif; cursor:pointer; }
-.profile-badge-emblem.has-cosmetic-art { border:0; border-radius:0; background:none; box-shadow:none; }
-.profile-badge-emblem.has-cosmetic-art img { display:block; width:100%; height:100%; object-fit:contain; }
-.profile-badges-panel .cosmetic-beta-note { margin:12px 0; }
-@media(max-width:600px) {
-  .ppg-tabs[data-cosmetics-tabs="true"] { grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .cosmetic-choice-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-  .cosmetic-frame-dialog { padding:17px; }
-  .cosmetic-choice strong { font-size:11px; }
-}
+.brasta-cosmetics-launcher { position:fixed; right:18px; bottom:18px; z-index:6400; border:1px solid #d4af3788; border-radius:999px; padding:9px 14px; background:#09251ddd; color:#f6e4b0; font:800 12px/1 system-ui,sans-serif; letter-spacing:.04em; cursor:pointer; box-shadow:0 8px 28px #0008; }
+.brasta-cosmetics-modal { position:fixed; inset:0; z-index:6500; display:grid; place-items:center; padding:18px; background:#020d0acc; }
+.brasta-cosmetics-modal[hidden] { display:none; }
+.brasta-cosmetics-panel { width:min(620px,100%); max-height:min(760px,calc(100dvh - 28px)); overflow:auto; border:1px solid #d4af3755; border-radius:22px; padding:22px; color:#f8f1df; background:linear-gradient(150deg,#0b3027,#071914); box-shadow:0 24px 80px #000b; font-family:system-ui,sans-serif; }
+.brasta-cosmetics-head { display:flex; justify-content:space-between; gap:12px; align-items:start; }
+.brasta-cosmetics-head h2 { margin:0 0 4px; font:700 25px Georgia,serif; }
+.brasta-cosmetics-head p { margin:0 0 18px; color:#f8f1dfb8; font-size:13px; }
+.brasta-cosmetics-close { border:0; border-radius:50%; width:34px; height:34px; background:#ffffff12; color:#fff; font-size:22px; cursor:pointer; }
+.brasta-cosmetics-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.brasta-cosmetics-slot { border:1px solid #ffffff1c; border-radius:14px; padding:12px; background:#00000018; }
+.brasta-cosmetics-slot h3 { margin:0 0 8px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:#e5ce91; }
+.brasta-cosmetics-select { width:100%; min-height:40px; border:1px solid #ffffff2a; border-radius:9px; background:#071b15; color:#fff; padding:0 8px; font:600 13px system-ui,sans-serif; }
+.brasta-cosmetics-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+.brasta-cosmetics-actions button { border:1px solid #d4af3766; border-radius:10px; min-height:40px; padding:0 13px; background:#d4af37; color:#101b13; font-weight:800; cursor:pointer; }
+.brasta-cosmetics-actions button.secondary { background:#ffffff0d; color:#f8f1df; }
+.brasta-cosmetics-actions button:disabled { opacity:.45; cursor:default; }
+.brasta-cosmetics-set { align-items:end; margin:0 0 18px; }
+.brasta-cosmetics-set .brasta-cosmetics-slot { flex:1; min-width:160px; }
+.brasta-cosmetics-set button { margin-bottom:12px; }
+.brasta-cosmetics-status { min-height:18px; margin-top:12px; color:#d5c59a; font-size:12px; }
+body:has(.table) .brasta-cosmetics-launcher { bottom:92px; }
+@media(max-width:600px){ .brasta-cosmetics-launcher{right:12px;bottom:12px}.brasta-cosmetics-grid{grid-template-columns:1fr}.brasta-cosmetics-panel{padding:17px} }
+@media(max-width:600px){ body:has(.table) .brasta-cosmetics-launcher{bottom:86px} }

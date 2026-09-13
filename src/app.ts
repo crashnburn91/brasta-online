@@ -35,6 +35,28 @@ namespace BrastaApp {
   }
   function escapeAttr(s: string): string { return escapeHtml(s); }
 
+  let toastTimer: number | null = null;
+  function showToast(message: string, kind: 'info' | 'error' = 'info'): void {
+    if (!message) return;
+    document.querySelector('.brasta-toast')?.remove();
+    const toast = document.createElement('div');
+    toast.className = `brasta-toast ${kind}`;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    if (toastTimer != null) window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => {
+      toast.classList.add('leaving');
+      window.setTimeout(() => toast.remove(), 180);
+      toastTimer = null;
+    }, kind === 'error' ? 3800 : 2600);
+  }
+
+  function isTransientMessage(message: string): boolean {
+    return /reconnect|rejoin|re-join|connected to brasta|match resumed|match rejoined|room resumed/i.test(message);
+  }
+
   function resetInteraction(): void {
     selectedCard = null;
     pendingAction = null;
@@ -533,7 +555,7 @@ namespace BrastaApp {
       lastEventIdentity = eventIdentity;
       if (eventIdentity) eventRenderSequence += 1;
     }
-    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
+    app.innerHTML = `${renderHeader()}<main>${renderPlayers()}${lastError ? `<div class="error">${escapeHtml(lastError)}</div>` : ''}${state.phase === 'roundEnd' ? renderRoundEnd() : state.phase === 'matchEnd' ? renderMatchEnd() : `${renderBoard()}${renderHand()}${renderOpening()}${renderActions()}`}</main>${renderCover()}`;
     bindGame();
   }
 
@@ -740,7 +762,10 @@ namespace BrastaApp {
       }
       else if (event.type === 'error') {
         commandPending = false;
-        lastError = event.message;
+        if (isTransientMessage(event.message)) {
+          lastError = null;
+          showToast(event.message);
+        } else lastError = event.message;
         if (abandonPending) {
           abandonPending = false;
           window.dispatchEvent(new CustomEvent('brasta-abandon-match-error', { detail: { message: event.message } }));
@@ -755,7 +780,13 @@ namespace BrastaApp {
         }
         render();
       }
-      else if (event.type === 'notice') { if (event.message && event.message !== 'Connected to Brasta.') notice = event.message; render(); }
+      else if (event.type === 'notice') {
+        if (event.message && event.message !== 'Connected to Brasta.') {
+          notice = null;
+          showToast(event.message);
+        }
+        render();
+      }
     });
     return onlineClient;
   }

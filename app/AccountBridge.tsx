@@ -589,12 +589,9 @@ export default function AccountBridge() {
             ) : (
               <>
                 <div className="account-profile-head">
-                  <div className="account-portrait-controls">
-                    <span className="brasta-avatar-shell" aria-hidden="true">
-                      {avatar ? <img className="brasta-avatar-portrait" src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-profile-avatar brasta-avatar-portrait">{(displayName || profile?.username || 'B').slice(0, 1).toUpperCase()}</span>}
-                    </span>
-                    <button type="button" data-cosmetics-frame-open aria-haspopup="dialog">Change frame</button>
-                  </div>
+                  <span className="brasta-avatar-shell" aria-hidden="true">
+                    {avatar ? <img className="brasta-avatar-portrait" src={avatar} alt="" referrerPolicy="no-referrer" /> : <span className="account-profile-avatar brasta-avatar-portrait">{(displayName || profile?.username || 'B').slice(0, 1).toUpperCase()}</span>}
+                  </span>
                   <div><div className="account-eyebrow">SIGNED IN</div><h2>{profile?.username}</h2><p>{user.email || 'Brasta account'}</p></div>
                 </div>
                 <div className="account-experience-card">

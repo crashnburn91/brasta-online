@@ -10,37 +10,27 @@ const slotKinds = { cardBack: 'Card back', tableFelt: 'Table felt', profileTitle
 
 const storageKey = 'brasta-beta-cosmetics-v1';
 const ownSelector = '.player-card[data-you="1"]';
-const badge = { key: 'founder', name: 'Founder', tier: 'standard', icon: 'B', unlocked: true, description: 'An earned title.' };
+const badge = { key: 'founder', name: 'Founder', tier: 'standard', icon: 'B' };
 const card = (name, self = false) => `<div class="player-chip player-card" data-player-profile="${name}" ${self ? 'data-you="1"' : ''}>
   <div class="player-card-top"><div class="player-card-identity"><div class="player-name-line"><b class="player-name">${name}</b></div></div></div>
 </div>`;
-const profile = (name) => `<section class="player-profile-modal"><div class="player-profile-head"><div class="player-profile-avatar"><span class="brasta-avatar-portrait">${name[0]}</span></div><div class="player-profile-identity"><h2 id="player-profile-title">${name}</h2></div></div><div class="player-profile-ranks"></div></section>`;
+const profile = (name) => `<section class="player-profile-modal"><div class="player-profile-head"><div class="player-profile-avatar"><span class="brasta-avatar-portrait">${name[0]}</span></div><div class="player-profile-identity"><h2 id="player-profile-title">${name}</h2></div></div><div class="ppg-tabs"></div></section>`;
 
-async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError = false, collectionError = false } = {}) {
+async function fixture(t, { accountPhoto = '', avatarResponse, saved } = {}) {
   const dom = new JSDOM(`<!doctype html><html><head></head><body>
     <button class="account-dock" data-brasta-username="Tester"><span class="brasta-avatar-shell">${accountPhoto ? `<img class="brasta-avatar-portrait" src="${accountPhoto}">` : '<span class="account-avatar-fallback brasta-avatar-portrait">T</span>'}</span></button>
     <div class="players">${card('Tester', true)}${card('Opponent')}</div>
-    <section class="account-modal"><div class="account-profile-head"><div class="account-portrait-controls"><span class="brasta-avatar-shell"><span class="account-profile-avatar brasta-avatar-portrait">T</span></span><button type="button" data-cosmetics-frame-open aria-haspopup="dialog">Change frame</button></div><div><h2>Tester</h2></div></div><div class="account-experience-card">Experience</div></section>
+    <section class="account-modal"><div class="account-profile-head"><span class="brasta-avatar-shell"><span class="account-profile-avatar brasta-avatar-portrait">T</span></span><div><h2>Tester</h2></div></div><div class="ppg-tabs"></div></section>
     ${profile('Tester')}${profile('Opponent')}
   </body></html>`, { url: 'https://beta.brasta.app/', runScripts: 'outside-only' });
-  const observers = [];
-  t.after(() => { observers.forEach((observer) => observer.disconnect()); dom.window.close(); });
+  t.after(() => dom.window.close());
   const { window } = dom;
   const { document } = window;
-  const MutationObserver = window.MutationObserver;
-  window.MutationObserver = class extends MutationObserver {
-    constructor(callback) { super(callback); observers.push(this); }
-  };
   // Let JSDOM deliver DOMContentLoaded before starting the actual client scripts.
   await new Promise(setImmediate);
   const frames = [];
   window.requestAnimationFrame = (callback) => frames.push(callback);
-  window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
-  window.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new window.Event('close')); };
-  window.BRASTA_SEASON_CATALOG = { rewards: SEASON_REWARDS, sets: SEASON_SETS };
-  window.localStorage.setItem('brasta-auth-access-token', 'fixture-token');
   const requests = [];
-  let earned = badge;
   window.fetch = async (url, options) => {
     const body = JSON.parse(options.body);
     requests.push({ url, ...body });
@@ -48,18 +38,15 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError
       const result = avatarResponse ? await avatarResponse(body.username) : { avatarUrl: null };
       return { ok: true, json: async () => result };
     }
-    if (url === '/api/player-profile') return { ok: true, json: async () => ({ profile: { username: body.username } }) };
-    if ((body.action === 'equip' && equipError) || (body.action === 'collection' && collectionError)) return { ok: false, json: async () => ({ error: 'Temporarily unavailable' }) };
-    if (body.action === 'equip') earned = body.badgeKey === 'founder' ? badge : null;
-    return { ok: true, json: async () => ({ equipped: earned, isSelf: body.username === 'Tester' || body.action === 'equip', badges: { equipped: earned, items: [badge, { key: 'locked', name: 'Locked title', unlocked: false }] } }) };
+    return { ok: true, json: async () => ({ equipped: badge, isSelf: body.username === 'Tester', badges: { equipped: badge, items: [] } }) };
   };
-  for (const file of ['player-cards.css', 'player-card-avatars.css', 'player-card-identity.css', 'player-progression.css', 'profile-badges.css', 'cosmetics.css']) {
+  for (const file of ['player-cards.css', 'player-card-avatars.css', 'player-card-identity.css', 'cosmetics.css']) {
     const style = document.createElement('style');
     style.textContent = readFileSync(`public/${file}`, 'utf8');
     document.head.appendChild(style);
   }
   if (saved) window.localStorage.setItem(storageKey, JSON.stringify(saved));
-  for (const file of ['player-progression.js', 'profile-badges.js', 'player-card-avatars.js', 'cosmetics.js']) window.eval(readFileSync(`public/${file}`, 'utf8'));
+  for (const file of ['profile-badges.js', 'player-card-avatars.js', 'cosmetics.js']) window.eval(readFileSync(`public/${file}`, 'utf8'));
   async function settle() {
     for (let round = 0; round < 20; round++) {
       await new Promise(setImmediate);
@@ -69,28 +56,16 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError
     assert.fail('Cosmetics and avatar observers did not settle; the UI is still rewriting itself.');
   }
   async function select(slot, value) {
-    const account = document.querySelector('.account-modal');
-    let button;
-    if (slot === 'profileTitle') {
-      account.querySelector('[data-profile-badges-tab]').click();
-      button = value ? account.querySelector(`[data-badge-equip="${value}"]`) : account.querySelector('[data-badge-unequip]');
-    } else if (slot === 'avatarFrame') {
-      account.querySelector('[data-cosmetics-frame-open]').click();
-      button = document.querySelector(`.cosmetic-frame-dialog [data-cosmetics-equip="${value}"]`);
-    } else {
-      account.querySelector('[data-cosmetics-table-tab]').click();
-      button = account.querySelector(`[data-cosmetics-kind="${slot}"][data-cosmetics-equip="${value}"]`);
-    }
-    assert(button, `Missing equipment control: ${slot}/${value}`);
-    button.click();
+    const input = document.querySelector(`[data-cosmetics-slot="${slot}"]`);
+    input.value = value;
+    input.dispatchEvent(new window.Event('change', { bubbles: true }));
     await settle();
-    if (slot === 'avatarFrame') document.querySelector('.cosmetic-frame-dialog .cosmetic-done').click();
   }
   await settle();
   return { window, document, requests, settle, select };
 }
 
-test('Titles equips one badge and title, preserves usernames, and Remove leaves no title', async (t) => {
+test('each title equips its badge, preserves usernames, and clearing restores the earned badge', async (t) => {
   const { document, window, requests, select, settle } = await fixture(t);
   const own = document.querySelector(ownSelector);
   for (const { id } of SEASON_REWARDS.filter((reward) => reward.kind === 'Profile title')) {
@@ -104,19 +79,18 @@ test('Titles equips one badge and title, preserves usernames, and Remove leaves 
     assert.equal(window.getComputedStyle(own.querySelector('[data-player-card-profile-badge]')).display, 'none');
   }
   assert(requests.filter((request) => request.action === 'collection').every((request) => ['Tester', 'Opponent'].includes(request.username)));
-  document.querySelector('.account-modal [data-badge-unequip]').click();
+  document.querySelector('[data-cosmetics-clear]').click();
   await settle();
   assert.equal(document.querySelector('[data-beta-cosmetic-title]'), null);
-  assert.equal(window.getComputedStyle(own.querySelector('[data-player-card-profile-badge]')).display, 'none');
-  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'None');
-  assert.equal(JSON.parse(window.localStorage.getItem(storageKey)).titleSource, 'none');
-  assert.equal(requests.filter((request) => request.action === 'equip').length, 0, 'Local cosmetic choices must not grant server titles');
+  assert.notEqual(window.getComputedStyle(own.querySelector('[data-player-card-profile-badge]')).display, 'none');
 });
 
 test('the former Velvet Conservatory slots now equip the Royal Crown artwork', async (t) => {
   const { document, select } = await fixture(t);
-  assert.match(document.querySelector('[data-cosmetics-equip="velvet_club"]').textContent, /Royal Crown/);
-  assert.match(document.querySelector('[data-cosmetics-equip="woven_green"]').textContent, /Royal Crown Felt/);
+  const cardBack = document.querySelector('[data-cosmetics-slot="cardBack"]');
+  const tableFelt = document.querySelector('[data-cosmetics-slot="tableFelt"]');
+  assert.equal([...cardBack.options].find((option) => option.value === 'velvet_club')?.textContent, 'Royal Crown');
+  assert.equal([...tableFelt.options].find((option) => option.value === 'woven_green')?.textContent, 'Royal Crown Felt');
   await select('cardBack', 'velvet_club');
   await select('tableFelt', 'woven_green');
   assert.equal(document.documentElement.dataset.brastaCardBack, 'velvet_club');
@@ -183,135 +157,46 @@ test('failed images fall back once and invalid saved reward IDs are ignored', as
   assert.equal(document.querySelector('[data-beta-cosmetic-title]'), null);
 });
 
-test('every set has matching equipment in the integrated controls and only Golden Spade is free', async (t) => {
-  const { document, window, select } = await fixture(t, { accountPhoto: 'https://example.test/provider-photo.jpg' });
+test('every catalog set equips exactly four matching rewards and preserves the photo', async (t) => {
+  const { document, window, settle, select } = await fixture(t, { accountPhoto: 'https://example.test/provider-photo.jpg' });
   assert.equal(SEASON_REWARDS.length, 20);
   assert.equal(new Set(SEASON_REWARDS.map((reward) => reward.id)).size, 20);
   assert.deepEqual(readdirSync('public/cosmetics/season-1').filter((file) => file.endsWith('.svg')).sort(), SEASON_REWARDS.map((reward) => `${reward.id}.svg`).sort());
-  assert.equal(document.querySelector('.brasta-cosmetics-launcher, .brasta-cosmetics-modal'), null);
+  for (const [slot, kind] of Object.entries(slotKinds)) {
+    const options = [...document.querySelector(`[data-cosmetics-slot="${slot}"]`).options].filter((option) => option.value);
+    const rewards = SEASON_REWARDS.filter((reward) => reward.kind === kind);
+    assert.deepEqual(options.map((option) => [option.value, option.textContent]).sort(), rewards.map((reward) => [reward.id, reward.name]).sort());
+  }
   const photo = document.querySelector(`${ownSelector} .player-card-avatar img`);
-  const account = document.querySelector('.account-modal');
+  const setSelect = document.querySelector('[data-cosmetics-set]');
+  assert.deepEqual([...setSelect.options].filter((option) => option.value).map((option) => [option.value, option.textContent]), Object.entries(SEASON_SETS).map(([id, set]) => [id, set.name]));
   for (const [setId, set] of Object.entries(SEASON_SETS)) {
     const rewards = SEASON_REWARDS.filter((reward) => reward.setId === setId);
     assert.deepEqual(rewards.map((reward) => reward.kind).sort(), Object.values(slotKinds).sort(), `${set.name} needs one reward of each kind`);
-    assert(rewards.every((reward) => reward.premium === (setId !== 'gilded_court')), `${set.name} access is inconsistent`);
     const expected = Object.fromEntries(Object.entries(slotKinds).map(([slot, kind]) => [slot, rewards.find((reward) => reward.kind === kind).id]));
     assert.equal(rewards.find((reward) => reward.kind === 'Table felt').matchingCardBackId, expected.cardBack);
-    for (const [slot, id] of Object.entries(expected)) await select(slot, id);
-    assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), { ...expected, titleSource: 'season' });
+    setSelect.value = setId;
+    setSelect.dispatchEvent(new window.Event('change', { bubbles: true }));
+    document.querySelector('[data-cosmetics-equip-set]').click();
+    await settle();
+    assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), expected);
+    for (const [slot, id] of Object.entries(expected)) {
+      assert.equal(document.documentElement.getAttribute('data-brasta-' + slot.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase())), id);
+      assert.equal(document.querySelector(`[data-cosmetics-slot="${slot}"]`).value, id);
+    }
     assert.equal(document.querySelector(`${ownSelector} .player-card-avatar img`), photo);
-    assert.equal(account.querySelector('.profile-badge-hero b').textContent, rewards.find((reward) => reward.kind === 'Profile title').name);
-    assert.equal(account.querySelector('[data-cosmetics-equip="' + expected.tableFelt + '"] .cosmetic-access').textContent, setId === 'gilded_court' ? 'Free' : 'Premium');
-    assert.equal(account.querySelectorAll('.profile-badge-card.equipped').length, 1);
+    assert.equal(document.querySelector(`${ownSelector} .beta-cosmetic-title-copy`).textContent, rewards.find((reward) => reward.kind === 'Profile title').name);
+    assert.equal(setSelect.value, setId);
   }
+  await select('avatarFrame', 'gilded_frame');
+  assert.equal(setSelect.value, '', 'Mixed sets should not be labelled as a complete matching set');
 });
 
 test('retired badges and face choices are removed from saved equipment without clearing valid choices', async (t) => {
   for (const id of ['golden_guest', 'four_suits', 'season_regular', 'season_keepsake']) {
     const { document, window } = await fixture(t, { saved: { cardBack: 'velvet_club', tableFelt: 'woven_green', profileTitle: id, avatarFrame: 'laurel', cardFaces: 'ivory_faces' } });
-    assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), { cardBack: 'velvet_club', tableFelt: 'woven_green', profileTitle: null, avatarFrame: 'laurel', titleSource: 'earned' });
+    assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), { cardBack: 'velvet_club', tableFelt: 'woven_green', profileTitle: null, avatarFrame: 'laurel' });
     assert.equal(document.querySelector('[data-beta-cosmetic-title]'), null);
-    assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'Founder');
+    assert.equal(document.querySelector('[data-cosmetics-slot="profileTitle"]').value, '');
   }
-});
-
-test('new equipment is Golden Spade and existing choices remain intact', async (t) => {
-  const fresh = await fixture(t);
-  const value = JSON.parse(fresh.window.localStorage.getItem(storageKey));
-  for (const slot of Object.keys(slotKinds)) assert.equal(SEASON_REWARDS.find((item) => item.id === value[slot]).setId, 'gilded_court');
-  const saved = { cardBack: 'midnight', tableFelt: 'midnight_felt', profileTitle: 'astrology_title', avatarFrame: 'astrology_frame' };
-  const existing = await fixture(t, { saved });
-  assert.deepEqual(JSON.parse(existing.window.localStorage.getItem(storageKey)), { ...saved, titleSource: 'season' });
-});
-
-test('Table and Titles switch cleanly with every existing profile tab; opponents have no equipment controls', async (t) => {
-  const { document, settle } = await fixture(t);
-  for (const modal of [document.querySelector('.account-modal'), document.querySelector('.player-profile-modal')]) {
-    const table = modal.querySelector('[data-cosmetics-table-panel]');
-    const titles = modal.querySelector('[data-profile-badges-panel]');
-    for (const original of modal.querySelectorAll('[data-account-ppg-tab], [data-ppg-tab]')) {
-      modal.querySelector('[data-cosmetics-table-tab]').click();
-      assert.equal(table.hidden, false);
-      assert.equal(titles.hidden, true);
-      assert([...modal.querySelectorAll('[data-account-ppg-panel], [data-ppg-panel], .account-experience-card')].every((node) => node.hidden));
-      modal.querySelector('[data-profile-badges-tab]').click();
-      assert.equal(table.hidden, true);
-      assert.equal(titles.hidden, false);
-      original.click();
-      assert.equal(table.hidden, true);
-      assert.equal(titles.hidden, true);
-      assert.equal(modal.querySelectorAll('.ppg-tabs [aria-selected="true"]').length, 1);
-      await settle();
-    }
-  }
-  const opponent = [...document.querySelectorAll('.player-profile-modal')][1];
-  assert.equal(opponent.querySelector('[data-cosmetics-frame-open], [data-cosmetics-table-tab], [data-badge-equip]'), null);
-  assert.equal(opponent.querySelectorAll('.has-cosmetic-art').length, 0);
-});
-
-test('an earned title replaces the cosmetic title only after a successful server update', async (t) => {
-  const { document, window, select, settle } = await fixture(t);
-  await select('profileTitle', 'founder');
-  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'Founder');
-  assert.equal(document.querySelector('[data-beta-cosmetic-title]'), null);
-  assert.notEqual(window.getComputedStyle(document.querySelector(`${ownSelector} [data-player-card-profile-badge]`)).display, 'none');
-  assert.equal(JSON.parse(window.localStorage.getItem(storageKey)).titleSource, 'earned');
-  await select('profileTitle', 'royal_title');
-  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'Sovereign');
-  await select('profileTitle', 'founder');
-  await select('profileTitle', '');
-  await settle();
-  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'None');
-  assert.equal(document.querySelector(`${ownSelector} [data-player-card-profile-badge]`), null);
-});
-
-test('a failed earned-title update retains the cosmetic title and valid button states', async (t) => {
-  const { document, window, select } = await fixture(t, { equipError: true });
-  await select('profileTitle', 'founder');
-  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'Ace of Spades');
-  assert.equal(document.querySelector('.account-modal [data-badge-equip="first_seat"]').disabled, true);
-  assert.equal(document.querySelector('.account-modal [data-badge-equip="founder"]').disabled, false);
-  assert.equal(JSON.parse(window.localStorage.getItem(storageKey)).titleSource, 'season');
-  assert.match(document.querySelector('.account-modal .profile-badge-error').textContent, /Temporarily unavailable/);
-});
-
-test('set titles remain available when earned-title loading fails', async (t) => {
-  const { document, select } = await fixture(t, { collectionError: true });
-  await select('profileTitle', 'golden_brasta');
-  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent, 'Gypsy');
-  assert.equal(document.querySelectorAll('.account-modal [data-badge-equip]').length, 5);
-  assert.match(document.querySelector('.account-modal .profile-badge-error').textContent, /Earned titles are unavailable/);
-});
-
-test('frame chooser previews the real portrait, closes, and returns focus to its control', async (t) => {
-  const { document, settle } = await fixture(t, { accountPhoto: 'https://example.test/provider-photo.jpg' });
-  const trigger = document.querySelector('.account-modal [data-cosmetics-frame-open]');
-  trigger.click();
-  const dialog = document.querySelector('.cosmetic-frame-dialog');
-  assert.equal(dialog.open, true);
-  assert.equal(dialog.querySelectorAll('[data-frame-portrait] img').length, 6);
-  assert([...dialog.querySelectorAll('[data-frame-portrait] img')].every((image) => image.src === 'https://example.test/provider-photo.jpg'));
-  dialog.querySelector('[data-cosmetics-equip="astrology_frame"]').click();
-  await settle();
-  assert.equal(dialog.querySelectorAll('[aria-pressed="true"]').length, 1);
-  dialog.querySelector('.cosmetic-done').click();
-  assert.equal(dialog.open, false);
-  assert.equal(document.activeElement, trigger);
-});
-
-test('a guest can reach Table and Titles from their own match profile', async (t) => {
-  const { document, settle } = await fixture(t, { collectionError: true });
-  const modal = document.querySelector('.player-profile-modal');
-  modal.querySelectorAll('.ppg-tabs, .ppg-panel').forEach((node) => node.remove());
-  const guest = document.createElement('div'); guest.className = 'player-profile-guest'; guest.textContent = 'Guest profile'; modal.appendChild(guest);
-  await settle();
-  modal.querySelector('[data-cosmetics-table-tab]').click();
-  assert.equal(guest.hidden, true);
-  assert.equal(modal.querySelector('[data-cosmetics-table-panel]').hidden, false);
-  modal.querySelector('[data-profile-badges-tab]').click();
-  assert.equal(modal.querySelector('[data-cosmetics-table-panel]').hidden, true);
-  assert.equal(modal.querySelectorAll('[data-badge-equip]').length, 5);
-  [...modal.querySelectorAll('.ppg-tabs button')].find((button) => button.textContent === 'Overview').click();
-  assert.equal(guest.hidden, false);
-  assert.equal(modal.querySelector('[data-profile-badges-panel]').hidden, true);
 });

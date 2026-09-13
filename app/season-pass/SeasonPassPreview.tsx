@@ -72,7 +72,7 @@ export default function SeasonPassPreview() {
           <span><small>{reward.kind === 'Profile title' ? 'Profile title + badge' : reward.kind} · Tier {reward.tier} · {reward.premium ? 'Premium' : 'Free'}</small><strong>{reward.name}</strong><span>View artwork →</span></span>
         </button>)}
       </section>
-      <p className="sp-detail-note">Open your profile to change your frame, choose card backs and felts in Table, or equip a badge and title in Titles. Premium styles are available during beta; selections are saved in this browser.</p>
+      <p className="sp-detail-note">Try these assets in a match using the Cosmetics button. Beta selections are saved in this browser.</p>
     </dialog>
   </main>;
 }
