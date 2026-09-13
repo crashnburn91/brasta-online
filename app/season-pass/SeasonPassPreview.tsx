@@ -1,26 +1,90 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getSupabaseBrowserClient } from '../../lib/supabase-browser';
 import { SEASON_ONE, SEASON_REWARDS, SEASON_SETS, seasonTier, type SeasonReward } from '../../lib/season-catalog';
+import type { SeasonPassState } from '../../lib/season-pass';
 import RewardArtwork from './RewardArtwork';
+
+type AccountState = 'loading' | 'signed-out' | 'ready' | 'unavailable';
 
 export default function SeasonPassPreview() {
   const [xp, setXp] = useState(1250);
   const [premium, setPremium] = useState(false);
+  const [accountState, setAccountState] = useState<AccountState>('loading');
+  const [liveState, setLiveState] = useState<SeasonPassState | null>(null);
   const [filter, setFilter] = useState('All rewards');
   const [selectedSetId, setSelectedSetId] = useState('all');
   const [selected, setSelected] = useState(SEASON_REWARDS[1]);
   const detailDialog = useRef<HTMLDialogElement>(null);
   const detailClose = useRef<HTMLButtonElement>(null);
-  const tier = seasonTier(xp);
-  const premiumCount = SEASON_REWARDS.filter(r => r.premium).length;
-  const visible = SEASON_REWARDS.filter(r => filter === 'All rewards' || (filter === 'Free' ? !r.premium : r.premium));
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setAccountState('unavailable');
+      return;
+    }
+
+    let alive = true;
+    let requestVersion = 0;
+
+    const loadAccountState = async (session: { access_token?: string } | null) => {
+      const version = ++requestVersion;
+      if (!session?.access_token) {
+        if (!alive || version !== requestVersion) return;
+        setLiveState(null);
+        setAccountState('signed-out');
+        return;
+      }
+
+      setAccountState('loading');
+      try {
+        const response = await fetch('/api/season-pass', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store',
+        });
+        const data = await response.json().catch(() => ({})) as { state?: SeasonPassState };
+        if (!alive || version !== requestVersion) return;
+        if (response.ok && data.state) {
+          setLiveState(data.state);
+          setXp(data.state.progress.xp);
+          setPremium(data.state.premiumUnlocked);
+          setAccountState('ready');
+        } else {
+          setLiveState(null);
+          setAccountState(response.status === 401 ? 'signed-out' : 'unavailable');
+        }
+      } catch {
+        if (!alive || version !== requestVersion) return;
+        setLiveState(null);
+        setAccountState('unavailable');
+      }
+    };
+
+    void supabase.auth.getSession().then(({ data }) => loadAccountState(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadAccountState(session);
+    });
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const accountBacked = accountState === 'ready' && Boolean(liveState);
+  const catalogRewards = liveState?.rewards?.length ? liveState.rewards : SEASON_REWARDS;
+  const displayXp = liveState?.progress.xp ?? xp;
+  const tier = liveState?.progress.tier ?? seasonTier(xp);
+  const premiumUnlocked = liveState?.premiumUnlocked ?? premium;
+  const premiumCount = catalogRewards.filter(r => r.premium).length;
+  const visible = catalogRewards.filter(r => filter === 'All rewards' || (filter === 'Free' ? !r.premium : r.premium));
   const groups = Object.entries(SEASON_SETS)
     .filter(([id]) => selectedSetId === 'all' || id === selectedSetId)
     .map(([id, set]) => ({ id, ...set, rewards: visible.filter(r => r.setId === id) }))
     .filter(group => group.rewards.length > 0);
   const selectedSet = SEASON_SETS[selected.setId];
-  const relatedRewards = SEASON_REWARDS.filter(r => r.setId === selected.setId && r.id !== selected.id);
+  const relatedRewards = catalogRewards.filter(r => r.setId === selected.setId && r.id !== selected.id);
   function inspectReward(reward: SeasonReward) {
     setSelected(reward);
     if (!detailDialog.current?.open) detailDialog.current?.showModal();
@@ -28,7 +92,7 @@ export default function SeasonPassPreview() {
     detailClose.current?.focus();
   }
   return <main className="sp-page">
-    <nav className="sp-nav"><a href="/">← Back to Brasta</a><span>DESIGN PREVIEW</span></nav>
+    <nav className="sp-nav"><a href="/">← Back to Brasta</a><span>{accountBacked ? 'ACCOUNT PREVIEW' : 'DESIGN PREVIEW'}</span></nav>
     <header className="sp-hero">
       <div><p className="sp-eyebrow">SEASON 01 · 8 WEEKS</p><h1>The Golden<br /><em>Table.</em></h1>
         <p className="sp-lead">Make every hand your own.</p><p>Five complete sets. Collect matching card backs, table felts, avatar frames, and profile titles with their own badges.</p>
@@ -36,8 +100,8 @@ export default function SeasonPassPreview() {
       </div>
       <div className="sp-showcase"><div className="sp-showcase-art"><RewardArtwork reward={selected} eager /></div><p className="sp-set-label">{selectedSet.name} set</p><p>{selected.kind}</p><h2>{selected.name}</h2><p>{selected.description}</p><button className="sp-inspect" onClick={() => inspectReward(selected)}>View artwork</button></div>
     </header>
-    <section className="sp-progress" aria-label="Example season progress"><div><span>EXAMPLE PROGRESS</span><h2>Tier {tier} <small>/ {SEASON_ONE.tiers}</small></h2></div><div className="sp-progress-body"><div className="sp-progress-label"><b>{xp.toLocaleString()} Season XP</b><span>{tier === 12 ? 'All tiers reached' : `${(tier + 1) * 250 - xp} XP to tier ${tier + 1}`}</span></div><progress value={xp} max={3000} aria-label="Example Season XP" /></div></section>
-    <section className="sp-preview-controls" aria-label="Preview controls"><div><b>Try the reward track</b><p>Sample progress only. This preview does not purchase or unlock account items.</p></div><label>Season XP<input type="range" min="0" max="3000" step="250" value={xp} onChange={e => setXp(Number(e.target.value))} /></label><label className="sp-toggle"><input type="checkbox" checked={premium} onChange={e => setPremium(e.target.checked)} />Preview Premium</label></section>
+    <section className="sp-progress" aria-label={accountBacked ? 'Your season progress' : 'Example season progress'}><div><span>{accountBacked ? 'YOUR PROGRESS' : 'EXAMPLE PROGRESS'}</span><h2>Tier {tier} <small>/ {liveState?.season.tiers ?? SEASON_ONE.tiers}</small></h2></div><div className="sp-progress-body"><div className="sp-progress-label"><b>{displayXp.toLocaleString()} Season XP</b><span>{accountBacked ? (liveState?.progress.xpToNextTier ? `${liveState.progress.xpToNextTier} XP to tier ${tier + 1}` : 'All tiers reached') : (tier === 12 ? 'All tiers reached' : `${(tier + 1) * 250 - xp} XP to tier ${tier + 1}`)}</span></div><progress value={displayXp} max={(liveState?.season.tiers ?? SEASON_ONE.tiers) * (liveState?.season.xpPerTier ?? SEASON_ONE.xpPerTier)} aria-label={accountBacked ? 'Your Season XP' : 'Example Season XP'} /></div></section>
+    <section className="sp-preview-controls" aria-label={accountBacked ? 'Season account status' : 'Preview controls'}><div><b>{accountBacked ? 'Account progress' : 'Try the reward track'}</b><p>{accountBacked ? 'Progress and owned rewards are synced to your Brasta account.' : 'Sample progress only. Sign in to sync progress; this preview does not purchase or unlock account items.'}</p></div>{accountBacked ? <div className="sp-live-status"><span>{premiumUnlocked ? 'Premium pass active' : 'Free track'}</span><span>{liveState?.ownedRewardIds.length || 0} rewards owned</span></div> : <><label>Season XP<input type="range" min="0" max="3000" step="250" value={xp} onChange={e => setXp(Number(e.target.value))} /></label><label className="sp-toggle"><input type="checkbox" checked={premium} onChange={e => setPremium(e.target.checked)} />Preview Premium</label></>}</section>
     <section className="sp-catalog"><div className="sp-catalog-head"><div><p className="sp-eyebrow">BUILD. CAPTURE. COLLECT.</p><h2>Your season sets</h2><p className="sp-catalog-hint">Each set includes one card back, table felt, avatar frame, and badge/title. Each piece unlocks at its shown tier.</p></div>
       <div className="sp-catalog-controls">
         <label className="sp-set-picker">Cosmetic set<select value={selectedSetId} onChange={e => setSelectedSetId(e.target.value)}><option value="all">All sets</option>{Object.entries(SEASON_SETS).map(([id, set]) => <option key={id} value={id}>{set.name}</option>)}</select></label>
@@ -47,9 +111,11 @@ export default function SeasonPassPreview() {
       {groups.map(group => <section className={`sp-set-group sp-set-${group.id}`} key={group.id} aria-labelledby={`sp-set-${group.id}`}>
         <header className="sp-set-heading"><div><h3 id={`sp-set-${group.id}`}>{group.name}</h3><p>{group.description}</p></div><span>{group.rewards.length} {group.rewards.length === 1 ? 'cosmetic' : 'cosmetics'}</span></header>
         <div className="sp-grid">{group.rewards.map(r => {
-        const available = tier >= r.tier && (!r.premium || premium);
+        const owned = liveState?.ownedRewardIds.includes(r.id) || false;
+        const available = accountBacked ? owned : tier >= r.tier && (!r.premium || premiumUnlocked);
+        const status = available ? (accountBacked ? '✓ Owned' : '✓ Available in preview') : tier < r.tier ? `Reach tier ${r.tier}` : r.premium && !premiumUnlocked ? 'Premium reward' : accountBacked ? 'Awaiting server award' : 'Not available';
         return <button key={r.id} className={`sp-reward ${selected.id === r.id ? 'sp-selected' : ''}`} aria-label={`View ${r.name}, ${r.kind}, tier ${r.tier}, ${r.premium ? 'Premium' : 'Free'}`} aria-haspopup="dialog" onClick={() => inspectReward(r)}>
-          <div className="sp-reward-meta"><span>TIER {r.tier}</span><b>{r.premium ? 'PREMIUM' : 'FREE'}</b></div><div className="sp-reward-art"><RewardArtwork reward={r} /></div><small>{r.kind === 'Profile title' ? 'Profile title + badge' : r.kind}</small><h3>{r.name}</h3><span className={`sp-status ${available ? 'sp-ready' : ''}`}>{available ? '✓ Available in preview' : tier < r.tier ? `Reach tier ${r.tier}` : 'Premium reward'}</span>
+          <div className="sp-reward-meta"><span>TIER {r.tier}</span><b>{r.premium ? 'PREMIUM' : 'FREE'}</b></div><div className="sp-reward-art"><RewardArtwork reward={r} /></div><small>{r.kind === 'Profile title' ? 'Profile title + badge' : r.kind}</small><h3>{r.name}</h3><span className={`sp-status ${available ? 'sp-ready' : ''}`}>{status}</span>
         </button>;
         })}</div>
       </section>)}

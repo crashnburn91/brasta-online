@@ -4,8 +4,9 @@
 
 `/season-pass` is an interactive design preview with a typed reward catalog,
 set and free/premium filters, a selected reward showcase, and sample XP/Premium
-controls. Simulated progress stays in component memory. Account ownership,
-payments, season dates, and live XP awards are not enabled.
+controls for signed-out visitors. Signed-in visitors read their account-backed
+Season Pass state through `/api/season-pass`. Season 1 is still seeded as a
+`draft`: payments, season dates, and live XP awards are not enabled yet.
 
 The proposed offer is $4.99 USD per eight-week season, with twelve tiers at
 250 XP each. The catalog contains 20 cosmetics: 4 free and 16 premium.
@@ -20,8 +21,25 @@ Golden Spade is the only free set; every reward in the other four sets is premiu
 New browser equipment defaults to Golden Spade. Premium styles remain available
 for beta testing, and valid existing selections are preserved.
 Equipment is saved locally under `brasta-beta-cosmetics-v1`. Retired and invalid
-IDs are cleared without changing valid selections. This is a testing surface,
-not account ownership or a paid reward claim.
+IDs are cleared without changing valid selections. This is still a testing
+surface, not a paid reward claim. Local equipment has not yet been migrated
+into the account equipment table.
+
+## Account foundation (implemented)
+
+The `season_pass_core` and `season_pass_hardening` migrations now provide stable
+Season 1 tables for seasons, sets, rewards, progress, an idempotent XP ledger,
+entitlements, reward ownership, and slot equipment. Browser roles have no table
+grants and explicit deny policies; only the trusted server role can write these
+records. The server-only `brasta_award_season_pass_xp` and
+`brasta_grant_season_pass_rewards` functions enforce draft/date gates,
+deduplicate match awards, cap XP at the final tier, and grant eligible rewards
+transactionally. The API derives the player ID from the verified access token;
+the client cannot submit an account ID.
+
+The remaining launch work is to activate a dated season, connect finalized match
+records to the XP function, persist/equip cosmetics through the account tables,
+and add verified web/Play purchase fulfillment.
 
 ## Five complete sets
 

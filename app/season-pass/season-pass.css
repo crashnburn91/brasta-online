@@ -94,5 +94,7 @@
 .sp-set-related .sp-profile-title-pair{width:60px;flex:none}
 .sp-set-related .sp-profile-title-pair .sp-artwork-profile-title{width:60px}
 .sp-set-related .sp-profile-title-name{display:none}
+.sp-live-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;color:#d8c58f;font-size:11px}
+.sp-live-status span{padding:7px 10px;border:1px solid #d8b75e44;border-radius:999px;background:#d8b75e0d;white-space:nowrap}
 @media(max-width:850px){.sp-catalog-controls{align-items:flex-start;width:100%}.sp-set-picker{flex-wrap:wrap}}
 @media(max-width:540px){.sp-set-heading h3{font-size:22px}.sp-set-heading{gap:10px}.sp-set-heading>span{font-size:9px}.sp-set-picker{width:100%}.sp-set-picker select{flex:1;min-width:0}.sp-set-group{padding-top:20px}}
