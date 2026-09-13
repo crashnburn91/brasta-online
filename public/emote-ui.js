@@ -229,7 +229,7 @@
     socket();
     restoreActiveBubbles();
 
-    const row = document.querySelector('[data-game-action-row]');
+    const row = document.querySelector('[data-hand-control-row]');
     if (!row || !shouldShow()) {
       document.querySelectorAll('.emote-control').forEach((node) => node.remove());
       return;
@@ -245,9 +245,8 @@
     }
 
     const control = buildControl();
-    const panel = row.querySelector('.action-panel');
-    if (panel) row.insertBefore(control, panel);
-    else row.insertBefore(control, row.firstChild);
+    const slot = row.querySelector('[data-emote-slot]');
+    (slot || row).appendChild(control);
   }
 
   function queueEnhance() {

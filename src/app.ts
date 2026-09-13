@@ -470,7 +470,7 @@ namespace BrastaApp {
     const player = state.players.find((p) => p.seat === seat); if (!player) return '';
     const clickable = state.phase === 'play' && canLocalPlayerAct();
     const title = context === 'online' ? `Your hand · ${escapeHtml(player.name)} · Seat ${seat}` : `Seat ${seat}'s hand`;
-    return `<section class="hand-area"><div class="hand-title">${title}</div><div class="hand">${player.hand.length ? player.hand.map((id) => cardHtml(id, { clickable, selected: selectedCard === id })).join('') : '<span class="empty-note">Waiting for cards…</span>'}</div></section>`;
+    return `<div class="hand-control-row" data-hand-control-row><div class="hand-side-control hand-emote-slot" data-emote-slot></div><section class="hand-area"><div class="hand-title">${title}</div><div class="hand">${player.hand.length ? player.hand.map((id) => cardHtml(id, { clickable, selected: selectedCard === id })).join('') : '<span class="empty-note">Waiting for cards…</span>'}</div></section><div class="hand-side-control hand-burn-slot" data-burn-slot></div></div>`;
   }
 
   function teamForEvent(event: string): Brasta.Team | null {

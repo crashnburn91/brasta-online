@@ -172,11 +172,7 @@
   }
 
   function unwrapActionRow() {
-    const row = document.querySelector('[data-game-action-row]');
-    if (!row) return;
-    const panel = row.querySelector('.action-panel');
-    if (panel && row.parentNode) row.parentNode.insertBefore(panel, row);
-    row.remove();
+    document.querySelector('.hand-burn-slot .burn-call-button')?.remove();
   }
 
   function enhance() {
@@ -188,14 +184,11 @@
       return;
     }
 
-    const existingRow = panel.closest('[data-game-action-row]');
-    if (existingRow) return;
-
-    const row = document.createElement('div');
-    row.className = 'game-action-row';
-    row.dataset.gameActionRow = '1';
-    panel.parentNode.insertBefore(row, panel);
-    row.appendChild(panel);
+    const row = document.querySelector('[data-hand-control-row]');
+    const slot = row?.querySelector('[data-burn-slot]');
+    if (!row || !slot) return;
+    const existing = slot.querySelector('.burn-call-button');
+    if (existing) return;
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -205,7 +198,7 @@
     button.setAttribute('aria-label', 'Call Burn');
     button.innerHTML = '<span class="burn-call-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M13.7 2.1c.4 3.2-1.5 4.6-2.8 6.1-1.1 1.2-1.8 2.5-1.2 4.2.4-1.2 1.2-2.1 2.3-3 .2 2.3 2.1 3.4 3.1 5.1 1 1.6.9 3.2.1 4.4 3.3-1 5.7-4 5.7-7.6 0-4.4-2.6-7.7-7.9-12.2-.5-.4-1.2-.1-1.3.6zM8.9 14.2c-.8.9-1.4 1.9-1.4 3.1 0 2.5 2 4.5 4.5 4.5s4.5-2 4.5-4.5c0-1.7-.8-3.1-2.5-4.7.1 2.1-.8 3.1-1.7 4-.6.7-1 1.3-.8 2.2-1.7-.8-2.7-2.4-2.6-4.6z"/></svg></span><span class="burn-call-label">Call Burn</span>';
     button.onclick = callBurn;
-    row.appendChild(button);
+    slot.appendChild(button);
   }
 
   function queueEnhance() {

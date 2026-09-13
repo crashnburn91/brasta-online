@@ -490,3 +490,23 @@ main > .table { margin-top: 0 !important; }
   .hand-area { min-height: 112px !important; }
   .hand-area .hand { min-height: 74px; }
 }
+
+/* Keep the four-card hand shelf compact, with controls flanking it. */
+.hand-control-row { display:grid; grid-template-columns:52px minmax(0,1fr) 52px; gap:6px; align-items:center; }
+.hand-control-row .hand-area { min-height:0 !important; margin-top:0 !important; padding:8px !important; }
+.hand-control-row .hand { min-height:104px; align-items:center; }
+.hand-side-control { display:flex; align-items:center; justify-content:center; min-width:0; }
+.hand-control-row .emote-trigger,
+.hand-control-row .burn-call-button { width:52px !important; min-width:52px !important; height:60px !important; min-height:60px !important; border-radius:16px !important; }
+.hand-control-row .burn-call-label { display:none; }
+.action-panel { margin-top:3px; }
+@media (max-height:820px) {
+  .hand-control-row .hand { min-height:94px; }
+  .hand-control-row .emote-trigger,
+  .hand-control-row .burn-call-button { height:52px !important; min-height:52px !important; }
+}
+@media (max-width:380px) {
+  .hand-control-row { grid-template-columns:46px minmax(0,1fr) 46px; gap:4px; }
+  .hand-control-row .emote-trigger,
+  .hand-control-row .burn-call-button { width:46px !important; min-width:46px !important; }
+}

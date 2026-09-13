@@ -649,6 +649,61 @@ body.brasta-shell-locked .opening-panel{
   padding:9px 10px;
 }
 
+/* The hand controls now flank the shelf itself. Keep the shelf's vertical
+   geometry compact even when the locked mobile density rules are active. */
+body.brasta-shell-locked .hand-control-row{
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr) 52px;
+  gap:6px;
+  align-items:center;
+  margin-bottom:3px;
+}
+body.brasta-shell-locked .hand-control-row .hand-area{
+  min-height:0!important;
+  margin-top:0!important;
+  padding:8px!important;
+}
+body.brasta-shell-locked .hand-control-row .hand{
+  min-height:104px!important;
+  align-items:center;
+}
+body.brasta-shell-locked .hand-control-row .action-panel{ margin-top:3px; }
+body.brasta-shell-locked .hand-side-control{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+}
+body.brasta-shell-locked .hand-control-row .emote-trigger,
+body.brasta-shell-locked .hand-control-row .burn-call-button{
+  width:52px!important;
+  min-width:52px!important;
+  height:60px!important;
+  min-height:60px!important;
+  border-radius:16px!important;
+}
+body.brasta-shell-locked .hand-control-row .burn-call-label{ display:none; }
+
+@media (max-height:820px){
+  body.brasta-shell-locked .hand-control-row .hand{ min-height:94px!important; }
+  body.brasta-shell-locked .hand-control-row .emote-trigger,
+  body.brasta-shell-locked .hand-control-row .burn-call-button{
+    height:52px!important;
+    min-height:52px!important;
+  }
+}
+@media (max-width:380px){
+  body.brasta-shell-locked .hand-control-row{
+    grid-template-columns:46px minmax(0,1fr) 46px;
+    gap:4px;
+  }
+  body.brasta-shell-locked .hand-control-row .emote-trigger,
+  body.brasta-shell-locked .hand-control-row .burn-call-button{
+    width:46px!important;
+    min-width:46px!important;
+  }
+}
+
 body.brasta-shell-locked .opening-panel .opening-choice-actions{
   display:flex!important;
   flex-wrap:nowrap!important;
