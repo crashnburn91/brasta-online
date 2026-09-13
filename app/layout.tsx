@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Cinzel } from 'next/font/google';
 import type { ReactNode } from 'react';
 import PresenceTracker from './PresenceTracker';
+import { SEASON_REWARDS, SEASON_SETS } from '../lib/season-catalog';
 import './special-move-effects.css';
 
 const brastaDisplay = Cinzel({
@@ -97,11 +98,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/chat-ui.css?v=0.2.2" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.6" />
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
-        <link rel="stylesheet" href="/cosmetics.css?v=0.1.4" />
+        <link rel="stylesheet" href="/cosmetics.css?v=0.2.0" />
       </head>
       <body>
         <PresenceTracker />
         {children}
+        <Script id="brasta-season-catalog" strategy="beforeInteractive">
+          {`window.BRASTA_SEASON_CATALOG = ${JSON.stringify({ rewards: SEASON_REWARDS, sets: SEASON_SETS }).replace(/</g, '\\u003c')};`}
+        </Script>
         <Script src="/realtime-endpoint.js?v=0.12.0" strategy="beforeInteractive" />
         <Script src="/ranked-room-handoff-guard.js?v=0.7.1" strategy="beforeInteractive" />
         <Script src="/live-score-ui.js?v=0.15.4" strategy="beforeInteractive" />
@@ -111,9 +115,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/player-profile.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/player-progression.js?v=0.1.2" strategy="afterInteractive" />
-        <Script src="/profile-badges.js?v=0.1.2" strategy="afterInteractive" />
+        <Script src="/profile-badges.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/player-card-avatars.js?v=0.1.1" strategy="afterInteractive" />
-        <Script src="/cosmetics.js?v=0.1.3" strategy="afterInteractive" />
+        <Script src="/cosmetics.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/achievement-filter.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/stats-match-filter.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />
