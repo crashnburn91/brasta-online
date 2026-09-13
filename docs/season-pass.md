@@ -12,8 +12,13 @@ The proposed offer is $4.99 USD per eight-week season, with twelve tiers at
 Previously reached premium tiers unlock on purchase; unlocked cosmetics remain
 after season end. Artwork and pacing remain proposed.
 
-The beta Cosmetics picker can equip any complete set or mix individual pieces.
-Its four slots are card back, table felt, avatar frame, and profile title + badge.
+Equipment is integrated into the existing profile. Change frame sits beside the
+portrait and opens a visual frame chooser. The Table tab contains separate card
+back and felt collections. The existing Titles tab combines earned titles with
+all five set badge/title pairs. There is no floating Cosmetics button.
+Golden Spade is the only free set; every reward in the other four sets is premium.
+New browser equipment defaults to Golden Spade. Premium styles remain available
+for beta testing, and valid existing selections are preserved.
 Equipment is saved locally under `brasta-beta-cosmetics-v1`. Retired and invalid
 IDs are cleared without changing valid selections. This is a testing surface,
 not account ownership or a paid reward claim.
@@ -36,8 +41,10 @@ and title equip together as one reward.
 Each reward belongs to one set through its required `setId`. Set and access
 filters use the same catalog; detail previews list the other three pieces with
 their reward type, tier, and access. Each felt records its `matchingCardBackId`.
-The beta presets must stay aligned with the catalog; `scripts/cosmetics-tests.mjs`
-checks every slot, label, preset, and shipped asset against it.
+The root layout supplies this same catalog to the profile UI, so names and access
+labels are not duplicated. `scripts/cosmetics-tests.mjs` checks the shipped assets,
+set access, equipment controls, original profile tabs, title switching, persistence,
+failed requests, and photo preservation with the actual client scripts.
 
 Card faces, Fourfold Crest, Season Regular, and Season Archive have been removed.
 Golden Guest has also been retired to leave one title per set. The former free
@@ -46,18 +53,17 @@ the card's spade medallion. New matching pieces occupy the remaining revised slo
 
 | ID | Reward | Tier | Access |
 | --- | --- | --- | --- |
-| gilded_frame | Gilded Bezel | 3 | Premium |
-| royal_title | Sovereign badge/title | 7 | Free |
+| gilded_frame | Gilded Bezel | 3 | Free |
+| royal_title | Sovereign badge/title | 7 | Premium |
 | garnet_title | Ruby Baron badge/title | 8 | Premium |
-| royal_frame | Royal Diadem | 11 | Free |
+| royal_frame | Royal Diadem | 11 | Premium |
 
 Royal Crown replaces Velvet Conservatory; its card back (`velvet_club`) and felt
-(`woven_green`) retain their existing IDs. Other surviving reward IDs and access
-are preserved. The retired SVG files and generator entries are removed.
+(`woven_green`) retain their existing IDs. Other surviving reward IDs are preserved. The retired SVG files and generator entries are removed.
 
 Golden Spade and Grand Ruby retain the internal set IDs `gilded_court` and
 `garnet_mosaic`. Reward IDs also stay stable when display names change, so saved
-equipment keeps working. The picker, profile display, previews, and SVG metadata
+equipment keeps working. The profile controls, previews, and SVG metadata
 use the current names.
 
 ## Matching artwork and responsive equipment
@@ -83,7 +89,11 @@ with a quiet center for clear card visibility.
 
 There is one profile title reward per set. Its badge art and title name are
 shown together in previews, on the player's own match card, and in their profile.
-Clearing a test title restores the existing earned badge display.
+Selecting a cosmetic title overrides the earned-title display locally. Selecting
+an earned title clears the override only after the server confirms the change.
+Remove explicitly leaves no title. The saved `titleSource` distinguishes season,
+earned, and none, preventing an old earned badge from silently reappearing.
+Other players' earned-title collections and server ownership checks are unchanged.
 
 Future season ownership should register each pair as one profile badge definition
 and grant it through the existing title collection and single equipped-title slot.
