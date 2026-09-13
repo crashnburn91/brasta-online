@@ -688,11 +688,11 @@ body.brasta-shell-locked .hand-control-row .burn-call-label{ display:none; }
    state at the same baseline height as the compact single-action dock so
    switching between one, several, or zero actions never shifts the layout. */
 body.brasta-shell-locked #app > main > .action-panel{
-  /* Matches the rendered single-action dock, including its inner padding. */
-  min-height:86px!important;
+  /* Compact baseline: one action button plus the dock's inner padding. */
+  min-height:56px!important;
 }
 body.brasta-shell-locked #app > main > .action-panel .button-row.actions{
-  min-height:54px;
+  min-height:42px;
 }
 
 @media (max-height:820px){
