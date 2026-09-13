@@ -21,16 +21,17 @@ not account ownership or a paid reward claim.
 ## Five complete sets
 
 Every set has exactly four rewards: one card back, one responsive table felt,
-one matching avatar frame, and one badge/title pair. The set name is also its
-displayed profile title. The badge and title equip together as one reward.
+one matching avatar frame, and one badge/title pair. Each profile title describes
+the player and has its own thematic name, separate from the set name. The badge
+and title equip together as one reward.
 
 | Set | Card back | Table felt | Avatar frame | Badge/title |
 | --- | --- | --- | --- | --- |
-| Gilded Court | Gilded Court | Gilded Court Felt | Gilded Bezel | Gilded Court, gold spade medallion |
-| Royal Crown | Royal Crown | Royal Crown Felt | Royal Diadem | Royal Crown, ruby-and-gold crown |
-| Garnet Mosaic | Garnet Mosaic | Garnet Mosaic Felt | Garnet Halo | Garnet Mosaic, faceted garnet |
-| Romani Heritage | Romani Heritage | Romani Heritage Felt | Gold Coin Bezel | Romani Heritage, engraved wagon wheel |
-| Astrology | Astrology | Astrology Felt | Orbital Halo | Astrology, crescent-spade instrument dial |
+| Golden Spade | Golden Spade | Golden Spade Felt | Gilded Bezel | Ace of Spades, gold spade medallion |
+| Royal Crown | Royal Crown | Royal Crown Felt | Royal Diadem | Sovereign, ruby-and-gold crown |
+| Grand Ruby | Grand Ruby | Grand Ruby Felt | Ruby Halo | Ruby Baron, faceted ruby |
+| Romani Heritage | Romani Heritage | Romani Heritage Felt | Gold Coin Bezel | Gypsy, engraved wagon wheel |
+| Astrology | Astrology | Astrology Felt | Orbital Halo | Stargazer, crescent-spade instrument dial |
 
 Each reward belongs to one set through its required `setId`. Set and access
 filters use the same catalog; detail previews list the other three pieces with
@@ -40,25 +41,30 @@ checks every slot, label, preset, and shipped asset against it.
 
 Card faces, Fourfold Crest, Season Regular, and Season Archive have been removed.
 Golden Guest has also been retired to leave one title per set. The former free
-First Seat slot (`first_seat`, tier 1) is now the Gilded Court badge/title, using
+First Seat slot (`first_seat`, tier 1) is now the Ace of Spades badge/title, using
 the card's spade medallion. New matching pieces occupy the remaining revised slots:
 
 | ID | Reward | Tier | Access |
 | --- | --- | --- | --- |
 | gilded_frame | Gilded Bezel | 3 | Premium |
-| royal_title | Royal Crown badge/title | 7 | Free |
-| garnet_title | Garnet Mosaic badge/title | 8 | Premium |
+| royal_title | Sovereign badge/title | 7 | Free |
+| garnet_title | Ruby Baron badge/title | 8 | Premium |
 | royal_frame | Royal Diadem | 11 | Free |
 
 Royal Crown replaces Velvet Conservatory; its card back (`velvet_club`) and felt
 (`woven_green`) retain their existing IDs. Other surviving reward IDs and access
 are preserved. The retired SVG files and generator entries are removed.
 
+Golden Spade and Grand Ruby retain the internal set IDs `gilded_court` and
+`garnet_mosaic`. Reward IDs also stay stable when display names change, so saved
+equipment keeps working. The picker, profile display, previews, and SVG metadata
+use the current names.
+
 ## Matching artwork and responsive equipment
 
 Regenerate the 20 editable SVG assets with `node scripts/build-season-art.mjs`.
 The deterministic artwork generator uses no external assets or dependencies.
-New badges reuse the corresponding card's spade, crown, or garnet geometry.
+New badges reuse the corresponding card's spade, crown, or ruby geometry.
 Romani Heritage shares an engraved wagon wheel; Astrology shares its crescent
 spade, orbital rings, and instrument dial across the set.
 

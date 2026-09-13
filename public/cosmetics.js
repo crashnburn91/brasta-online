@@ -5,22 +5,22 @@
   var ART = '/cosmetics/season-1/';
   var slots = {
     cardBack: { label: 'Card back', items: [
-      ['gilded_suits', 'Gilded Court'], ['velvet_club', 'Royal Crown'], ['ruby_diamond', 'Garnet Mosaic'], ['golden_wagon', 'Romani Heritage'], ['midnight', 'Astrology']
+      ['gilded_suits', 'Golden Spade'], ['velvet_club', 'Royal Crown'], ['ruby_diamond', 'Grand Ruby'], ['golden_wagon', 'Romani Heritage'], ['midnight', 'Astrology']
     ] },
     tableFelt: { label: 'Table felt', items: [
-      ['gilded_felt', 'Gilded Court Felt'], ['woven_green', 'Royal Crown Felt'], ['garnet_felt', 'Garnet Mosaic Felt'], ['golden_hour', 'Romani Heritage Felt'], ['midnight_felt', 'Astrology Felt']
+      ['gilded_felt', 'Golden Spade Felt'], ['woven_green', 'Royal Crown Felt'], ['garnet_felt', 'Grand Ruby Felt'], ['golden_hour', 'Romani Heritage Felt'], ['midnight_felt', 'Astrology Felt']
     ] },
     profileTitle: { label: 'Profile title + badge', items: [
-      ['first_seat', 'Gilded Court'], ['royal_title', 'Royal Crown'], ['garnet_title', 'Garnet Mosaic'], ['golden_brasta', 'Romani Heritage'], ['astrology_title', 'Astrology']
+      ['first_seat', 'Ace of Spades'], ['royal_title', 'Sovereign'], ['garnet_title', 'Ruby Baron'], ['golden_brasta', 'Gypsy'], ['astrology_title', 'Stargazer']
     ] },
     avatarFrame: { label: 'Avatar frame', items: [
-      ['gilded_frame', 'Gilded Bezel'], ['royal_frame', 'Royal Diadem'], ['ruby_frame', 'Garnet Halo'], ['laurel', 'Gold Coin Bezel'], ['astrology_frame', 'Orbital Halo']
+      ['gilded_frame', 'Gilded Bezel'], ['royal_frame', 'Royal Diadem'], ['ruby_frame', 'Ruby Halo'], ['laurel', 'Gold Coin Bezel'], ['astrology_frame', 'Orbital Halo']
     ] }
   };
   var sets = {
-    gilded_court: { name: 'Gilded Court', equipment: { cardBack: 'gilded_suits', tableFelt: 'gilded_felt', profileTitle: 'first_seat', avatarFrame: 'gilded_frame' } },
+    gilded_court: { name: 'Golden Spade', equipment: { cardBack: 'gilded_suits', tableFelt: 'gilded_felt', profileTitle: 'first_seat', avatarFrame: 'gilded_frame' } },
     royal_crown: { name: 'Royal Crown', equipment: { cardBack: 'velvet_club', tableFelt: 'woven_green', profileTitle: 'royal_title', avatarFrame: 'royal_frame' } },
-    garnet_mosaic: { name: 'Garnet Mosaic', equipment: { cardBack: 'ruby_diamond', tableFelt: 'garnet_felt', profileTitle: 'garnet_title', avatarFrame: 'ruby_frame' } },
+    garnet_mosaic: { name: 'Grand Ruby', equipment: { cardBack: 'ruby_diamond', tableFelt: 'garnet_felt', profileTitle: 'garnet_title', avatarFrame: 'ruby_frame' } },
     romani_heritage: { name: 'Romani Heritage', equipment: { cardBack: 'golden_wagon', tableFelt: 'golden_hour', profileTitle: 'golden_brasta', avatarFrame: 'laurel' } },
     astrology: { name: 'Astrology', equipment: { cardBack: 'midnight', tableFelt: 'midnight_felt', profileTitle: 'astrology_title', avatarFrame: 'astrology_frame' } }
   };
@@ -36,7 +36,7 @@
     return value;
   }
   function write(value) { localStorage.setItem(KEY, JSON.stringify(value)); apply(value); document.dispatchEvent(new CustomEvent('brasta-cosmetics-changed', { detail: value })); }
-  function url(id) { return ART + id + '.svg?v=2'; }
+  function url(id) { return ART + id + '.svg?v=3'; }
   function apply(value) {
     var root = document.documentElement;
     if (value.cardBack) root.dataset.brastaCardBack = value.cardBack; else delete root.dataset.brastaCardBack;

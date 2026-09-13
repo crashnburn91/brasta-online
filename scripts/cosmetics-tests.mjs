@@ -70,7 +70,7 @@ test('each title equips its badge, preserves usernames, and clearing restores th
   const own = document.querySelector(ownSelector);
   for (const { id } of SEASON_REWARDS.filter((reward) => reward.kind === 'Profile title')) {
     await select('profileTitle', id);
-    assert.equal(own.querySelector('.beta-cosmetic-badge-art').getAttribute('src'), `/cosmetics/season-1/${id}.svg?v=2`);
+    assert.equal(own.querySelector('.beta-cosmetic-badge-art').getAttribute('src'), `/cosmetics/season-1/${id}.svg?v=3`);
     assert.equal(own.querySelectorAll('[data-beta-cosmetic-title]').length, 1);
     assert.equal(document.querySelector('.account-profile-head h2').textContent, 'Tester');
     assert.equal(document.querySelector('.player-profile-identity h2').textContent, 'Tester');
@@ -185,7 +185,7 @@ test('every catalog set equips exactly four matching rewards and preserves the p
       assert.equal(document.querySelector(`[data-cosmetics-slot="${slot}"]`).value, id);
     }
     assert.equal(document.querySelector(`${ownSelector} .player-card-avatar img`), photo);
-    assert.equal(document.querySelector(`${ownSelector} .beta-cosmetic-title-copy`).textContent, set.name);
+    assert.equal(document.querySelector(`${ownSelector} .beta-cosmetic-title-copy`).textContent, rewards.find((reward) => reward.kind === 'Profile title').name);
     assert.equal(setSelect.value, setId);
   }
   await select('avatarFrame', 'gilded_frame');

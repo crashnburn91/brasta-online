@@ -73,7 +73,7 @@ function crownMark(cx, cy, scale = 1) {
   return `<g transform="translate(${cx} ${cy}) scale(${scale})">${crown}</g>`;
 }
 
-// Gilded Court: engraved scrollwork, guilloche medallion, mirrored suit inlays.
+// Golden Spade: engraved scrollwork, guilloche medallion, mirrored suit inlays.
 let court = repeat(2, i => rotate(i * 180,
   path('M73 190C38 144 41 91 84 73C123 57 121 109 95 109C71 109 87 80 99 88M227 190C262 144 259 91 216 73C177 57 179 109 205 109C229 109 213 80 201 88', `fill="none" stroke="${gold}" stroke-width="2"`) +
   repeat(6, j => `<g transform="translate(${73 + j * 3} ${115 + j * 10}) rotate(${j * 9})">${path('M0 0C-19 -20 -31 -10 -25 -5C-17 2 -7 -4 0 0M0 0C16 -20 22 -13 18 -6C14 0 6 -3 0 0', `fill="none" stroke="${gold}" stroke-width="1"`)}</g>`) +
@@ -81,7 +81,7 @@ let court = repeat(2, i => rotate(i * 180,
 const courtMedallion = rosette(150, 210, 56, 10, 12, 9) + circle(150, 210, 50, `fill="${green}" stroke="${gold}" stroke-width="2"`) + circle(150, 210, 44, `fill="none" stroke="${gold}" stroke-dasharray="1 4"`) +
   suit('spade', 150, 199, 1.1, '#d2b470') + path('M116 240Q150 226 184 240M126 247H174', `fill="none" stroke="${gold}"`);
 court += courtMedallion;
-await save('gilded_suits', 'Gilded Court: engraved scrolls and a guilloche spade medallion', 300, 420, card('#0b281f', court));
+await save('gilded_suits', 'Golden Spade: engraved scrolls and a guilloche spade medallion', 300, 420, card('#0b281f', court));
 
 // Royal Crown replaces the former Velvet Conservatory card back. The mark is
 // intentionally original: a ruby-and-gold crown on a restrained purple field,
@@ -98,7 +98,7 @@ royalCrown += text(150, 331, 'ROYAL CROWN', 10, 'letter-spacing="2.8" style="fil
 royalCrown += repeat(4, i => suit(['spade', 'diamond', 'club', 'heart'][i], 55 + i * 63, 364, .18, i % 2 ? '#a82f45' : '#caa45d'));
 await save('velvet_club', 'Royal Crown: original ruby-and-gold crown crest on a royal purple field', 300, 420, card('#241034', royalCrown));
 
-// Garnet Mosaic: jewel facets and angular enamel inlays, not filigree.
+// Grand Ruby: jewel facets and angular enamel inlays, not filigree.
 let mosaic = repeat(8, row => repeat(5, col => {
   const x = 30 + col * 60, y = row * 58 + 6;
   return `<g opacity=".64"><path d="M${x} ${y}l29 29l-29 29l-29 -29Z" fill="${(row + col) % 2 ? '#5e2235' : '#371722'}" stroke="#af7b56" stroke-width=".7"/><path d="M${x} ${y}v58l-29 -29Z" fill="#922f49" opacity=".3"/></g>`;
@@ -110,7 +110,7 @@ const garnetMedallion = path('M150 100L244 210L150 320L56 210Z', 'fill="#271620"
   '<path d="M150 154L171 210L150 266L129 210Z" fill="#c87b79" stroke="#ebbb99" stroke-width="1"/>' +
   repeat(4, i => rotate(i * 90, path('M150 92l5 -7l-5 -7l-5 7Z', `fill="${gold}"`)));
 mosaic += garnetMedallion;
-await save('ruby_diamond', 'Garnet Mosaic: faceted ruby glass with geometric gold inlay', 300, 420, card('#37151f', `<svg x="20" y="20" width="260" height="380" viewBox="20 20 260 380">${mosaic}</svg>`));
+await save('ruby_diamond', 'Grand Ruby: faceted ruby glass with geometric gold inlay', 300, 420, card('#37151f', `<svg x="20" y="20" width="260" height="380" viewBox="20 20 260 380">${mosaic}</svg>`));
 
 // Romani Heritage: a twelve-spoke carriage wheel with turned spokes, a segmented
 // rim and a riveted axle hub. The deep red field and centered wheel remain key.
@@ -176,7 +176,7 @@ cosmos += '<path d="M53 98L97 78L126 121L177 102L239 149M50 300L85 335L162 355L2
   text(150, 67, 'XII', 10, 'letter-spacing="2"') + text(150, 366, 'VI', 10, 'letter-spacing="2"');
 await save('midnight', 'Astrology: celestial chart, orbit rings and a crescent spade', 300, 420, card('#081f22', cosmos));
 
-// Astrology title badge: the card's complete astrolabe in a teal enamel seal.
+// Stargazer title badge: the Astrology card's complete astrolabe in a teal enamel seal.
 let astrologyBadge = circle(120, 120, 110, `fill="#081f22" stroke="url(#gold)" stroke-width="2.5"`) +
   circle(120, 120, 106, `fill="url(#hatch)" stroke="${gold}" stroke-width=".65"`);
 astrologyBadge += repeat(20, i => {
@@ -184,7 +184,7 @@ astrologyBadge += repeat(20, i => {
   return i % 5 === 0 ? path(`M${x - 2} ${y}h4M${x} ${y - 2}v4`, 'stroke="#ddcea6" stroke-width=".7"') : circle(x, y, .65, 'fill="#b8c8bc"');
 });
 astrologyBadge += at(120, 120, .96, astrologyDial);
-await save('astrology_title', 'Astrology title badge: gold orbital instrument dial and crescent spade on deep teal enamel', 240, 240, astrologyBadge);
+await save('astrology_title', 'Stargazer title badge: gold orbital instrument dial and crescent spade on deep teal enamel, Astrology set', 240, 240, astrologyBadge);
 
 // Orbital Halo: an engraved teal instrument band with a transparent portrait
 // opening. Orbit arcs are masked to the bezel so they never cross the avatar.
@@ -213,17 +213,17 @@ await save('astrology_frame', 'Orbital Halo avatar frame: deep teal bezel, gold 
 // the title text beside it so the emblem remains legible at match size.
 const courtBadge = circle(120, 120, 110, 'fill="#0b281f" stroke="url(#gold)" stroke-width="3"') +
   circle(120, 120, 104, `fill="url(#hatch)" stroke="${gold}" stroke-width=".7"`) + at(120, 120, 1.21, courtMedallion);
-await save('first_seat', 'Gilded Court title badge: engraved gold spade medallion and guilloche on green enamel', 240, 240, courtBadge);
+await save('first_seat', 'Ace of Spades title badge: engraved gold spade medallion and guilloche on green enamel, Golden Spade set', 240, 240, courtBadge);
 
 let royalBadge = circle(120, 120, 110, 'fill="#281238" stroke="url(#gold)" stroke-width="3"') +
   circle(120, 120, 102, 'fill="url(#hatch)" stroke="#caa45d" stroke-width="1" stroke-dasharray="1 4"');
 royalBadge += crownMark(120, 122, 1.17) + path('M62 183Q120 163 178 183M78 194Q120 179 162 194', 'fill="none" stroke="#caa45d" stroke-width="1.5"');
 royalBadge += repeat(4, i => rotate(i * 90, path('M120 13L124 21L120 29L116 21Z', 'fill="#a82f45" stroke="#efd398" stroke-width=".8"'), 120, 120));
-await save('royal_title', 'Royal Crown title badge: a ruby-and-gold crown on a royal purple enamel seal', 240, 240, royalBadge);
+await save('royal_title', 'Sovereign title badge: a ruby-and-gold crown on a royal purple enamel seal, Royal Crown set', 240, 240, royalBadge);
 
 const garnetBadge = path('M76 10H164L230 76V164L164 230H76L10 164V76Z', 'fill="#37151f" stroke="url(#gold)" stroke-width="3"') +
   path('M79 18H161L222 79V161L161 222H79L18 161V79Z', `fill="url(#hatch)" stroke="${gold}" stroke-width=".8"`) + at(120, 120, .8, garnetMedallion);
-await save('garnet_title', 'Garnet Mosaic title badge: faceted garnet glass and geometric gold inlays on burgundy enamel', 240, 240, garnetBadge);
+await save('garnet_title', 'Ruby Baron title badge: faceted ruby glass and geometric gold inlays on burgundy enamel, Grand Ruby set', 240, 240, garnetBadge);
 
 // Frames keep their entire ornament inside the square canvas and leave the
 // centered portrait (66% of the canvas) clear, matching the game avatar layout.
@@ -249,9 +249,9 @@ royalFrame += repeat(11, i => rotate((i + 1) * 30,
 royalFrame += circle(150, 31, 19, 'fill="#281238" stroke="url(#gold)" stroke-width="1.5"') + crownMark(150, 33, .36);
 await save('royal_frame', 'Royal Diadem avatar frame: royal purple enamel, gold rope engraving, ruby jewels and a crown crest around a transparent portrait opening', 300, 300, royalFrame);
 
-// The Romani Heritage profile title uses the same wheel as its card back.
+// The Gypsy profile title uses the same wheel as the Romani Heritage card back.
 const heritageBadge = wagonDefs + at(120, 120, 1.02, wagonWheel);
-await save('golden_brasta', 'Romani Heritage title badge: carved gold wagon wheel with an engraved rim and riveted hub', 240, 240, heritageBadge);
+await save('golden_brasta', 'Gypsy title badge: carved gold wagon wheel with an engraved rim and riveted hub, Romani Heritage set', 240, 240, heritageBadge);
 
 // Gold Coin Bezel: transparent portrait opening, red enamel bezel and sixteen
 // minted gold coins. Every coin has a beaded rim and a small wheel engraving.
@@ -272,11 +272,11 @@ coinFrame += repeat(16, i => rotate(i * 22.5, at(150, 31, 1, coin, 150, 34), 150
 coinFrame += repeat(16, i => rotate(i * 22.5 + 11.25, circle(150, 34, 2.1, 'fill="#e4c988" stroke="#8c6332" stroke-width=".65"'), 150, 150));
 await save('laurel', 'Gold Coin Bezel: sixteen engraved gold coins around a red enamel portrait frame, Romani Heritage set', 300, 300, coinFrame);
 
-// The Garnet Halo frame retains its matching gemstone design.
+// The Ruby Halo frame retains its matching gemstone design.
 let halo = circle(150, 150, 116, 'fill="none" stroke="#c3a366" stroke-width="18"') + circle(150, 150, 126, 'fill="none" stroke="#e3c989" stroke-width="2"') + circle(150, 150, 105, 'fill="none" stroke="#e3c989" stroke-width="2"');
 halo += repeat(16, i => rotate(i * 22.5, '<path d="M150 20L163 34L150 48L137 34Z" fill="#762c43" stroke="#efd29a" stroke-width="1"/><path d="M150 20V48L137 34Z" fill="#b06070"/><path d="M150 25L158 34L150 42L142 34Z" fill="#df9b9c"/>', 150, 150));
 halo += repeat(16, i => rotate(i * 22.5 + 11.25, circle(150, 34, 3, 'fill="#fff0c4"'), 150, 150));
-await save('ruby_frame', 'Garnet Halo: faceted garnet stones and gold milgrain around a portrait', 300, 300, halo);
+await save('ruby_frame', 'Ruby Halo: faceted ruby stones and gold milgrain around a portrait', 300, 300, halo);
 
 // Matching table felts. All ornament is clipped to the playing surface and
 // strongest at the perimeter; the middle remains low contrast for card legibility.
@@ -302,13 +302,13 @@ function at(x, y, scale, content, cx = 150, cy = 210) {
   return `<g transform="translate(${x} ${y}) scale(${scale}) translate(${-cx} ${-cy})">${content}</g>`;
 }
 
-// Gilded Court pairs engraved scrolls and guilloche with the card's spade inlay.
+// Golden Spade pairs engraved scrolls and guilloche with the card's spade inlay.
 let courtFelt = opposing(path('M130 57C150 39 181 43 174 59C170 70 156 63 162 55M178 57C213 36 244 78 275 53M470 57C450 39 419 43 426 59C430 70 444 63 438 55M422 57C387 36 356 78 325 53M187 67C207 46 231 51 236 66M413 67C393 46 369 51 364 66', `stroke="${gold}" stroke-width="1" fill="none"`));
 courtFelt += opposing(at(300, 53, .32, rosette(150, 210, 42, 7, 10, 4) + circle(150, 210, 35, `fill="#0b281f" stroke="${gold}"`) + suit('spade', 150, 205, .76)));
 courtFelt += opposing(path('M58 123C37 150 42 188 56 198C71 210 68 228 51 231M58 143C47 161 52 174 62 169C70 164 61 155 57 162M65 191C83 181 79 155 67 144', `stroke="${gold}" stroke-width=".9" fill="none"`));
 courtFelt += '<rect x="34" y="34" width="532" height="292" rx="4" fill="none" stroke="#cfb070" stroke-width=".7" stroke-dasharray="1 4"/>';
 courtFelt += feltCorners(path('M47 92V54Q47 47 54 47H98M55 84V58H90M59 75Q80 74 83 57Q62 63 59 75', `fill="none" stroke="${gold}" stroke-width=".9"`));
-await save('gilded_felt', 'Gilded Court Felt: matching engraved scrollwork, gold spade inlays and deep green cloth', 600, 360, feltBase('#173b2c', '#0b281f', '#38402b', courtFelt));
+await save('gilded_felt', 'Golden Spade Felt: matching engraved scrollwork, gold spade inlays and deep green cloth', 600, 360, feltBase('#173b2c', '#0b281f', '#38402b', courtFelt));
 
 // Royal Crown carries the same crown and rope language into the responsive
 // felt. Ornament hugs the rail; the center stays quiet for card readability.
@@ -323,7 +323,7 @@ royalFelt += feltCorners(path('M49 90V52Q49 46 55 46H95M56 82V57H87M62 72L73 61L
 royalFelt += '<rect x="35" y="35" width="530" height="290" rx="4" fill="none" stroke="#caa45d" stroke-width=".8" stroke-dasharray="1 4"/>';
 await save('woven_green', 'Royal Crown Felt: deep royal purple cloth with gold rope rails and crown medallions', 600, 360, feltBase('#2a1640', '#170d27', '#3b2450', royalFelt));
 
-// Garnet Mosaic repeats its faceted red glass as a quiet band around plum felt.
+// Grand Ruby repeats its faceted red glass as a quiet band around plum felt.
 let garnetFelt = '<g mask="url(#table-perimeter)">' + repeat(7, row => repeat(15, col => {
   const x = col * 42, y = row * 48;
   return path(`M${x} ${y}l21 24l-21 24l-21 -24Z`, `fill="${(row + col) % 2 ? '#572433' : '#331b27'}" stroke="#b58f61" stroke-width=".5"`);
@@ -331,7 +331,7 @@ let garnetFelt = '<g mask="url(#table-perimeter)">' + repeat(7, row => repeat(15
 garnetFelt += opposing('<path d="M300 32L322 55L300 78L278 55Z" fill="#782b44" stroke="#d7b77b" stroke-width="1.3"/><path d="M300 32V78L278 55Z" fill="#b56573"/><path d="M300 40L312 55L300 70L288 55Z" fill="#d69896"/>' + path('M191 49H263M337 49H409M207 56H260M340 56H393', `stroke="${gold}" stroke-width=".8"`));
 garnetFelt += opposing(suit('diamond', 47, 179, .47, '#c68a88', 'stroke="#e1c082" stroke-width="1.5"'));
 garnetFelt += '<rect x="76" y="84" width="448" height="192" rx="10" fill="none" stroke="#a97862" stroke-width=".7"/>';
-await save('garnet_felt', 'Garnet Mosaic Felt: faceted garnet border and gold geometry matching the ruby card back', 600, 360, feltBase('#482331', '#28131e', '#442936', garnetFelt));
+await save('garnet_felt', 'Grand Ruby Felt: faceted ruby border and gold geometry matching the ruby card back', 600, 360, feltBase('#482331', '#28131e', '#442936', garnetFelt));
 
 // Romani Heritage reuses the exact engraved wheel artwork at the ends of the rail.
 let wagonFelt = wagonDefs + '<rect width="600" height="360" fill="url(#wagon-damask)" mask="url(#table-perimeter)"/>';
