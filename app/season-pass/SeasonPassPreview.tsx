@@ -96,7 +96,7 @@ export default function SeasonPassPreview() {
     <header className="sp-hero">
       <div><p className="sp-eyebrow">SEASON 01 · 8 WEEKS</p><h1>The Golden<br /><em>Table.</em></h1>
         <p className="sp-lead">Make every hand your own.</p><p>Five complete sets. Collect matching card backs, table felts, avatar frames, and profile titles with their own badges.</p>
-        <div className="sp-facts"><span>Cosmetics only</span><span>Keep unlocked rewards</span><span>One account, every device</span></div>
+        <div className="sp-facts"><span>Cosmetics only</span><span>Keep unlocked rewards</span><span>Account-backed progress</span></div>
       </div>
       <div className="sp-showcase"><div className="sp-showcase-art"><RewardArtwork reward={selected} eager /></div><p className="sp-set-label">{selectedSet.name} set</p><p>{selected.kind}</p><h2>{selected.name}</h2><p>{selected.description}</p><button className="sp-inspect" onClick={() => inspectReward(selected)}>View artwork</button></div>
     </header>
