@@ -96,5 +96,14 @@
 .sp-set-related .sp-profile-title-name{display:none}
 .sp-live-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;color:#d8c58f;font-size:11px}
 .sp-live-status span{padding:7px 10px;border:1px solid #d8b75e44;border-radius:999px;background:#d8b75e0d;white-space:nowrap}
+.sp-equipped-mark{margin-top:5px;padding:4px 8px;border-radius:999px;background:#d8b75e;color:#172218;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.sp-equip-panel{max-width:440px;margin:22px auto 0;padding:16px;border:1px solid #c8a45b44;border-radius:12px;background:#d8b75e0c}
+.sp-equip-status{margin:0;color:#c8d3c8;font-size:12px;line-height:1.5}
+.sp-equip-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sp-equip-actions .sp-inspect{margin-top:0}
+.sp-secondary-action{background:#ffffff0a;color:#c7d0c8;border-color:#ffffff2c}
+.sp-secondary-action:hover{background:#ffffff14}
+.sp-equip-actions button:disabled{cursor:not-allowed;opacity:.55}
+.sp-equip-message{min-height:18px;margin:10px 0 0;color:#d8b75e;font-size:11px}
 @media(max-width:850px){.sp-catalog-controls{align-items:flex-start;width:100%}.sp-set-picker{flex-wrap:wrap}}
 @media(max-width:540px){.sp-set-heading h3{font-size:22px}.sp-set-heading{gap:10px}.sp-set-heading>span{font-size:9px}.sp-set-picker{width:100%}.sp-set-picker select{flex:1;min-width:0}.sp-set-group{padding-top:20px}}

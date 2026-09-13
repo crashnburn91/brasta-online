@@ -13,6 +13,9 @@ export default function SeasonPassPreview() {
   const [premium, setPremium] = useState(false);
   const [accountState, setAccountState] = useState<AccountState>('loading');
   const [liveState, setLiveState] = useState<SeasonPassState | null>(null);
+  const [accessToken, setAccessToken] = useState('');
+  const [equipBusy, setEquipBusy] = useState(false);
+  const [equipMessage, setEquipMessage] = useState('');
   const [filter, setFilter] = useState('All rewards');
   const [selectedSetId, setSelectedSetId] = useState('all');
   const [selected, setSelected] = useState(SEASON_REWARDS[1]);
@@ -34,11 +37,13 @@ export default function SeasonPassPreview() {
       if (!session?.access_token) {
         if (!alive || version !== requestVersion) return;
         setLiveState(null);
+        setAccessToken('');
         setAccountState('signed-out');
         return;
       }
 
       setAccountState('loading');
+      setAccessToken(session.access_token);
       try {
         const response = await fetch('/api/season-pass', {
           headers: { Authorization: `Bearer ${session.access_token}` },
@@ -85,8 +90,44 @@ export default function SeasonPassPreview() {
     .filter(group => group.rewards.length > 0);
   const selectedSet = SEASON_SETS[selected.setId];
   const relatedRewards = catalogRewards.filter(r => r.setId === selected.setId && r.id !== selected.id);
+  const selectedSlot = {
+    'Card back': 'card_back',
+    'Table felt': 'table_felt',
+    'Avatar frame': 'avatar_frame',
+    'Profile title': 'profile_title',
+  } as const;
+  const selectedEquipmentSlot = selectedSlot[selected.kind];
+  const selectedOwned = accountBacked && Boolean(liveState?.ownedRewardIds.includes(selected.id));
+  const selectedEquipped = accountBacked && liveState?.equipment[selectedEquipmentSlot] === selected.id;
+
+  async function equipSelected(rewardId: string | null) {
+    if (!accessToken || !accountBacked || equipBusy) return;
+    setEquipBusy(true);
+    setEquipMessage('Saving…');
+    try {
+      const response = await fetch('/api/season-pass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ action: 'equip', slot: selectedEquipmentSlot, rewardId }),
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => ({})) as { state?: SeasonPassState; error?: string };
+      if (!response.ok || !data.state) throw new Error(data.error || 'Could not save this selection.');
+      setLiveState(data.state);
+      setXp(data.state.progress.xp);
+      setPremium(data.state.premiumUnlocked);
+      setEquipMessage(rewardId ? 'Equipped on your account.' : 'Returned to the Brasta original.');
+      window.dispatchEvent(new CustomEvent('brasta-season-pass-equipment-changed', { detail: data.state }));
+    } catch (error) {
+      setEquipMessage(error instanceof Error ? error.message : 'Could not save this selection.');
+    } finally {
+      setEquipBusy(false);
+    }
+  }
+
   function inspectReward(reward: SeasonReward) {
     setSelected(reward);
+    setEquipMessage('');
     if (!detailDialog.current?.open) detailDialog.current?.showModal();
     detailDialog.current?.scrollTo({ top: 0 });
     detailClose.current?.focus();
@@ -114,8 +155,10 @@ export default function SeasonPassPreview() {
         const owned = liveState?.ownedRewardIds.includes(r.id) || false;
         const available = accountBacked ? owned : tier >= r.tier && (!r.premium || premiumUnlocked);
         const status = available ? (accountBacked ? '✓ Owned' : '✓ Available in preview') : tier < r.tier ? `Reach tier ${r.tier}` : r.premium && !premiumUnlocked ? 'Premium reward' : accountBacked ? 'Awaiting server award' : 'Not available';
+        const equipped = accountBacked && liveState?.equipment[selectedSlot[r.kind]] === r.id;
         return <button key={r.id} className={`sp-reward ${selected.id === r.id ? 'sp-selected' : ''}`} aria-label={`View ${r.name}, ${r.kind}, tier ${r.tier}, ${r.premium ? 'Premium' : 'Free'}`} aria-haspopup="dialog" onClick={() => inspectReward(r)}>
           <div className="sp-reward-meta"><span>TIER {r.tier}</span><b>{r.premium ? 'PREMIUM' : 'FREE'}</b></div><div className="sp-reward-art"><RewardArtwork reward={r} /></div><small>{r.kind === 'Profile title' ? 'Profile title + badge' : r.kind}</small><h3>{r.name}</h3><span className={`sp-status ${available ? 'sp-ready' : ''}`}>{status}</span>
+          {equipped ? <span className="sp-equipped-mark">Equipped</span> : null}
         </button>;
         })}</div>
       </section>)}
@@ -131,6 +174,14 @@ export default function SeasonPassPreview() {
       <h2 id="sp-detail-title">{selected.name}</h2>
       <p id="sp-detail-description">{selected.description}</p>
       {selected.kind === 'Profile title' ? <p className="sp-title-includes">One reward includes this title and its matching badge. They equip together; you can display one profile title at a time.</p> : null}
+      {accountBacked ? <section className="sp-equip-panel" aria-label={`Equip ${selected.name}`}>
+        <p className="sp-equip-status">{selectedOwned ? (selectedEquipped ? 'This reward is equipped on your account.' : 'This reward is owned and ready to equip.') : 'This reward will appear here after the server awards it to your account.'}</p>
+        <div className="sp-equip-actions">
+          <button className="sp-inspect" type="button" disabled={!selectedOwned || selectedEquipped || equipBusy} onClick={() => void equipSelected(selected.id)}>{equipBusy ? 'Saving…' : selectedEquipped ? 'Equipped' : 'Equip reward'}</button>
+          {selectedEquipped ? <button className="sp-inspect sp-secondary-action" type="button" disabled={equipBusy} onClick={() => void equipSelected(null)}>Use Brasta original</button> : null}
+        </div>
+        <p className="sp-equip-message" role="status" aria-live="polite">{equipMessage}</p>
+      </section> : null}
       <section className="sp-set-related" aria-label={`More from the ${selectedSet.name} set`}>
         <h3>Also in {selectedSet.name}</h3>
         {relatedRewards.map(reward => <button className="sp-matching-reward" key={reward.id} onClick={() => inspectReward(reward)}>

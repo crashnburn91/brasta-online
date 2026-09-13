@@ -1,4 +1,5 @@
-/* Beta cosmetics preview/equipment surface.  All selections are local to this browser. */
+/* Beta cosmetics preview/equipment surface. Signed-in selections are
+   account-backed; signed-out previews fall back to browser storage. */
 html[data-brasta-card-back] .player-card-back,
 html[data-brasta-card-back] .table-deck-card,
 html[data-brasta-card-back] .deal-flight-card,
@@ -115,6 +116,8 @@ html:is([data-brasta-title-source="season"],[data-brasta-title-source="none"]) [
 .cosmetic-choice-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .cosmetic-choice { display:flex; flex-direction:column; align-items:center; min-width:0; gap:5px; padding:12px 8px 10px; border:1px solid #ffffff20; border-radius:12px; background:#0003; color:#f6eed9; font-family:system-ui,sans-serif; text-align:center; cursor:pointer; }
 .cosmetic-choice:hover { background:#d8b75e10; border-color:#d8b75e77; }
+.cosmetic-choice:disabled { cursor:not-allowed; opacity:.58; }
+.cosmetic-choice:disabled:hover { background:#0003; border-color:#ffffff20; }
 .cosmetic-choice[aria-pressed="true"] { border-color:#e5c361; background:#d8b75e15; box-shadow:inset 0 0 0 1px #d8b75e55; }
 .cosmetic-choice:focus-visible,[data-cosmetics-frame-open]:focus-visible,.cosmetic-frame-dialog button:focus-visible { outline:2px solid #fff1b8; outline-offset:3px; }
 .cosmetic-choice-preview { width:100%; height:94px; display:grid; place-items:center; margin-bottom:4px; }

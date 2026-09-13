@@ -112,6 +112,25 @@ async function rest<T>(path: string, context: string): Promise<T> {
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+async function rpc<T>(name: string, body: Record<string, unknown>, context: string): Promise<T> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let detail = text;
+    try {
+      const parsed = JSON.parse(text) as { message?: string; hint?: string; details?: string };
+      detail = parsed.message || parsed.hint || parsed.details || text;
+    } catch {}
+    throw new Error(`${context}: ${detail || `HTTP ${response.status}`}`);
+  }
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
 function boundedInt(value: unknown, fallback = 0): number {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
@@ -235,4 +254,24 @@ export async function getSeasonPassState(playerId: string, seasonId = 'season_1'
     ownedRewardIds: [...new Set(ownershipRows.map((row) => row.reward_id).filter(Boolean))],
     equipment,
   };
+}
+
+export async function equipSeasonPassReward(options: {
+  playerId: string;
+  slot: SeasonPassSlot;
+  rewardId: string | null;
+  seasonId?: string;
+}): Promise<SeasonPassState> {
+  const seasonId = options.seasonId || 'season_1';
+  await rpc(
+    'brasta_equip_season_pass_reward',
+    {
+      p_player_id: options.playerId,
+      p_season_id: seasonId,
+      p_slot: options.slot,
+      p_reward_id: options.rewardId || null,
+    },
+    'Could not equip Season Pass reward',
+  );
+  return getSeasonPassState(options.playerId, seasonId);
 }

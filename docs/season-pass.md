@@ -19,11 +19,12 @@ back and felt collections. The existing Titles tab combines earned titles with
 all five set badge/title pairs. There is no floating Cosmetics button.
 Golden Spade is the only free set; every reward in the other four sets is premium.
 New browser equipment defaults to Golden Spade. Premium styles remain available
-for beta testing, and valid existing selections are preserved.
-Equipment is saved locally under `brasta-beta-cosmetics-v1`. Retired and invalid
-IDs are cleared without changing valid selections. This is still a testing
-surface, not a paid reward claim. Local equipment has not yet been migrated
-into the account equipment table.
+for beta testing, and valid existing selections are preserved for signed-out
+previews. Signed-in controls now read account equipment and send equip/restore
+requests through the verified Season Pass API; the server only accepts rewards
+already present in that account's ownership ledger. Retired and invalid IDs are
+cleared without changing valid selections. This is still a testing surface,
+not a paid reward claim.
 
 ## Account foundation (implemented)
 
@@ -38,8 +39,8 @@ transactionally. The API derives the player ID from the verified access token;
 the client cannot submit an account ID.
 
 The remaining launch work is to activate a dated season, connect finalized match
-records to the XP function, persist/equip cosmetics through the account tables,
-and add verified web/Play purchase fulfillment.
+records to the XP function, migrate any legacy local selections into account
+ownership where appropriate, and add verified web/Play purchase fulfillment.
 
 ## Five complete sets
 
@@ -134,7 +135,9 @@ separate title item.
 4. Use a transaction to grant eligible rewards, including retroactive premium
    rewards. Equipment must reference owned items of the correct slot. Restore
    account inventory after login and across devices. Apply table felt locally;
-   define which card backs and profile cosmetics opponents see.
+   define which card backs and profile cosmetics opponents see. The first
+   account-backed equip endpoint is now in place; legacy browser selections still
+   need an explicit migration policy before launch.
 5. Web: authenticated Stripe Checkout with server-controlled product/price and
    return URLs. Fulfill only verified paid webhook events. Deduplicate provider
    events and transaction IDs; reconcile refunds and disputes.

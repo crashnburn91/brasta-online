@@ -140,7 +140,7 @@
       const ownCosmetics = cosmetics?.isOwnProfile(username);
       const cosmeticTitle = ownCosmetics && cosmetics.titleItems().some((item) => item.key === badgeKey);
       if (cosmeticTitle || (ownCosmetics && !badgeKey && cosmetics.read().titleSource !== 'earned')) {
-        cosmetics.equip('profileTitle', badgeKey);
+        await cosmetics.equip('profileTitle', badgeKey);
         return;
       }
       const data = await api('equip', { badgeKey });
