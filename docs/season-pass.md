@@ -78,6 +78,23 @@ final XP pacing/eligibility, and scheduling the season after acceptance testing.
 
 ## Five complete sets
 
+### Progression verification — 2026-09-14
+
+The isolated database suite now runs complete free and Premium seasons through
+60 recorded wins each, checking the authenticated collection after every match.
+It verifies every tier boundary, all 4 free/20 total rewards, the 3,000 XP cap,
+and equipping retained rewards after season end. Separate cases verify each
+ranked/private 1v1/2v2 format awards 50 XP to winners and 25 XP to losers exactly
+once when recording is retried. Existing tests cover ineligible matches, delayed
+delivery, late Premium activation, account isolation, and rollback.
+
+Validation: 37 database, 4 API, 6 beta access, and 23 cosmetics UI tests passed.
+Live read-only checks confirmed the award triggers are enabled and Season 1
+remains draft, with no start/end dates. No live XP, purchases, or rewards were
+changed. This verifies the recorder-to-database and account UI boundaries;
+a real multiplayer playthrough and payment-provider verification remain launch
+acceptance steps.
+
 Every set has exactly four rewards: one card back, one responsive table felt,
 one matching avatar frame, and one badge/title pair. Each profile title describes
 the player and has its own thematic name, separate from the set name. The badge

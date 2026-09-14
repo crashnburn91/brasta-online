@@ -195,6 +195,54 @@ for (const [slot,id,i,pattern] of [['avatar_frame','gilded_suits',0,/does not fi
 }
 
 
+for (const type of ['private', 'ranked']) for (const mode of ['1v1', '2v2']) {
+  test(`${type} ${mode} awards each winner 50 XP and each loser 25 exactly once`, async () => {
+    await activate();
+    const key = `fixture:${randomUUID()}`;
+    await record({ key, type, mode });
+    await record({ key, type, mode });
+    assert.deepEqual(await Promise.all(players.map((_, i) => xp(i))), mode === '2v2' ? [50, 25, 50, 25] : [50, 25, 0, 0]);
+  });
+}
+
+for (const premium of [false, true]) {
+  test(`${premium ? 'Premium' : 'free'} full season: all tiers, reload, cap and post-season equipment`, async () => {
+    await activate();
+    if (premium) await entitlement();
+    const catalog = await query("select reward_id,tier,is_premium,kind from season_pass_rewards where season_id='season_1'");
+    for (let match = 1; match <= 60; match++) {
+      await record();
+      // Read through the same authenticated state RPC used by account clients.
+      await signInAs(players[0]);
+      const state = await scalar("select brasta_get_season_pass_state($1,'season_1')", [players[0]]);
+      await db.exec('reset role');
+      assert.equal(state.progress.xp, match * 50);
+      assert.equal(state.progress.tier, Math.floor(match / 5));
+      assert.equal(state.progress.xpToNextTier, match === 60 ? 0 : 250 - (match * 50 % 250));
+      const expected = catalog.filter(r => r.tier <= Math.floor(match / 5) && (premium || !r.is_premium)).map(r => r.reward_id).sort();
+      assert.deepEqual(state.ownedRewardIds.sort(), expected);
+    }
+    const unlocked = await owned();
+    assert.equal(unlocked.length, premium ? 20 : 4);
+    await record();
+    assert.equal(await xp(), 3000);
+    await db.exec("update season_pass_seasons set status='ended',ends_at=now()-interval '30 seconds'");
+    // Newly started matches after the season cannot advance the losing player.
+    const loserXp = await xp(1);
+    await record({started: new Date().toISOString(), completed: new Date().toISOString()});
+    assert.equal(await xp(1), loserXp);
+    await signInAs(players[0]);
+    const slots = {'Card back':'card_back','Table felt':'table_felt','Avatar frame':'avatar_frame','Profile title':'profile_title'};
+    for (const reward of catalog.filter(r => unlocked.includes(r.reward_id))) {
+      const slot = slots[reward.kind];
+      await query("select brasta_equip_season_pass_reward_for_user($1,'season_1',$2,$3)", [players[0],slot,reward.reward_id]);
+      const state = await scalar("select brasta_get_season_pass_state($1,'season_1')", [players[0]]);
+      assert.equal(state.equipment[slot], reward.reward_id);
+      assert.deepEqual(state.ownedRewardIds.sort(), unlocked);
+    }
+  });
+}
+
 async function allowTester() {
   await query('insert into private.season_pass_test_access(player_id,enabled) values ($1,true)', [players[0]]);
 }
