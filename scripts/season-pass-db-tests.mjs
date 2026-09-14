@@ -15,6 +15,10 @@ const scalar = async (sql, args = []) => Object.values((await query(sql, args))[
 before(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create schema private; create schema auth;
+    create function auth.uid() returns uuid language sql stable as $$
+      select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
+        nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
+    $$;
     create table public.profiles(id uuid primary key, username text);
     create table public.ranked_matches(id uuid primary key);
     grant usage on schema public,private to service_role;
@@ -33,6 +37,42 @@ before(async () => {
 after(() => db.close());
 beforeEach(() => db.exec('begin'));
 afterEach(() => db.exec('rollback'));
+
+async function signInAs(playerId) {
+  await query("select set_config('request.jwt.claims',$1,true)", [JSON.stringify({ role: 'authenticated', sub: playerId })]);
+  await db.exec('set local role authenticated');
+}
+
+test('authenticated JSON JWT claims load the collection and equip only owned rewards', async () => {
+  await activate();
+  for (let i = 0; i < 5; i++) await record();
+  await signInAs(players[0]);
+  const state = await scalar("select brasta_get_season_pass_state($1,'season_1')", [players[0]]);
+  assert.equal(state.playerId, players[0]);
+  assert.deepEqual(state.ownedRewardIds.sort(), ['first_seat', 'gilded_suits']);
+  await query("select brasta_equip_season_pass_reward_for_user($1,'season_1','card_back','gilded_suits')", [players[0]]);
+  const equipped = await scalar("select brasta_get_season_pass_state($1,'season_1')", [players[0]]);
+  assert.equal(equipped.equipment.card_back, 'gilded_suits');
+  await query("select brasta_equip_season_pass_reward_for_user($1,'season_1','card_back',null)", [players[0]]);
+  const classic = await scalar("select brasta_get_season_pass_state($1,'season_1')", [players[0]]);
+  assert.equal(classic.equipment.card_back, null);
+});
+
+for (const action of ['read', 'equip']) {
+  for (const identity of ['another account', 'missing identity']) {
+    test(`${action} denies ${identity} with authenticated JWT claims`, async () => {
+      await signInAs(identity === 'missing identity' ? undefined : players[1]);
+      const sql = action === 'read' ? "select brasta_get_season_pass_state($1,'season_1')"
+        : "select brasta_equip_season_pass_reward_for_user($1,'season_1','card_back',null)";
+      await assert.rejects(query(sql, [players[0]]), /Not authorized/);
+    });
+  }
+}
+
+test('authenticated equip still denies an unearned Premium reward', async () => {
+  await signInAs(players[0]);
+  await assert.rejects(query("select brasta_equip_season_pass_reward_for_user($1,'season_1','card_back','velvet_club')", [players[0]]), /not unlocked/);
+});
 
 async function activate() {
   await db.exec("update season_pass_seasons set status='active', starts_at=now()-interval '1 day', ends_at=now()+interval '55 days' where season_id='season_1'");

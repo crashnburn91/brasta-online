@@ -106,8 +106,10 @@ html:is([data-brasta-title-source="season"],[data-brasta-title-source="none"]) [
 .account-portrait-controls { display:grid; justify-items:center; gap:6px; flex:none; }
 [data-cosmetics-frame-open] { border:1px solid #d8b75e55; border-radius:9px; background:#d8b75e12; color:#ead994; padding:8px; font:700 10px/1.2 system-ui,sans-serif; cursor:pointer; }
 .player-profile-head [data-cosmetics-frame-open] { margin-left:auto; max-width:76px; }
-.ppg-tabs[data-cosmetics-tabs="true"] { grid-template-columns:repeat(6,minmax(0,1fr)); }
+.ppg-tabs[data-cosmetics-tabs="true"] { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .ppg-tabs[data-cosmetics-guest-tabs] { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.ppg-tabs[data-cosmetics-tabs="true"] button,
+.ppg-tabs[data-cosmetics-guest-tabs] button { display:flex; align-items:center; justify-content:center; min-height:40px; padding:10px 6px; font:700 11px/1.3 system-ui,sans-serif; letter-spacing:normal; white-space:nowrap; }
 .cosmetic-table-panel[hidden] { display:none!important; }
 .cosmetic-beta-note { margin:0 0 16px; color:#afc1b6; font:400 12px/1.55 system-ui,sans-serif; }
 .cosmetic-table-panel section + section { margin-top:24px; padding-top:20px; border-top:1px solid #ffffff16; }
@@ -148,7 +150,6 @@ html:is([data-brasta-title-source="season"],[data-brasta-title-source="none"]) [
 .profile-badge-emblem.has-cosmetic-art img { display:block; width:100%; height:100%; object-fit:contain; }
 .profile-badges-panel .cosmetic-beta-note { margin:12px 0; }
 @media(max-width:600px) {
-  .ppg-tabs[data-cosmetics-tabs="true"] { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .cosmetic-choice-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
   .cosmetic-frame-dialog { padding:17px; }
   .cosmetic-choice strong { font-size:11px; }

@@ -16,10 +16,22 @@
     if (accountStatus() === 'signed-out') return 'Guest design preview. Sign in to use your account collection. Golden Spade is on the free track; other sets require Premium.';
     if (accountStatus() === 'unavailable') return 'Your collection could not be loaded. Reopen your profile to retry.';
     if (accountStatus() !== 'ready') return 'Loading your account collection…';
-    return 'Equip rewards you own. Earn Golden Spade on the free track; other sets require Premium. Season 1 ' + (account.state.season.status === 'draft' ? 'is coming soon.' : 'progress is saved to your account.');
+    if (account.state.season.status === 'draft') return 'Season 1 is coming soon. Classic and previously unlocked rewards are available now. Golden Spade unlocks on the free track; other sets require Premium.';
+    return 'Equip rewards you own. Earn Golden Spade on the free track; other sets require Premium. Season 1 progress is saved to your account.';
   }
   function canEquip(id) {
     return !account.busy && (accountStatus() === 'signed-out' || (accountStatus() === 'ready' && (!id || account.state.ownedRewardIds.includes(id))));
+  }
+  function choiceState(item, selected) {
+    var status = accountStatus();
+    var loaded = status === 'signed-out' || status === 'ready';
+    var owned = loaded && (status === 'signed-out' || !item || account.state.ownedRewardIds.includes(item.id));
+    return {
+      disabled: !owned || account.busy,
+      access: !item ? 'Included' : item.premium ? 'Premium' : 'Free track',
+      label: account.busy ? 'Saving…' : !loaded ? (status === 'unavailable' ? 'Unavailable' : 'Loading…')
+        : owned ? (selected ? 'Equipped' : 'Equip') : 'Tier ' + item.tier,
+    };
   }
   var esc = function (value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]; }); };
   function items(slot) { return catalog.rewards.filter(function (reward) { return reward.kind === slots[slot]; }); }
@@ -175,9 +187,8 @@
       var name = item ? item.name : slot === 'avatarFrame' ? 'No frame' : 'Classic';
       var art = item ? '<img class="cosmetic-choice-art" src="' + url(item.id) + '" alt="" draggable="false">' : '<span class="cosmetic-classic-art" aria-hidden="true">' + (slot === 'avatarFrame' ? 'B' : '♠') + '</span>';
       if (slot === 'avatarFrame') art = '<span class="cosmetic-frame-preview' + (item ? ' has-frame' : '') + '"><span class="cosmetic-preview-portrait" data-frame-portrait>B</span>' + (item ? art : '') + '</span>';
-      var owned = canEquip(item?.id);
-      var access = item && !owned ? 'Locked' : item?.premium ? 'Premium' : 'Free';
-      return '<button type="button" class="cosmetic-choice ' + slot + '" data-cosmetics-equip="' + esc(item?.id || '') + '" data-cosmetics-kind="' + slot + '" aria-pressed="false"' + (owned ? '' : ' disabled') + '><span class="cosmetic-choice-preview">' + art + '</span><strong>' + esc(name) + '</strong><small>' + esc(item ? catalog.sets[item.setId].name : 'Brasta original') + '</small><span class="cosmetic-access' + (item?.premium && owned ? ' premium' : '') + '">' + access + '</span><span class="cosmetic-choice-state">' + (owned ? 'Equip' : 'Locked') + '</span></button>';
+      var state = choiceState(item, false);
+      return '<button type="button" class="cosmetic-choice ' + slot + '" data-cosmetics-equip="' + esc(item?.id || '') + '" data-cosmetics-kind="' + slot + '" aria-pressed="false"' + (state.disabled ? ' disabled' : '') + '><span class="cosmetic-choice-preview">' + art + '</span><strong>' + esc(name) + '</strong><small>' + esc(item ? catalog.sets[item.setId].name : 'Brasta original') + '</small><span class="cosmetic-access' + (item?.premium ? ' premium' : '') + '">' + state.access + '</span><span class="cosmetic-choice-state">' + state.label + '</span></button>';
     }).join('') + '</div>';
   }
   function wireChoices(container) {
@@ -199,14 +210,12 @@
       var selected = (value[button.dataset.cosmeticsKind] || '') === button.dataset.cosmeticsEquip;
       button.setAttribute('aria-pressed', String(selected));
       var item = button.dataset.cosmeticsEquip ? reward(button.dataset.cosmeticsEquip) : null;
-      var owned = accountStatus() === 'signed-out' || (accountStatus() === 'ready' && (!item || account.state.ownedRewardIds.includes(item.id)));
-      button.disabled = !owned || account.busy;
+      var choice = choiceState(item, selected);
+      button.disabled = choice.disabled;
       var access = button.querySelector('.cosmetic-access');
-      var accessText = !owned ? 'Locked' : item?.premium ? 'Premium' : 'Free';
-      if (access && access.textContent !== accessText) access.textContent = accessText;
+      if (access && access.textContent !== choice.access) access.textContent = choice.access;
       var state = button.querySelector('.cosmetic-choice-state');
-      var text = account.busy ? 'Saving…' : !owned ? 'Locked' : selected ? 'Equipped' : 'Equip';
-      if (state.textContent !== text) state.textContent = text;
+      if (state.textContent !== choice.label) state.textContent = choice.label;
     });
   }
   async function syncAccount() {

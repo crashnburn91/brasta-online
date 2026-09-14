@@ -217,7 +217,7 @@ test('every set has matching equipment in the integrated controls and only Golde
     assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), { ...expected, titleSource: 'season' });
     assert.equal(document.querySelector(`${ownSelector} .player-card-avatar img`), photo);
     assert.equal(account.querySelector('.profile-badge-hero b').textContent, rewards.find((reward) => reward.kind === 'Profile title').name);
-    assert.equal(account.querySelector('[data-cosmetics-equip="' + expected.tableFelt + '"] .cosmetic-access').textContent, setId === 'gilded_court' ? 'Free' : 'Premium');
+    assert.equal(account.querySelector('[data-cosmetics-equip="' + expected.tableFelt + '"] .cosmetic-access').textContent, setId === 'gilded_court' ? 'Free track' : 'Premium');
     assert.equal(account.querySelectorAll('.profile-badge-card.equipped').length, 1);
   }
 });
@@ -342,6 +342,10 @@ const stateResponse = state => ({ok:true,json:async()=>JSON.parse(JSON.stringify
 test('signed-in players see owned equipment only; guest previews do not grant rewards',async(t)=>{
   const {document,window,select,requests}=await fixture(t,{accountState:seasonState()});
   assert.equal(document.documentElement.hasAttribute('data-brasta-card-back'),false);
+  const classic = document.querySelector('[data-cosmetics-kind="cardBack"][data-cosmetics-equip=""]');
+  assert.equal(classic.disabled, false);
+  assert.equal(classic.querySelector('.cosmetic-choice-state').textContent, 'Equipped');
+  assert.equal(document.querySelector('[data-cosmetics-equip="gilded_suits"] .cosmetic-choice-state').textContent, 'Tier 1');
   await select('cardBack','velvet_club');
   assert.equal(requests.filter(r=>r.url==='/api/season-pass'&&r.action==='equip').length,0);
   await assert.rejects(window.BrastaCosmetics.equip('profileTitle','royal_title'),/not unlocked/);
@@ -367,6 +371,8 @@ test('failed account loading disables cosmetics and never falls back to premium 
   assert.equal(window.BrastaCosmetics.status(),'unavailable');
   assert.equal(window.BrastaCosmetics.read().cardBack,null);
   assert.equal(document.querySelector('[data-cosmetics-equip="velvet_club"]').disabled,true);
+  assert.equal(document.querySelector('[data-cosmetics-equip="velvet_club"] .cosmetic-choice-state').textContent, 'Unavailable');
+  assert.equal(document.querySelector('[data-cosmetics-kind="cardBack"][data-cosmetics-equip=""] .cosmetic-choice-state').textContent, 'Unavailable');
   await assert.rejects(window.BrastaCosmetics.equip('cardBack','velvet_club'),/unavailable/);
   assert.equal(window.BrastaCosmetics.titleItems().some(r=>r.unlocked),false);
 });
