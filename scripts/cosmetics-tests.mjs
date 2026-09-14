@@ -50,7 +50,7 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError
       if (seasonResponse) return seasonResponse(body,options.headers.Authorization);
       if (body.action === 'equip') {
         accountState.equipment[body.slot] = body.rewardId;
-        if (body.slot === 'profile_title') accountState.titleSource = body.rewardId ? 'season' : 'none';
+        if (body.slot === 'profile_title') accountState.titleSource = body.rewardId ? 'season' : body.titleSource || 'none';
       }
       return { ok: true, json: async () => JSON.parse(JSON.stringify({ state: accountState })) };
     }
@@ -423,4 +423,25 @@ test('new ownership refreshes open Titles and frame controls even when the selec
   assert.equal(document.querySelector('.account-modal [data-badge-equip="royal_title"]').disabled,false);
   document.querySelector('[data-cosmetics-frame-open]').click();
   assert.equal(document.querySelector('[data-cosmetics-equip="royal_frame"]').disabled,false);
+});
+
+test('beta tester equips all sets without ownership and loses access after account switch',async(t)=>{
+  const state=seasonState({testingAccess:true,testRewardIds:SEASON_REWARDS.map(r=>r.id)});
+  const {window,document,select,settle}=await fixture(t,{accountState:state});
+  assert.match(window.BrastaCosmetics.note(),/Beta testing access/);
+  for(const reward of SEASON_REWARDS) {
+    const slot=Object.keys(slotKinds).find(key=>slotKinds[key]===reward.kind);
+    await select(slot,reward.id);
+    assert.equal(window.BrastaCosmetics.read()[slot],reward.id);
+  }
+  assert.deepEqual(state.ownedRewardIds,[]);
+  await window.BrastaCosmetics.refresh(); await settle();
+  assert.equal(window.BrastaCosmetics.titleItems().every(r=>r.unlocked&&r.testing),true);
+  await window.BrastaCosmetics.useEarnedTitle(false);await settle();
+  assert.equal(window.BrastaCosmetics.read().titleSource,'earned');
+  state.playerId='player-b';state.testingAccess=false;state.testRewardIds=[];state.equipment={};
+  window.localStorage.setItem('brasta-auth-access-token','player-b-token');
+  window.dispatchEvent(new window.Event('brasta-auth-changed'));await settle();
+  assert.equal(window.BrastaCosmetics.titleItems().some(r=>r.unlocked),false);
+  assert.equal(document.querySelector('[data-cosmetics-equip="velvet_club"]').disabled,true);
 });

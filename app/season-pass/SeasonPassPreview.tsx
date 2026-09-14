@@ -87,6 +87,7 @@ export default function SeasonPassPreview() {
   }, [refreshVersion]);
 
   const accountBacked = accountState === 'ready' && Boolean(liveState);
+  const testingAccess = accountBacked && liveState?.testingAccess === true;
   const catalogRewards = liveState?.rewards?.length ? liveState.rewards : SEASON_REWARDS;
   const preview = accountState === 'signed-out';
   const displayXp = liveState?.progress.xp ?? (preview ? xp : 0);
@@ -109,6 +110,7 @@ export default function SeasonPassPreview() {
   } as const;
   const selectedEquipmentSlot = selectedSlot[selected.kind];
   const selectedOwned = accountBacked && Boolean(liveState?.ownedRewardIds.includes(selected.id));
+  const selectedAvailable = selectedOwned || (testingAccess && Boolean(liveState?.testRewardIds?.includes(selected.id)));
   const selectedEquipped = accountBacked && liveState?.equipment[selectedEquipmentSlot] === selected.id;
 
   async function equipSelected(rewardId: string | null) {
@@ -149,7 +151,7 @@ export default function SeasonPassPreview() {
     detailClose.current?.focus();
   }
   return <main className="sp-page">
-    <nav className="sp-nav"><a href="/">← Back to Brasta</a><span>{preview ? 'DESIGN PREVIEW' : 'SEASON PASS'}</span></nav>
+    <nav className="sp-nav"><a href="/">← Back to Brasta</a><span>{testingAccess ? 'BETA TESTING' : preview ? 'DESIGN PREVIEW' : 'SEASON PASS'}</span></nav>
     <header className="sp-hero">
       <div><p className="sp-eyebrow">SEASON 01 · 8 WEEKS</p><h1>The Golden<br /><em>Table.</em></h1>
         <p className="sp-lead">Make every hand your own.</p><p>Five complete sets. Collect matching card backs, table felts, avatar frames, and profile titles with their own badges.</p>
@@ -159,7 +161,7 @@ export default function SeasonPassPreview() {
     </header>
     <section className="sp-preview-controls" aria-label="Season schedule"><div><b>{seasonStatus === 'draft' ? 'Season 1 is coming soon' : seasonStatus === 'ended' ? 'Season complete' : 'Season 1 is open'}</b><p>{seasonStatus === 'draft' ? 'Dates will be announced before launch. Matches do not earn Season XP yet.' : liveState?.season.endsAt ? `Season ends ${new Date(liveState.season.endsAt).toLocaleString('en-US', { timeZone: 'UTC' })} UTC. Your unlocked rewards stay in your collection.` : ''}</p><p>{liveState?.season.completionXp ?? 25} XP per completed {liveState?.season.eligibleMatchTypes.join(' or ') || 'ranked or private'} match, plus {liveState?.season.winXp ?? 25} XP for a win. All players must be signed in. Bot matches and abandoned games do not count.</p></div></section>
     {accountBacked || preview ? <section className="sp-progress" aria-label={accountBacked ? 'Your season progress' : 'Example season progress'}><div><span>{accountBacked ? 'YOUR PROGRESS' : 'EXAMPLE PROGRESS'}</span><h2>Tier {tier} <small>/ {liveState?.season.tiers ?? SEASON_ONE.tiers}</small></h2></div><div className="sp-progress-body"><div className="sp-progress-label"><b>{displayXp.toLocaleString()} Season XP</b><span>{accountBacked ? (liveState?.progress.xpToNextTier ? `${liveState.progress.xpToNextTier} XP to tier ${tier + 1}` : 'All tiers reached') : (tier === 12 ? 'All tiers reached' : `${(tier + 1) * 250 - xp} XP to tier ${tier + 1}`)}</span></div><progress value={displayXp} max={(liveState?.season.tiers ?? SEASON_ONE.tiers) * (liveState?.season.xpPerTier ?? SEASON_ONE.xpPerTier)} aria-label={accountBacked ? 'Your Season XP' : 'Example Season XP'} /></div></section> : null}
-    <section className="sp-preview-controls" aria-label={preview ? 'Preview controls' : 'Season account status'}><div><b>{accountBacked ? 'Account progress' : preview ? 'Try the reward track' : accountState === 'loading' ? 'Loading your collection…' : 'Collection unavailable'}</b><p>{accountBacked ? 'Progress and owned rewards are synced to your Brasta account.' : preview ? 'Sample progress only. Sign in to sync progress; this preview does not purchase or unlock account items.' : accountState === 'loading' ? 'Checking your progress and owned rewards.' : 'We could not load your account collection. Retry, or return to Brasta to sign in again.'}</p></div>{accountBacked ? <div className="sp-live-status"><span>{premiumUnlocked ? 'Premium pass active' : 'Free track'}</span><span>{liveState?.ownedRewardIds.length || 0} rewards owned</span></div> : preview ? <><label>Season XP<input type="range" min="0" max="3000" step="250" value={xp} onChange={e => setXp(Number(e.target.value))} /></label><label className="sp-toggle"><input type="checkbox" checked={premium} onChange={e => setPremium(e.target.checked)} />Preview Premium</label></> : accountState === 'unavailable' ? <button className="sp-inspect" onClick={() => setRefreshVersion(value => value + 1)}>Retry</button> : null}</section>
+    <section className="sp-preview-controls" aria-label={preview ? 'Preview controls' : 'Season account status'}><div><b>{testingAccess ? 'Beta testing access' : accountBacked ? 'Account progress' : preview ? 'Try the reward track' : accountState === 'loading' ? 'Loading your collection…' : 'Collection unavailable'}</b><p>{testingAccess ? 'All sets are available to test. Test equipment is saved separately from Season XP and purchases.' : accountBacked ? 'Progress and owned rewards are synced to your Brasta account.' : preview ? 'Sample progress only. Sign in to sync progress; this preview does not purchase or unlock account items.' : accountState === 'loading' ? 'Checking your progress and owned rewards.' : 'We could not load your account collection. Retry, or return to Brasta to sign in again.'}</p></div>{accountBacked ? <div className="sp-live-status"><span>{premiumUnlocked ? 'Premium pass active' : 'Free track'}</span><span>{liveState?.ownedRewardIds.length || 0} rewards owned</span></div> : preview ? <><label>Season XP<input type="range" min="0" max="3000" step="250" value={xp} onChange={e => setXp(Number(e.target.value))} /></label><label className="sp-toggle"><input type="checkbox" checked={premium} onChange={e => setPremium(e.target.checked)} />Preview Premium</label></> : accountState === 'unavailable' ? <button className="sp-inspect" onClick={() => setRefreshVersion(value => value + 1)}>Retry</button> : null}</section>
     <section className="sp-catalog"><div className="sp-catalog-head"><div><p className="sp-eyebrow">BUILD. CAPTURE. COLLECT.</p><h2>Your season sets</h2><p className="sp-catalog-hint">Each set includes one card back, table felt, avatar frame, and badge/title. Each piece unlocks at its shown tier.</p></div>
       <div className="sp-catalog-controls">
         <label className="sp-set-picker">Cosmetic set<select value={selectedSetId} onChange={e => setSelectedSetId(e.target.value)}><option value="all">All sets</option>{Object.entries(SEASON_SETS).map(([id, set]) => <option key={id} value={id}>{set.name}</option>)}</select></label>
@@ -170,8 +172,8 @@ export default function SeasonPassPreview() {
         <header className="sp-set-heading"><div><h3 id={`sp-set-${group.id}`}>{group.name}</h3><p>{group.description}</p></div><span>{group.rewards.length} {group.rewards.length === 1 ? 'cosmetic' : 'cosmetics'}</span></header>
         <div className="sp-grid">{group.rewards.map(r => {
         const owned = liveState?.ownedRewardIds.includes(r.id) || false;
-        const available = accountBacked ? owned : preview && tier >= r.tier && (!r.premium || premiumUnlocked);
-        const status = available ? (accountBacked ? '✓ Owned' : '✓ Available in preview') : tier < r.tier ? `Reach tier ${r.tier}` : r.premium && !premiumUnlocked ? 'Premium reward' : 'Not unlocked';
+        const available = accountBacked ? owned || (testingAccess && Boolean(liveState?.testRewardIds?.includes(r.id))) : preview && tier >= r.tier && (!r.premium || premiumUnlocked);
+        const status = available ? (accountBacked ? (owned ? '✓ Owned' : '✓ Beta test') : '✓ Available in preview') : tier < r.tier ? `Reach tier ${r.tier}` : r.premium && !premiumUnlocked ? 'Premium reward' : 'Not unlocked';
         const equipped = accountBacked && liveState?.equipment[selectedSlot[r.kind]] === r.id;
         return <button key={r.id} className={`sp-reward ${selected.id === r.id ? 'sp-selected' : ''}`} aria-label={`View ${r.name}, ${r.kind}, tier ${r.tier}, ${r.premium ? 'Premium' : 'Free'}`} aria-haspopup="dialog" onClick={() => inspectReward(r)}>
           <div className="sp-reward-meta"><span>TIER {r.tier}</span><b>{r.premium ? 'PREMIUM' : 'FREE'}</b></div><div className="sp-reward-art"><RewardArtwork reward={r} /></div><small>{r.kind === 'Profile title' ? 'Profile title + badge' : r.kind}</small><h3>{r.name}</h3><span className={`sp-status ${available ? 'sp-ready' : ''}`}>{status}</span>
@@ -192,9 +194,9 @@ export default function SeasonPassPreview() {
       <p id="sp-detail-description">{selected.description}</p>
       {selected.kind === 'Profile title' ? <p className="sp-title-includes">One reward includes this title and its matching badge. They equip together; you can display one profile title at a time.</p> : null}
       {accountBacked ? <section className="sp-equip-panel" aria-label={`Equip ${selected.name}`}>
-        <p className="sp-equip-status">{selectedOwned ? (selectedEquipped ? 'This reward is equipped on your account.' : 'This reward is owned and ready to equip.') : `Reach tier ${selected.tier}${selected.premium ? ' with Premium' : ' on the free track'} to unlock this reward.`}</p>
+        <p className="sp-equip-status">{testingAccess && selectedAvailable ? 'Available for beta testing. Your earned collection is unchanged.' : selectedOwned ? (selectedEquipped ? 'This reward is equipped on your account.' : 'This reward is owned and ready to equip.') : `Reach tier ${selected.tier}${selected.premium ? ' with Premium' : ' on the free track'} to unlock this reward.`}</p>
         <div className="sp-equip-actions">
-          <button className="sp-inspect" type="button" disabled={!selectedOwned || selectedEquipped || equipBusy} onClick={() => void equipSelected(selected.id)}>{equipBusy ? 'Saving…' : selectedEquipped ? 'Equipped' : 'Equip reward'}</button>
+          <button className="sp-inspect" type="button" disabled={!selectedAvailable || selectedEquipped || equipBusy} onClick={() => void equipSelected(selected.id)}>{equipBusy ? 'Saving…' : selectedEquipped ? 'Equipped' : 'Equip reward'}</button>
           {selectedEquipped ? <button className="sp-inspect sp-secondary-action" type="button" disabled={equipBusy} onClick={() => void equipSelected(null)}>{selected.kind === 'Profile title' ? 'Remove title' : 'Use Brasta original'}</button> : null}
         </div>
         <p className="sp-equip-message" role="status" aria-live="polite">{equipMessage}</p>

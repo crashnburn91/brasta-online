@@ -115,9 +115,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/rank-badges.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/player-profile.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/player-progression.js?v=0.1.2" strategy="afterInteractive" />
-        <Script src="/profile-badges.js?v=0.2.0" strategy="afterInteractive" />
+        <Script src="/profile-badges.js?v=0.2.1" strategy="afterInteractive" />
         <Script src="/player-card-avatars.js?v=0.1.1" strategy="afterInteractive" />
-        <Script src="/cosmetics.js?v=0.2.2" strategy="afterInteractive" />
+        <Script src="/cosmetics.js?v=0.3.0" strategy="afterInteractive" />
         <Script src="/achievement-filter.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/stats-match-filter.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />

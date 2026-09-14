@@ -16,19 +16,23 @@
     if (accountStatus() === 'signed-out') return 'Guest design preview. Sign in to use your account collection. Golden Spade is on the free track; other sets require Premium.';
     if (accountStatus() === 'unavailable') return 'Your collection could not be loaded. Reopen your profile to retry.';
     if (accountStatus() !== 'ready') return 'Loading your account collection…';
+    if (account.state.testingAccess) return 'Beta testing access. All sets are available. Test equipment is saved separately from Season XP and purchases.';
     if (account.state.season.status === 'draft') return 'Season 1 is coming soon. Classic and previously unlocked rewards are available now. Golden Spade unlocks on the free track; other sets require Premium.';
     return 'Equip rewards you own. Earn Golden Spade on the free track; other sets require Premium. Season 1 progress is saved to your account.';
   }
+  function hasRewardAccess(id) {
+    return account.state.ownedRewardIds.includes(id) || (account.state.testingAccess === true && (account.state.testRewardIds || []).includes(id));
+  }
   function canEquip(id) {
-    return !account.busy && (accountStatus() === 'signed-out' || (accountStatus() === 'ready' && (!id || account.state.ownedRewardIds.includes(id))));
+    return !account.busy && (accountStatus() === 'signed-out' || (accountStatus() === 'ready' && (!id || hasRewardAccess(id))));
   }
   function choiceState(item, selected) {
     var status = accountStatus();
     var loaded = status === 'signed-out' || status === 'ready';
-    var owned = loaded && (status === 'signed-out' || !item || account.state.ownedRewardIds.includes(item.id));
+    var owned = loaded && (status === 'signed-out' || !item || hasRewardAccess(item.id));
     return {
       disabled: !owned || account.busy,
-      access: !item ? 'Included' : item.premium ? 'Premium' : 'Free track',
+      access: !item ? 'Included' : status === 'ready' && account.state.testingAccess && hasRewardAccess(item.id) ? 'Beta test' : item.premium ? 'Premium' : 'Free track',
       label: account.busy ? 'Saving…' : !loaded ? (status === 'unavailable' ? 'Unavailable' : 'Loading…')
         : owned ? (selected ? 'Equipped' : 'Equip') : 'Tier ' + item.tier,
     };
@@ -84,7 +88,7 @@
     if (!response.ok || !data.state) throw new Error(data.error || 'Could not save this selection.');
     return data.state;
   }
-  async function equip(slot, id) {
+  async function equip(slot, id, titleSource) {
     if (!slots[slot] || (id && !items(slot).some(function (item) { return item.id === id; }))) return;
     if (token()) {
       if (accountStatus() !== 'ready') throw new Error('Your collection is unavailable. Reopen your profile to retry.');
@@ -96,7 +100,9 @@
       account.busy = true;
       publish();
       try {
-        var state = await seasonPassApi({ action: 'equip', slot: serverSlots[slot], rewardId: id || null }, accessToken);
+        var body = { action: 'equip', slot: serverSlots[slot], rewardId: id || null };
+        if (titleSource) body.titleSource = titleSource;
+        var state = await seasonPassApi(body, accessToken);
         if (request !== account.request || token() !== accessToken || state.playerId !== playerId) return;
         account.state = state;
         return read();
@@ -112,6 +118,7 @@
   }
   function useEarnedTitle(removed) {
     // The earned badge RPC already changed both title records atomically.
+    if (token() && accountStatus() === 'ready' && account.state.testingAccess) return equip('profileTitle', null, removed ? 'none' : 'earned');
     if (token()) return syncAccount();
     var next = readLocal(); next.profileTitle = null; next.titleSource = removed ? 'none' : 'earned'; write(next);
     return Promise.resolve(next);
@@ -125,8 +132,8 @@
   }
   function titleItems() {
     return items('profileTitle').map(function (item) {
-      var unlocked = accountStatus() === 'signed-out' || (accountStatus() === 'ready' && account.state.ownedRewardIds.includes(item.id));
-      return { key: item.id, name: item.name, description: item.description, artUrl: url(item.id), tier: 'standard', awardType: 'season_preview', unlocked: unlocked, premium: item.premium, setName: catalog.sets[item.setId].name, unlockTier: item.tier, preview: accountStatus() === 'signed-out', busy: account.busy };
+      var unlocked = accountStatus() === 'signed-out' || (accountStatus() === 'ready' && hasRewardAccess(item.id));
+      return { key: item.id, name: item.name, description: item.description, artUrl: url(item.id), tier: 'standard', awardType: 'season_preview', unlocked: unlocked, premium: item.premium, setName: catalog.sets[item.setId].name, unlockTier: item.tier, testing: accountStatus() === 'ready' && account.state.testingAccess === true, preview: accountStatus() === 'signed-out', busy: account.busy };
     });
   }
   function effectiveTitle(earned) {

@@ -47,6 +47,8 @@ export type SeasonPassState = {
   progress: SeasonPassProgress;
   premiumUnlocked: boolean;
   ownedRewardIds: string[];
+  testingAccess?: boolean;
+  testRewardIds?: string[];
   equipment: Record<SeasonPassSlot, string | null>;
   titleSource: 'season' | 'earned' | 'none';
 };
@@ -165,6 +167,10 @@ async function userRpc<T>(name: string, body: Record<string, unknown>, accessTok
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+function betaTestingEnabled(): boolean {
+  return process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF === 'beta';
+}
+
 function boundedInt(value: unknown, fallback = 0): number {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
@@ -222,6 +228,11 @@ function progress(xpValue: unknown, currentSeason: SeasonPassSeason): SeasonPass
 
 export async function getSeasonPassState(playerId: string, seasonId = 'season_1', accessToken = ''): Promise<SeasonPassState> {
   if (!playerId) throw new Error('A player account is required.');
+  if (betaTestingEnabled() && accessToken) {
+    const state = await userRpc<SeasonPassState | null>('brasta_get_season_pass_test_state',
+      { p_player_id: playerId, p_season_id: seasonId }, accessToken, 'Could not load beta collection');
+    if (state) return state;
+  }
   if (!secretKey) {
     return userRpc<SeasonPassState>(
       'brasta_get_season_pass_state',
@@ -308,6 +319,7 @@ export async function equipSeasonPassReward(options: {
   slot: SeasonPassSlot;
   rewardId: string | null;
   seasonId?: string;
+  titleSource?: 'earned' | 'none';
 }, accessToken = ''): Promise<SeasonPassState> {
   const seasonId = options.seasonId || 'season_1';
   const body = {
@@ -316,6 +328,11 @@ export async function equipSeasonPassReward(options: {
     p_slot: options.slot,
     p_reward_id: options.rewardId || null,
   };
+  if (betaTestingEnabled() && accessToken) {
+    const state = await userRpc<SeasonPassState | null>('brasta_equip_season_pass_test_reward',
+      { ...body, p_title_source: options.titleSource || null }, accessToken, 'Could not equip beta reward');
+    if (state) return state;
+  }
   if (!secretKey) {
     await userRpc('brasta_equip_season_pass_reward_for_user', body, accessToken, 'Could not equip Season Pass reward');
   } else {

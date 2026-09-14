@@ -90,7 +90,7 @@
     const special = badge.awardType === 'admin';
     const cosmetic = badge.awardType === 'season_preview';
     const status = badge.equipped ? 'Equipped'
-      : cosmetic ? (locked ? `Tier ${badge.unlockTier}${badge.premium ? ' · Premium' : ' · Free'}` : badge.preview ? 'Guest preview' : 'Owned')
+      : cosmetic ? (locked ? `Tier ${badge.unlockTier}${badge.premium ? ' · Premium' : ' · Free'}` : badge.preview ? 'Guest preview' : badge.testing ? 'Beta test' : 'Owned')
       : badge.unlocked ? 'Unlocked'
       : special ? 'Admin awarded'
       : 'Achievement reward';

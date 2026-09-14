@@ -193,3 +193,58 @@ for (const [slot,id,i,pattern] of [['avatar_frame','gilded_suits',0,/does not fi
     await assert.rejects(query('select brasta_equip_season_pass_reward($1,\'season_1\',$2,$3)',[players[i],slot,id]),pattern);
   });
 }
+
+
+async function allowTester() {
+  await query('insert into private.season_pass_test_access(player_id,enabled) values ($1,true)', [players[0]]);
+}
+test('beta tester can persist all twenty cosmetics without changing real state', async () => {
+  await allowTester();
+  await signInAs(players[0]);
+  const before = await scalar("select brasta_get_season_pass_state($1,'season_1')",[players[0]]);
+  let state = await scalar("select brasta_get_season_pass_test_state($1,'season_1')",[players[0]]);
+  assert.equal(state.testingAccess,true);
+  assert.equal(state.testRewardIds.length,20);
+  const slots = {'Card back':'card_back','Table felt':'table_felt','Avatar frame':'avatar_frame','Profile title':'profile_title'};
+  for (const reward of state.rewards) {
+    const slot = slots[reward.kind];
+    await query("select brasta_equip_season_pass_test_reward($1,'season_1',$2,$3)",[players[0],slot,reward.id]);
+    state = await scalar("select brasta_get_season_pass_test_state($1,'season_1')",[players[0]]);
+    assert.equal(state.equipment[slot],reward.id);
+  }
+  for (const slot of Object.values(slots)) {
+    state = await scalar("select brasta_equip_season_pass_test_reward($1,'season_1',$2,null)",[players[0],slot]);
+    assert.equal(state.equipment[slot],null);
+  }
+  assert.equal(state.titleSource,'none');
+  state = await scalar("select brasta_equip_season_pass_test_reward($1,'season_1','profile_title',null,'earned')",[players[0]]);
+  assert.equal(state.titleSource,'earned');
+  assert.deepEqual(await scalar("select brasta_get_season_pass_state($1,'season_1')",[players[0]]),before);
+  assert.equal(state.progress.xp,0);
+  assert.equal(state.premiumUnlocked,false);
+  assert.deepEqual(state.ownedRewardIds,[]);
+});
+test('revoked tester and ordinary accounts get no test access',async()=>{
+  await allowTester();
+  await query('update private.season_pass_test_access set enabled=false where player_id=$1',[players[0]]);
+  for (const player of [players[0],players[1]]) {
+    await signInAs(player);
+    assert.equal(await scalar("select brasta_get_season_pass_test_state($1,'season_1')",[player]),null);
+    assert.equal(await scalar("select brasta_equip_season_pass_test_reward($1,'season_1','card_back','velvet_club')",[player]),null);
+    await db.exec('reset role');
+  }
+  assert.equal(await scalar('select count(*)::int from private.season_pass_test_equipment'),0);
+});
+for (const action of ['read','equip']) test('test '+action+' rejects another identity',async()=>{
+  await allowTester(); await signInAs(players[1]);
+  await assert.rejects(query(action === 'read' ? "select brasta_get_season_pass_test_state($1,'season_1')" : "select brasta_equip_season_pass_test_reward($1,'season_1','card_back',null)",[players[0]]),/Not authorized/);
+});
+test('test equipment validates reward slot',async()=>{
+  await allowTester(); await signInAs(players[0]);
+  await assert.rejects(query("select brasta_equip_season_pass_test_reward($1,'season_1','avatar_frame','velvet_club')",[players[0]]),/does not fit/);
+});
+test('browser roles cannot grant test access or write test equipment directly',async()=>{
+  for (const role of ['anon','authenticated']) for (const table of ['season_pass_test_access','season_pass_test_equipment']) {
+    for (const privilege of ['select','insert','update','delete']) assert.equal(await scalar("select has_table_privilege($1,$2,$3)",[role,'private.'+table,privilege]),false);
+  }
+});

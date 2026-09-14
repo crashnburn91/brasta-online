@@ -186,3 +186,11 @@ collections. Each season badge/title stays a single owned item.
 Match progression and account equipment are implemented. Payments and launch
 acceptance work remain pending; this must not be represented as an operational
 paid pass until verified purchasing and a dated season are enabled.
+
+
+## Beta tester collection
+The server uses test equipment only when VERCEL_ENV is preview and VERCEL_GIT_COMMIT_REF is beta. Request flags and browser storage cannot enable it.
+Authenticated test RPCs additionally require an enabled row in private.season_pass_test_access for auth.uid(). The migration grants no accounts access by default.
+Administrators can enable a verified player with an explicit allowlist row. Set enabled=false to revoke; the next read/equip uses normal ownership again.
+Test selections persist in private.season_pass_test_equipment, separate from real equipment, XP, reward ownership, and Premium entitlements. No season activation is required. The UI labels this access Beta test.
+Main and other branches always use the regular collection. Test equipment is for the tester's UI; it does not grant public-profile ownership or purchases.

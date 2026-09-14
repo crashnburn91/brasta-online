@@ -46,12 +46,17 @@ async function equipFor(request: Request, body: Record<string, unknown>) {
     return json({ error: 'Choose a valid season.' }, 400);
   }
 
+  const titleSource = body.titleSource;
+  if (titleSource !== undefined && (slot !== 'profile_title' || rewardId !== null || (titleSource !== 'earned' && titleSource !== 'none'))) {
+    return json({ error: 'Choose a valid title source.' }, 400);
+  }
   return json({
     state: await equipSeasonPassReward({
       playerId: identity.userId,
       slot,
       rewardId,
       seasonId,
+      ...(titleSource !== undefined ? { titleSource: titleSource as 'earned' | 'none' } : {}),
     }, token),
   });
 }
