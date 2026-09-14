@@ -107,7 +107,7 @@
   }
 
   function setManagerBusy(manager, busy) {
-    manager?.querySelectorAll?.('button').forEach((button) => { button.disabled = Boolean(busy); });
+    manager?.querySelectorAll?.('[data-avatar-change],[data-avatar-remove]').forEach((button) => { button.disabled = Boolean(busy); });
   }
 
   function updateRemoveVisibility(manager) {
@@ -287,26 +287,21 @@
   function injectManager() {
     const head = document.querySelector('.account-profile-head');
     if (!(head instanceof HTMLElement)) return;
-    if (document.querySelector('[data-brasta-avatar-manager]')) {
-      updateRemoveVisibility(document.querySelector('[data-brasta-avatar-manager]'));
+    const manager = head.querySelector('.account-portrait-controls');
+    const frame = manager?.querySelector('[data-cosmetics-frame-open]');
+    if (!(manager instanceof HTMLElement) || !(frame instanceof HTMLButtonElement)) return;
+    if (manager.dataset.brastaAvatarManager) {
+      updateRemoveVisibility(manager);
       return;
     }
 
-    const manager = document.createElement('div');
-    manager.className = 'account-avatar-manager';
+    manager.classList.add('account-avatar-manager');
     manager.dataset.brastaAvatarManager = 'true';
-    manager.innerHTML = `
-      <div class="account-avatar-manager-copy">
-        <b>Profile picture</b>
-        <small>Shown on your Brasta profile, friends list, and chat.</small>
-      </div>
-      <div class="account-avatar-manager-actions">
-        <button type="button" class="primary" data-avatar-change>Change Photo</button>
-        <button type="button" data-avatar-remove hidden>Remove</button>
-      </div>
+    frame.insertAdjacentHTML('beforebegin', '<button type="button" class="primary" data-avatar-change>Change Photo</button>');
+    manager.insertAdjacentHTML('beforeend', `
+      <button type="button" data-avatar-remove hidden>Remove photo</button>
       <input type="file" data-avatar-input accept="image/jpeg,image/png,image/webp" hidden>
-      <div class="account-avatar-manager-message" data-avatar-message aria-live="polite"></div>`;
-    head.insertAdjacentElement('afterend', manager);
+      <div class="account-avatar-manager-message" data-avatar-message aria-live="polite"></div>`);
 
     activeAvatarUrl = currentAvatarUrl() || activeAvatarUrl;
     updateRemoveVisibility(manager);
