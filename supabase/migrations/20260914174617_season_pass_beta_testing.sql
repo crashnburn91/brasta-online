@@ -70,7 +70,7 @@ begin
   if p_reward_id is not null then
     select kind into v_kind from public.season_pass_rewards where reward_id=p_reward_id and season_id=p_season_id;
     if not found then raise exception 'Reward not found'; end if;
-    if v_kind <> case p_slot when 'card_back' then 'Card back' when 'table_felt' then 'Table felt' when 'avatar_frame' then 'Avatar frame' else 'Profile title' end then
+    if v_kind <> (case p_slot when 'card_back' then 'Card back' when 'table_felt' then 'Table felt' when 'avatar_frame' then 'Avatar frame' else 'Profile title' end) then
       raise exception 'That reward does not fit this equipment slot';
     end if;
   end if;
