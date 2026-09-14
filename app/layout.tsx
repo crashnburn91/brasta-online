@@ -98,7 +98,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="/chat-ui.css?v=0.2.2" />
         <link rel="stylesheet" href="/mobile-game-header.css?v=0.1.6" />
         <link rel="stylesheet" href="/resume-match.css?v=0.1.0" />
-        <link rel="stylesheet" href="/cosmetics.css?v=0.2.1" />
+        <link rel="stylesheet" href="/cosmetics.css?v=0.2.2" />
       </head>
       <body>
         <PresenceTracker />
@@ -117,7 +117,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script src="/player-progression.js?v=0.1.2" strategy="afterInteractive" />
         <Script src="/profile-badges.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/player-card-avatars.js?v=0.1.1" strategy="afterInteractive" />
-        <Script src="/cosmetics.js?v=0.2.1" strategy="afterInteractive" />
+        <Script src="/cosmetics.js?v=0.2.2" strategy="afterInteractive" />
         <Script src="/achievement-filter.js?v=0.1.1" strategy="afterInteractive" />
         <Script src="/stats-match-filter.js?v=0.2.0" strategy="afterInteractive" />
         <Script src="/account-network.js?v=0.6.2" strategy="afterInteractive" />

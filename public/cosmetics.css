@@ -132,8 +132,9 @@ html:is([data-brasta-title-source="season"],[data-brasta-title-source="none"]) [
 .cosmetic-access.premium { color:#e7cd85; }
 .cosmetic-choice-state { min-width:58px; border-radius:6px; padding:4px 7px; background:#ffffff0d; color:#bbcabf; font-size:10px; font-weight:700; }
 .cosmetic-choice[aria-pressed="true"] .cosmetic-choice-state { background:#e5c361; color:#102219; }
-.cosmetic-classic-art { width:62px; height:88px; display:grid; place-items:center; border:2px solid #b79b48; border-radius:7px; background:repeating-linear-gradient(45deg,#123d2d 0 3px,#103424 3px 6px); color:#dcc478; font:700 26px Georgia,serif; }
-.tableFelt .cosmetic-classic-art { width:90%; height:68px; border-width:5px; border-radius:12px; background:#11452e; }
+.cosmetic-classic-art { position:relative; width:62px; height:88px; display:grid; place-items:center; border:2px solid #d9b855; border-radius:7px; background:linear-gradient(135deg,#d4af3713 25%,transparent 25%) 0 0/7px 7px,linear-gradient(315deg,#d4af370b 25%,transparent 25%) 0 0/7px 7px,linear-gradient(180deg,#0c2a20,#071b15); color:#d4af37; font:900 26px Georgia,"Times New Roman",serif; text-shadow:0 1px 2px #000; box-shadow:0 3px 7px #0008,inset 0 0 0 1px #0006; }
+.cardBack .cosmetic-classic-art::before { content:""; position:absolute; inset:5px; border:1px solid #d4af3750; border-radius:3px; }
+.tableFelt .cosmetic-classic-art { width:90%; height:68px; border-width:5px; border-color:#332619; border-radius:12px; background:linear-gradient(135deg,#0d5438,#0a402d); box-shadow:inset 0 0 16px #0005; }
 .cosmetic-frame-preview { position:relative; display:block; width:94px; height:94px; }
 .cosmetic-preview-portrait { position:absolute; inset:12%; display:grid; place-items:center; border-radius:50%; overflow:hidden; background:#174331; color:#ead08c; font:700 24px Georgia,serif; }
 .has-frame .cosmetic-preview-portrait { inset:17%; }

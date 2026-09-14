@@ -185,7 +185,7 @@
   function choices(slot) {
     return '<div class="cosmetic-choice-grid">' + [null].concat(items(slot)).map(function (item) {
       var name = item ? item.name : slot === 'avatarFrame' ? 'No frame' : 'Classic';
-      var art = item ? '<img class="cosmetic-choice-art" src="' + url(item.id) + '" alt="" draggable="false">' : '<span class="cosmetic-classic-art" aria-hidden="true">' + (slot === 'avatarFrame' ? 'B' : '♠') + '</span>';
+      var art = item ? '<img class="cosmetic-choice-art" src="' + url(item.id) + '" alt="" draggable="false">' : '<span class="cosmetic-classic-art" aria-hidden="true">' + (slot === 'tableFelt' ? '' : 'B') + '</span>';
       if (slot === 'avatarFrame') art = '<span class="cosmetic-frame-preview' + (item ? ' has-frame' : '') + '"><span class="cosmetic-preview-portrait" data-frame-portrait>B</span>' + (item ? art : '') + '</span>';
       var state = choiceState(item, false);
       return '<button type="button" class="cosmetic-choice ' + slot + '" data-cosmetics-equip="' + esc(item?.id || '') + '" data-cosmetics-kind="' + slot + '" aria-pressed="false"' + (state.disabled ? ' disabled' : '') + '><span class="cosmetic-choice-preview">' + art + '</span><strong>' + esc(name) + '</strong><small>' + esc(item ? catalog.sets[item.setId].name : 'Brasta original') + '</small><span class="cosmetic-access' + (item?.premium ? ' premium' : '') + '">' + state.access + '</span><span class="cosmetic-choice-state">' + state.label + '</span></button>';
