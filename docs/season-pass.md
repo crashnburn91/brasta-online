@@ -32,15 +32,49 @@ The `season_pass_core` and `season_pass_hardening` migrations now provide stable
 Season 1 tables for seasons, sets, rewards, progress, an idempotent XP ledger,
 entitlements, reward ownership, and slot equipment. Browser roles have no table
 grants and explicit deny policies; only the trusted server role can write these
-records. The server-only `brasta_award_season_pass_xp` and
-`brasta_grant_season_pass_rewards` functions enforce draft/date gates,
-deduplicate match awards, cap XP at the final tier, and grant eligible rewards
-transactionally. The API derives the player ID from the verified access token;
-the client cannot submit an account ID.
+records. The API derives the player ID from the verified access token; a client
+cannot choose the account, XP amount, ownership, or premium status.
 
-The remaining launch work is to activate a dated season, connect finalized match
-records to the XP function, migrate any legacy local selections into account
-ownership where appropriate, and add verified web/Play purchase fulfillment.
+## Match progression (implemented, inactive until scheduled)
+
+`season_pass_match_awards` connects authoritative `brasta_record_completed_match`
+transactions to Season XP. A deferred insert trigger waits for every player seat
+to be saved, then calls `brasta_award_season_pass_match(match_id)`. This covers the
+existing Vercel and standalone realtime writers without a second client request.
+The old arbitrary-amount XP RPC is no longer executable by the service role.
+
+Initial configurable defaults are 25 completion XP and 25 additional winner XP.
+Ranked and private 1v1/2v2 matches qualify only if all seats are distinct signed-in
+accounts, the match ends normally at its target score, and the recorded winner
+matches the score. Bots, guests, forfeits, abandoned games and invalid results
+receive no Season XP. These defaults still need pacing/playtest approval.
+
+Matches must start on/after the season start and finish strictly before its end.
+Draft seasons award nothing. A valid completed match delivered after the season
+ends can still be recorded and awarded. Activation requires both dates; this
+migration leaves Season 1 draft with no dates or real purchase entitlements.
+
+The ledger's unique account/season/match/source keys prevent repeat awards.
+Progress caps at 3,000 XP for the seeded season. Match history, XP, and eligible
+reward grants commit or roll back together. Per-player/season transaction locks
+serialize progression and reward grants. Activating a premium entitlement grants
+already reached premium rewards automatically. Ownership remains after season end.
+
+Run `npm run test:season-pass` for isolated Postgres tests using the actual shipped
+recorder and migrations, plus authenticated API boundary tests. This is part of
+the build gate. Tests cover draft/date boundaries, excluded matches, 2v2 winners,
+retries, tier caps, late premium upgrades, rollback, ownership/slot checks, and
+role permissions. They never modify real accounts or live XP.
+
+The account UI now fails closed during loading/errors, rejects overlapping saves,
+ignores responses from a previous session, and keeps guest preview preferences
+separate from account equipment. Opening the account profile or refocusing the
+window refreshes ownership. `scripts/cosmetics-tests.mjs` covers failed requests,
+account switches, logout during a save, refreshed unlocks, and persisted removal.
+
+Remaining launch work: payment verification and lifecycle handling, public
+opponent cosmetic display rules, an explicit policy for legacy beta selections,
+final XP pacing/eligibility, and scheduling the season after acceptance testing.
 
 ## Five complete sets
 
@@ -108,17 +142,16 @@ with a quiet center for clear card visibility.
 
 There is one profile title reward per set. Its badge art and title name are
 shown together in previews, on the player's own match card, and in their profile.
-Selecting a cosmetic title overrides the earned-title display locally. Selecting
-an earned title clears the override only after the server confirms the change.
+Selecting a cosmetic title overrides the earned-title display. Selecting an
+earned title changes both account equipment records in one server transaction.
 Remove explicitly leaves no title. The saved `titleSource` distinguishes season,
 earned, and none, preventing an old earned badge from silently reappearing.
+The `season_pass_title_selection` migration stores this distinction per account.
 Other players' earned-title collections and server ownership checks are unchanged.
 
-Future season ownership should register each pair as one profile badge definition
-and grant it through the existing title collection and single equipped-title slot.
-Extend verified server awards to support season entitlements without relaxing
-ownership checks or changing achievement/admin title rules. Do not grant a
-separate title item.
+Public profile lookups still need to expose the selected season badge/title and
+frame to other players. The player's own profile already combines both title
+collections. Each season badge/title stays a single owned item.
 
 ## Production implementation requirements
 
@@ -150,5 +183,6 @@ separate title item.
    payments, restored purchases, refunds, late-season upgrades, concurrent reward
    grants, and season rollover. Schedule the season only once this passes.
 
-Payments and backend work remain pending; this preview must not be represented
-as an operational paid pass.
+Match progression and account equipment are implemented. Payments and launch
+acceptance work remain pending; this must not be represented as an operational
+paid pass until verified purchasing and a dated season are enabled.

@@ -16,6 +16,9 @@ export type SeasonPassSeason = {
   durationWeeks: number;
   tiers: number;
   xpPerTier: number;
+  completionXp: number;
+  winXp: number;
+  eligibleMatchTypes: string[];
 };
 
 export type SeasonPassSet = {
@@ -36,6 +39,7 @@ export type SeasonPassProgress = {
 };
 
 export type SeasonPassState = {
+  playerId: string;
   season: SeasonPassSeason;
   sets: SeasonPassSet[];
   rewards: SeasonReward[];
@@ -43,6 +47,7 @@ export type SeasonPassState = {
   premiumUnlocked: boolean;
   ownedRewardIds: string[];
   equipment: Record<SeasonPassSlot, string | null>;
+  titleSource: 'season' | 'earned' | 'none';
 };
 
 type SeasonRow = {
@@ -56,6 +61,9 @@ type SeasonRow = {
   duration_weeks: number;
   tier_count: number;
   xp_per_tier: number;
+  completion_xp: number;
+  win_xp: number;
+  eligible_match_types: string[];
 };
 
 type SetRow = {
@@ -83,7 +91,7 @@ type RewardRow = {
 type ProgressRow = { xp: number };
 type EntitlementRow = { entitlement_id: string };
 type OwnershipRow = { reward_id: string };
-type EquipmentRow = { slot: SeasonPassSlot; reward_id: string | null };
+type EquipmentRow = { slot: SeasonPassSlot; reward_id: string | null; title_source: SeasonPassState['titleSource'] | null };
 
 function headers(): Record<string, string> {
   if (!secretKey) throw new Error('Season Pass backend is not configured.');
@@ -148,6 +156,9 @@ function season(row: SeasonRow): SeasonPassSeason {
     durationWeeks: boundedInt(row.duration_weeks),
     tiers: boundedInt(row.tier_count),
     xpPerTier: boundedInt(row.xp_per_tier),
+    completionXp: boundedInt(row.completion_xp),
+    winXp: boundedInt(row.win_xp),
+    eligibleMatchTypes: row.eligible_match_types || [],
   };
 }
 
@@ -190,7 +201,7 @@ export async function getSeasonPassState(playerId: string, seasonId = 'season_1'
 
   const [seasonRows, setRows, rewardRows, progressRows, entitlementRows, ownershipRows, equipmentRows] = await Promise.all([
     rest<SeasonRow[]>(
-      `season_pass_seasons?season_id=eq.${seasonFilter}&select=season_id,name,status,starts_at,ends_at,price_cents,currency,duration_weeks,tier_count,xp_per_tier&limit=1`,
+      `season_pass_seasons?season_id=eq.${seasonFilter}&select=season_id,name,status,starts_at,ends_at,price_cents,currency,duration_weeks,tier_count,xp_per_tier,completion_xp,win_xp,eligible_match_types&limit=1`,
       'Could not load Season Pass season',
     ),
     rest<SetRow[]>(
@@ -214,7 +225,7 @@ export async function getSeasonPassState(playerId: string, seasonId = 'season_1'
       'Could not load Season Pass rewards owned',
     ),
     rest<EquipmentRow[]>(
-      `season_pass_equipment?player_id=eq.${playerFilter}&select=slot,reward_id`,
+      `season_pass_equipment?player_id=eq.${playerFilter}&select=slot,reward_id,title_source`,
       'Could not load Season Pass equipment',
     ),
   ]);
@@ -240,6 +251,7 @@ export async function getSeasonPassState(playerId: string, seasonId = 'season_1'
   });
 
   return {
+    playerId,
     season: currentSeason,
     sets: setRows.map((row) => ({
       id: row.set_id,
@@ -253,6 +265,7 @@ export async function getSeasonPassState(playerId: string, seasonId = 'season_1'
     premiumUnlocked: entitlementRows.length > 0,
     ownedRewardIds: [...new Set(ownershipRows.map((row) => row.reward_id).filter(Boolean))],
     equipment,
+    titleSource: equipmentRows.find((row) => row.slot === 'profile_title')?.title_source || 'earned',
   };
 }
 

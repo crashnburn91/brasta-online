@@ -16,7 +16,7 @@ const card = (name, self = false) => `<div class="player-chip player-card" data-
 </div>`;
 const profile = (name) => `<section class="player-profile-modal"><div class="player-profile-head"><div class="player-profile-avatar"><span class="brasta-avatar-portrait">${name[0]}</span></div><div class="player-profile-identity"><h2 id="player-profile-title">${name}</h2></div></div><div class="player-profile-ranks"></div></section>`;
 
-async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError = false, collectionError = false } = {}) {
+async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError = false, collectionError = false, accountState, seasonResponse } = {}) {
   const dom = new JSDOM(`<!doctype html><html><head></head><body>
     <button class="account-dock" data-brasta-username="Tester"><span class="brasta-avatar-shell">${accountPhoto ? `<img class="brasta-avatar-portrait" src="${accountPhoto}">` : '<span class="account-avatar-fallback brasta-avatar-portrait">T</span>'}</span></button>
     <div class="players">${card('Tester', true)}${card('Opponent')}</div>
@@ -38,19 +38,32 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError
   window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   window.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new window.Event('close')); };
   window.BRASTA_SEASON_CATALOG = { rewards: SEASON_REWARDS, sets: SEASON_SETS };
+  // Build the existing account profile shell before exercising guest previews
+  // or authenticated cosmetics. The progression script owns those base tabs.
   window.localStorage.setItem('brasta-auth-access-token', 'fixture-token');
   const requests = [];
   let earned = badge;
   window.fetch = async (url, options) => {
-    const body = JSON.parse(options.body);
+    const body = options.body ? JSON.parse(options.body) : {};
     requests.push({ url, ...body });
+    if (url === '/api/season-pass') {
+      if (seasonResponse) return seasonResponse(body,options.headers.Authorization);
+      if (body.action === 'equip') {
+        accountState.equipment[body.slot] = body.rewardId;
+        if (body.slot === 'profile_title') accountState.titleSource = body.rewardId ? 'season' : 'none';
+      }
+      return { ok: true, json: async () => JSON.parse(JSON.stringify({ state: accountState })) };
+    }
     if (url === '/api/player-avatar') {
       const result = avatarResponse ? await avatarResponse(body.username) : { avatarUrl: null };
       return { ok: true, json: async () => result };
     }
     if (url === '/api/player-profile') return { ok: true, json: async () => ({ profile: { username: body.username } }) };
     if ((body.action === 'equip' && equipError) || (body.action === 'collection' && collectionError)) return { ok: false, json: async () => ({ error: 'Temporarily unavailable' }) };
-    if (body.action === 'equip') earned = body.badgeKey === 'founder' ? badge : null;
+    if (body.action === 'equip') {
+      earned = body.badgeKey === 'founder' ? badge : null;
+      if (accountState) { accountState.equipment.profile_title = null; accountState.titleSource = earned ? 'earned' : 'none'; }
+    }
     return { ok: true, json: async () => ({ equipped: earned, isSelf: body.username === 'Tester' || body.action === 'equip', badges: { equipped: earned, items: [badge, { key: 'locked', name: 'Locked title', unlocked: false }] } }) };
   };
   for (const file of ['player-cards.css', 'player-card-avatars.css', 'player-card-identity.css', 'player-progression.css', 'profile-badges.css', 'cosmetics.css']) {
@@ -59,7 +72,10 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError
     document.head.appendChild(style);
   }
   if (saved) window.localStorage.setItem(storageKey, JSON.stringify(saved));
-  for (const file of ['player-progression.js', 'profile-badges.js', 'player-card-avatars.js', 'cosmetics.js']) window.eval(readFileSync(`public/${file}`, 'utf8'));
+  for (const file of ['player-progression.js', 'profile-badges.js', 'player-card-avatars.js', 'cosmetics.js']) {
+    if (file === 'profile-badges.js' && !accountState && !seasonResponse) window.localStorage.removeItem('brasta-auth-access-token');
+    window.eval(readFileSync(`public/${file}`, 'utf8'));
+  }
   async function settle() {
     for (let round = 0; round < 20; round++) {
       await new Promise(setImmediate);
@@ -314,4 +330,91 @@ test('a guest can reach Table and Titles from their own match profile', async (t
   [...modal.querySelectorAll('.ppg-tabs button')].find((button) => button.textContent === 'Overview').click();
   assert.equal(guest.hidden, false);
   assert.equal(modal.querySelector('[data-profile-badges-panel]').hidden, true);
+});
+
+const seasonState = (overrides={}) => ({
+  playerId:'player-a', season:{status:'draft'}, titleSource:'earned',
+  equipment:{card_back:null,table_felt:null,avatar_frame:null,profile_title:null},
+  ownedRewardIds:[], ...overrides,
+});
+const stateResponse = state => ({ok:true,json:async()=>JSON.parse(JSON.stringify({state}))});
+
+test('signed-in players see owned equipment only; guest previews do not grant rewards',async(t)=>{
+  const {document,window,select,requests}=await fixture(t,{accountState:seasonState()});
+  assert.equal(document.documentElement.hasAttribute('data-brasta-card-back'),false);
+  await select('cardBack','velvet_club');
+  assert.equal(requests.filter(r=>r.url==='/api/season-pass'&&r.action==='equip').length,0);
+  await assert.rejects(window.BrastaCosmetics.equip('profileTitle','royal_title'),/not unlocked/);
+  assert.equal(document.querySelectorAll('.account-modal [data-badge-equip="royal_title"]').length,0);
+  assert.match(document.querySelector('.account-modal [data-badge-key="royal_title"]').textContent,/Tier 7 · Premium/);
+});
+test('account equips and Remove persist through refresh without overwriting guest choices',async(t)=>{
+  const state=seasonState({ownedRewardIds:SEASON_REWARDS.map(r=>r.id)});
+  const {window,document,select}=await fixture(t,{accountState:state});
+  const guest=window.localStorage.getItem(storageKey);
+  await select('profileTitle','royal_title');
+  assert.equal(window.BrastaCosmetics.read().profileTitle,'royal_title');
+  await select('profileTitle','');
+  await window.BrastaCosmetics.refresh();
+  assert.equal(window.BrastaCosmetics.read().titleSource,'none');
+  assert.equal(document.querySelector('.account-modal .profile-badge-hero b').textContent,'None');
+  await select('profileTitle','founder');
+  assert.equal(window.BrastaCosmetics.read().titleSource,'earned');
+  assert.equal(window.localStorage.getItem(storageKey),guest);
+});
+test('failed account loading disables cosmetics and never falls back to premium guest preview',async(t)=>{
+  const {window,document}=await fixture(t,{seasonResponse:async()=>({ok:false,json:async()=>({error:'Unavailable'})})});
+  assert.equal(window.BrastaCosmetics.status(),'unavailable');
+  assert.equal(window.BrastaCosmetics.read().cardBack,null);
+  assert.equal(document.querySelector('[data-cosmetics-equip="velvet_club"]').disabled,true);
+  await assert.rejects(window.BrastaCosmetics.equip('cardBack','velvet_club'),/unavailable/);
+  assert.equal(window.BrastaCosmetics.titleItems().some(r=>r.unlocked),false);
+});
+test('a late account load cannot leak another account collection after a switch',async(t)=>{
+  let resolveA;
+  const pending=new Promise(resolve=>{resolveA=resolve;});
+  const stateB=seasonState({playerId:'player-b'});
+  const {window,settle}=await fixture(t,{seasonResponse:async(_,authorization)=>authorization==='Bearer fixture-token'?pending:stateResponse(stateB)});
+  window.localStorage.setItem('brasta-auth-access-token','player-b-token');
+  window.dispatchEvent(new window.Event('brasta-auth-changed')); await settle();
+  resolveA(stateResponse(seasonState({ownedRewardIds:['royal_title'],equipment:{profile_title:'royal_title'},titleSource:'season'})));
+  await settle();
+  assert.equal(window.BrastaCosmetics.read().profileTitle,null);
+  assert.equal(window.BrastaCosmetics.titleItems().some(r=>r.unlocked),false);
+});
+test('late equip responses after logout do not change the guest selection',async(t)=>{
+  let resolveEquip;
+  const pending=new Promise(resolve=>{resolveEquip=resolve;});
+  const state=seasonState({ownedRewardIds:['velvet_club']});
+  const {window,settle}=await fixture(t,{seasonResponse:async(body)=>body.action==='equip'?pending:stateResponse(state)});
+  const guest=window.localStorage.getItem(storageKey);
+  const equip=window.BrastaCosmetics.equip('cardBack','velvet_club');
+  window.localStorage.removeItem('brasta-auth-access-token');
+  window.dispatchEvent(new window.Event('brasta-auth-changed')); await settle();
+  resolveEquip(stateResponse({...state,equipment:{card_back:'velvet_club'}})); await equip; await settle();
+  assert.equal(window.localStorage.getItem(storageKey),guest);
+  assert.equal(window.BrastaCosmetics.read().cardBack,'gilded_suits');
+});
+test('failed saves preserve equipment and block overlapping equip requests',async(t)=>{
+  let finish;
+  const pending=new Promise(resolve=>{finish=resolve;});
+  const state=seasonState({ownedRewardIds:['gilded_suits','velvet_club'],equipment:{card_back:'gilded_suits'}});
+  const {window,requests}=await fixture(t,{seasonResponse:async(body)=>body.action==='equip'?pending:stateResponse(state)});
+  const first=window.BrastaCosmetics.equip('cardBack','velvet_club');
+  const failure=assert.rejects(first,/Save failed/);
+  await assert.rejects(window.BrastaCosmetics.equip('cardBack','gilded_suits'),/still saving/);
+  finish({ok:false,json:async()=>({error:'Save failed'})}); await failure;
+  assert.equal(window.BrastaCosmetics.read().cardBack,'gilded_suits');
+  assert.equal(requests.filter(r=>r.action==='equip').length,1);
+});
+test('new ownership refreshes open Titles and frame controls even when the selection is unchanged',async(t)=>{
+  const state=seasonState();
+  const {window,document,settle}=await fixture(t,{accountState:state});
+  assert.equal(document.querySelector('.account-modal [data-badge-equip="royal_title"]'),null);
+  state.ownedRewardIds=['royal_title','royal_frame'];
+  window.dispatchEvent(new window.CustomEvent('brasta-season-pass-equipment-changed',{detail:state}));
+  await settle();
+  assert.equal(document.querySelector('.account-modal [data-badge-equip="royal_title"]').disabled,false);
+  document.querySelector('[data-cosmetics-frame-open]').click();
+  assert.equal(document.querySelector('[data-cosmetics-equip="royal_frame"]').disabled,false);
 });

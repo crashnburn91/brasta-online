@@ -27,6 +27,7 @@
       cache: 'no-store',
     });
     const data = await response.json().catch(() => ({}));
+    if (accessToken !== token()) throw new Error('Your account changed. Please reopen your profile.');
     if (!response.ok || data.error) throw new Error(data.error || 'Profile title request failed.');
     return data;
   }
@@ -89,12 +90,12 @@
     const special = badge.awardType === 'admin';
     const cosmetic = badge.awardType === 'season_preview';
     const status = badge.equipped ? 'Equipped'
-      : cosmetic ? (badge.premium ? 'Premium · Beta' : 'Free')
+      : cosmetic ? (locked ? `Tier ${badge.unlockTier}${badge.premium ? ' · Premium' : ' · Free'}` : badge.preview ? 'Guest preview' : 'Owned')
       : badge.unlocked ? 'Unlocked'
       : special ? 'Admin awarded'
       : 'Achievement reward';
     const action = (isSelf || cosmetic) && badge.unlocked
-      ? `<button type="button" data-badge-equip="${esc(badge.key)}" ${badge.equipped ? 'disabled' : ''}>${badge.equipped ? 'Equipped' : 'Equip'}</button>`
+      ? `<button type="button" data-badge-equip="${esc(badge.key)}" ${badge.equipped || badge.busy ? 'disabled' : ''}>${badge.equipped ? 'Equipped' : 'Equip'}</button>`
       : '';
     return `<article class="profile-badge-card tier-${esc(badge.tier || 'standard')} ${locked ? 'locked' : 'unlocked'} ${badge.equipped ? 'equipped' : ''} ${special ? 'special' : ''}" data-badge-key="${esc(badge.key)}">
       <div class="profile-badge-card-icon">${emblem(badge)}</div>
@@ -120,8 +121,8 @@
         <div><span>EQUIPPED TITLE</span><b>${equippedBadge ? esc(equippedBadge.name) : 'None'}</b><small>${equippedBadge ? esc(equippedBadge.description) : 'Choose an unlocked title to represent you.'}</small></div>
         ${(isSelf || (ownCosmetics && equippedBadge?.awardType === 'season_preview')) && equippedBadge ? '<button type="button" data-badge-unequip>Remove</button>' : ''}
       </div>
-      <div class="profile-badge-summary"><b>${unlocked}</b><span>of ${earnedItems.length} earned titles unlocked${cosmeticItems.length ? ` · ${cosmeticItems.length} set titles available` : ''}</span></div>
-      ${ownCosmetics ? '<p class="cosmetic-beta-note">Equip one title and its matching badge. Premium set titles are available during beta; selections are saved in this browser.</p>' : ''}
+      <div class="profile-badge-summary"><b>${unlocked}</b><span>of ${earnedItems.length} earned titles unlocked${cosmeticItems.length ? ` · ${cosmeticItems.filter(item => item.unlocked).length} of ${cosmeticItems.length} set titles available` : ''}</span></div>
+      ${ownCosmetics ? `<p class="cosmetic-beta-note">${esc(cosmetics.note())}</p>` : ''}
       ${result?.error ? `<div class="profile-badge-error">${esc(result.error)}</div>` : ''}
       <div class="profile-badge-grid">${items.map((item) => cardMarkup(item, isSelf)).join('')}</div>`;
 
@@ -146,8 +147,7 @@
       const data = await api('equip', { badgeKey });
       // Keep the cosmetic selection if equipping an earned title fails.
       if (ownCosmetics) {
-        if (badgeKey) cosmetics.useEarnedTitle();
-        else cosmetics.equip('profileTitle', null);
+        await cosmetics.useEarnedTitle(!badgeKey);
       }
       const key = normalizedUsername(username).toLowerCase();
       collectionCache.delete(key);
@@ -180,7 +180,7 @@
     panel.innerHTML = '<div class="ppg-empty"><b>Loading titles</b><span>Checking title collection…</span></div>';
     try {
       const result = await collection(username, force);
-      if (!panel.isConnected) return;
+      if (!panel.isConnected || usernameForModal(modal) !== username) return;
       renderPanel(panel, result, username);
       applyHeadBadge(modal, result?.badges?.equipped || null);
     } catch (error) {
@@ -320,7 +320,7 @@
   let lastTitleSelection;
   function refreshCosmeticTitles() {
     const value = window.BrastaCosmetics?.read();
-    const selection = value ? `${value.titleSource}:${value.profileTitle}` : '';
+    const selection = value ? JSON.stringify([value.titleSource,value.profileTitle,window.BrastaCosmetics.status(),window.BrastaCosmetics.titleItems()]) : '';
     if (selection === lastTitleSelection) return;
     lastTitleSelection = selection;
     document.querySelectorAll('[data-profile-badges-panel]').forEach((panel) => {
@@ -330,6 +330,14 @@
   }
   document.addEventListener('brasta-cosmetics-ready', refreshCosmeticTitles);
   document.addEventListener('brasta-cosmetics-changed', refreshCosmeticTitles);
+  window.addEventListener('brasta-auth-changed', () => {
+    collectionCache.clear(); equippedCache.clear();
+    document.querySelectorAll('[data-profile-badges-panel]').forEach(panel => {
+      panelResults.delete(panel);
+      delete panel.dataset.profileBadgeLoaded;
+    });
+    scan();
+  });
 
   scan();
 })();

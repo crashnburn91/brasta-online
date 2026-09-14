@@ -9,9 +9,18 @@
   if (!catalog) return;
   var slots = { cardBack: 'Card back', tableFelt: 'Table felt', profileTitle: 'Profile title', avatarFrame: 'Avatar frame' };
   var serverSlots = { cardBack: 'card_back', tableFelt: 'table_felt', profileTitle: 'profile_title', avatarFrame: 'avatar_frame' };
-  var account = { status: 'unknown', token: '', state: null, request: 0 };
+  var account = { status: 'unknown', token: '', state: null, request: 0, busy: false };
   var overviewSelector = '.account-experience-card,.account-status-card,.account-connections-card,.account-secondary,.account-delete-panel,.account-message,.account-policy-links';
-  var note = 'Golden Spade is free. Premium styles are available during beta. Sign in to sync owned rewards and equipment.';
+  function accountStatus() { return !token() ? 'signed-out' : account.token === token() ? account.status : 'loading'; }
+  function note() {
+    if (accountStatus() === 'signed-out') return 'Guest design preview. Sign in to use your account collection. Golden Spade is on the free track; other sets require Premium.';
+    if (accountStatus() === 'unavailable') return 'Your collection could not be loaded. Reopen your profile to retry.';
+    if (accountStatus() !== 'ready') return 'Loading your account collection…';
+    return 'Equip rewards you own. Earn Golden Spade on the free track; other sets require Premium. Season 1 ' + (account.state.season.status === 'draft' ? 'is coming soon.' : 'progress is saved to your account.');
+  }
+  function canEquip(id) {
+    return !account.busy && (accountStatus() === 'signed-out' || (accountStatus() === 'ready' && (!id || account.state.ownedRewardIds.includes(id))));
+  }
   var esc = function (value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]; }); };
   function items(slot) { return catalog.rewards.filter(function (reward) { return reward.kind === slots[slot]; }); }
   function reward(id) { return catalog.rewards.find(function (item) { return item.id === id; }); }
@@ -32,28 +41,30 @@
     return value;
   }
   function read() {
-    var value = readLocal();
-    if (account.status === 'ready' && account.state?.equipment) {
+    if (!token()) return readLocal();
+    var value = { cardBack: null, tableFelt: null, profileTitle: null, avatarFrame: null, titleSource: 'earned' };
+    if (account.token === token() && account.state?.equipment) {
       Object.keys(slots).forEach(function (slot) {
         value[slot] = account.state.equipment[serverSlots[slot]] || null;
       });
-      // A null server title means the user's earned title, not a local
-      // cosmetic "none" choice. The existing Titles tab owns that distinction.
-      value.titleSource = value.profileTitle ? 'season' : 'earned';
+      value.titleSource = account.state.titleSource || (value.profileTitle ? 'season' : 'earned');
     }
     return value;
   }
   function write(value) {
     localStorage.setItem(KEY, JSON.stringify(value));
+    publish();
+  }
+  function publish() {
+    var value = read();
     apply(value);
     updateChoices();
     document.dispatchEvent(new CustomEvent('brasta-cosmetics-changed', { detail: value }));
   }
-  async function seasonPassApi(body) {
-    if (!account.token) throw new Error('Sign in to equip Season Pass rewards.');
+  async function seasonPassApi(body, accessToken) {
     var response = await fetch('/api/season-pass', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + account.token },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
       body: JSON.stringify(body),
       cache: 'no-store',
     });
@@ -61,16 +72,25 @@
     if (!response.ok || !data.state) throw new Error(data.error || 'Could not save this selection.');
     return data.state;
   }
-  function equip(slot, id) {
+  async function equip(slot, id) {
     if (!slots[slot] || (id && !items(slot).some(function (item) { return item.id === id; }))) return;
-    if (account.status === 'ready' && account.token) {
-      if (id && !(account.state?.ownedRewardIds || []).includes(id)) return Promise.reject(new Error('You have not unlocked that Season Pass reward yet.'));
-      return seasonPassApi({ action: 'equip', slot: serverSlots[slot], rewardId: id || null }).then(function (state) {
+    if (token()) {
+      if (accountStatus() !== 'ready') throw new Error('Your collection is unavailable. Reopen your profile to retry.');
+      if (account.busy) throw new Error('Your previous selection is still saving.');
+      if (!canEquip(id)) throw new Error('You have not unlocked that Season Pass reward yet.');
+      var accessToken = account.token;
+      var playerId = account.state.playerId;
+      var request = ++account.request;
+      account.busy = true;
+      publish();
+      try {
+        var state = await seasonPassApi({ action: 'equip', slot: serverSlots[slot], rewardId: id || null }, accessToken);
+        if (request !== account.request || token() !== accessToken || state.playerId !== playerId) return;
         account.state = state;
-        var value = read();
-        write(value);
-        return value;
-      });
+        return read();
+      } finally {
+        if (request === account.request) { account.busy = false; publish(); }
+      }
     }
     var next = read();
     next[slot] = id || null;
@@ -78,9 +98,10 @@
     write(next);
     return Promise.resolve(next);
   }
-  function useEarnedTitle() {
-    if (account.status === 'ready' && account.token) return equip('profileTitle', null);
-    var next = readLocal(); next.profileTitle = null; next.titleSource = 'earned'; write(next);
+  function useEarnedTitle(removed) {
+    // The earned badge RPC already changed both title records atomically.
+    if (token()) return syncAccount();
+    var next = readLocal(); next.profileTitle = null; next.titleSource = removed ? 'none' : 'earned'; write(next);
     return Promise.resolve(next);
   }
   function isOwnProfile(username) {
@@ -92,8 +113,8 @@
   }
   function titleItems() {
     return items('profileTitle').map(function (item) {
-      var unlocked = account.status !== 'ready' || (account.state?.ownedRewardIds || []).includes(item.id);
-      return { key: item.id, name: item.name, description: item.description, artUrl: url(item.id), tier: 'standard', awardType: 'season_preview', unlocked: unlocked, premium: item.premium, setName: catalog.sets[item.setId].name };
+      var unlocked = accountStatus() === 'signed-out' || (accountStatus() === 'ready' && account.state.ownedRewardIds.includes(item.id));
+      return { key: item.id, name: item.name, description: item.description, artUrl: url(item.id), tier: 'standard', awardType: 'season_preview', unlocked: unlocked, premium: item.premium, setName: catalog.sets[item.setId].name, unlockTier: item.tier, preview: accountStatus() === 'signed-out', busy: account.busy };
     });
   }
   function effectiveTitle(earned) {
@@ -101,7 +122,7 @@
     if (value.titleSource === 'none') return null;
     return value.titleSource === 'season' ? titleItems().find(function (item) { return item.key === value.profileTitle; }) || null : earned;
   }
-  window.BrastaCosmetics = { read: read, equip: equip, useEarnedTitle: useEarnedTitle, isOwnProfile: isOwnProfile, titleItems: titleItems, effectiveTitle: effectiveTitle };
+  window.BrastaCosmetics = { read: read, equip: equip, useEarnedTitle: useEarnedTitle, isOwnProfile: isOwnProfile, titleItems: titleItems, effectiveTitle: effectiveTitle, note: note, status: accountStatus, refresh: syncAccount };
 
   function apply(value) {
     var root = document.documentElement;
@@ -154,7 +175,7 @@
       var name = item ? item.name : slot === 'avatarFrame' ? 'No frame' : 'Classic';
       var art = item ? '<img class="cosmetic-choice-art" src="' + url(item.id) + '" alt="" draggable="false">' : '<span class="cosmetic-classic-art" aria-hidden="true">' + (slot === 'avatarFrame' ? 'B' : '♠') + '</span>';
       if (slot === 'avatarFrame') art = '<span class="cosmetic-frame-preview' + (item ? ' has-frame' : '') + '"><span class="cosmetic-preview-portrait" data-frame-portrait>B</span>' + (item ? art : '') + '</span>';
-      var owned = !item || account.status !== 'ready' || (account.state?.ownedRewardIds || []).includes(item.id);
+      var owned = canEquip(item?.id);
       var access = item && !owned ? 'Locked' : item?.premium ? 'Premium' : 'Free';
       return '<button type="button" class="cosmetic-choice ' + slot + '" data-cosmetics-equip="' + esc(item?.id || '') + '" data-cosmetics-kind="' + slot + '" aria-pressed="false"' + (owned ? '' : ' disabled') + '><span class="cosmetic-choice-preview">' + art + '</span><strong>' + esc(name) + '</strong><small>' + esc(item ? catalog.sets[item.setId].name : 'Brasta original') + '</small><span class="cosmetic-access' + (item?.premium && owned ? ' premium' : '') + '">' + access + '</span><span class="cosmetic-choice-state">' + (owned ? 'Equip' : 'Locked') + '</span></button>';
     }).join('') + '</div>';
@@ -173,52 +194,52 @@
   }
   function updateChoices() {
     var value = read();
+    document.querySelectorAll('.cosmetic-beta-note').forEach(function (node) { if (node.textContent !== note()) node.textContent = note(); });
     document.querySelectorAll('[data-cosmetics-equip]').forEach(function (button) {
       var selected = (value[button.dataset.cosmeticsKind] || '') === button.dataset.cosmeticsEquip;
       button.setAttribute('aria-pressed', String(selected));
       var item = button.dataset.cosmeticsEquip ? reward(button.dataset.cosmeticsEquip) : null;
-      var owned = !item || account.status !== 'ready' || (account.state?.ownedRewardIds || []).includes(item.id);
-      button.disabled = !owned;
+      var owned = accountStatus() === 'signed-out' || (accountStatus() === 'ready' && (!item || account.state.ownedRewardIds.includes(item.id)));
+      button.disabled = !owned || account.busy;
+      var access = button.querySelector('.cosmetic-access');
+      var accessText = !owned ? 'Locked' : item?.premium ? 'Premium' : 'Free';
+      if (access && access.textContent !== accessText) access.textContent = accessText;
       var state = button.querySelector('.cosmetic-choice-state');
-      var text = !owned ? 'Locked' : selected ? 'Equipped' : 'Equip';
+      var text = account.busy ? 'Saving…' : !owned ? 'Locked' : selected ? 'Equipped' : 'Equip';
       if (state.textContent !== text) state.textContent = text;
     });
   }
   async function syncAccount() {
     var accessToken = token();
+    if (account.busy && account.token === accessToken) return;
     var request = ++account.request;
+    if (account.token !== accessToken) account.state = null;
     account.token = accessToken;
+    account.busy = false;
     if (!accessToken) {
       account.status = 'signed-out';
       account.state = null;
-      apply(read());
-      updateChoices();
+      publish();
       return;
     }
     account.status = 'loading';
+    publish();
     try {
       var response = await fetch('/api/season-pass', {
         headers: { Authorization: 'Bearer ' + accessToken },
         cache: 'no-store',
       });
       var data = await response.json().catch(function () { return {}; });
-      if (request !== account.request) return;
+      if (request !== account.request || token() !== accessToken) return;
       if (!response.ok || !data.state) throw new Error(data.error || 'Season Pass state is unavailable.');
       account.status = 'ready';
       account.state = data.state;
-      apply(read());
-      updateChoices();
-      document.dispatchEvent(new CustomEvent('brasta-season-pass-state-ready', { detail: data.state }));
+      publish();
     } catch (_) {
-      if (request !== account.request) return;
-      account.status = responseStatusForError(accessToken);
-      account.state = null;
-      apply(read());
-      updateChoices();
+      if (request !== account.request || token() !== accessToken) return;
+      account.status = 'unavailable';
+      publish();
     }
-  }
-  function responseStatusForError(accessToken) {
-    return accessToken ? 'unavailable' : 'signed-out';
   }
   var frameDialog;
   function openFrames(trigger) {
@@ -226,7 +247,7 @@
       frameDialog = document.createElement('dialog');
       frameDialog.className = 'cosmetic-frame-dialog';
       frameDialog.setAttribute('aria-labelledby', 'cosmetic-frame-heading');
-      frameDialog.innerHTML = '<div class="cosmetic-section-heading"><h2 id="cosmetic-frame-heading">Avatar frames</h2><button type="button" data-frame-close aria-label="Close avatar frames">×</button></div><p class="cosmetic-beta-note">' + note + '</p>' + choices('avatarFrame') + '<p class="cosmetic-status" data-cosmetics-status role="status"></p><button type="button" class="cosmetic-done" data-frame-close>Done</button>';
+      frameDialog.innerHTML = '<div class="cosmetic-section-heading"><h2 id="cosmetic-frame-heading">Avatar frames</h2><button type="button" data-frame-close aria-label="Close avatar frames">×</button></div><p class="cosmetic-beta-note">' + note() + '</p>' + choices('avatarFrame') + '<p class="cosmetic-status" data-cosmetics-status role="status"></p><button type="button" class="cosmetic-done" data-frame-close>Done</button>';
       document.body.appendChild(frameDialog);
       wireChoices(frameDialog);
       // Let the native dialog handle Escape without closing the profile beneath it.
@@ -274,7 +295,7 @@
     var button = document.createElement('button'); button.type = 'button'; button.textContent = 'Table'; button.dataset.cosmeticsTableTab = ''; button.setAttribute('aria-selected', 'false'); button.setAttribute('role', 'tab');
     tabs.appendChild(button); tabs.dataset.cosmeticsTabs = 'true';
     var panel = document.createElement('div'); panel.className = 'ppg-panel cosmetic-table-panel'; panel.dataset.cosmeticsTablePanel = ''; panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-label', 'Table'); panel.hidden = true;
-    panel.innerHTML = '<p class="cosmetic-beta-note">' + note + '</p><section aria-label="Card backs"><h3>Card backs</h3><p>Style your hand and deck.</p>' + choices('cardBack') + '</section><section aria-label="Table felts"><h3>Table felts</h3><p>A playing surface that fits your table.</p>' + choices('tableFelt') + '</section><p class="cosmetic-status" data-cosmetics-status role="status"></p>';
+    panel.innerHTML = '<p class="cosmetic-beta-note">' + note() + '</p><section aria-label="Card backs"><h3>Card backs</h3><p>Style your hand and deck.</p>' + choices('cardBack') + '</section><section aria-label="Table felts"><h3>Table felts</h3><p>A playing surface that fits your table.</p>' + choices('tableFelt') + '</section><p class="cosmetic-status" data-cosmetics-status role="status"></p>';
     (modal.querySelector('[data-profile-badges-panel]') || tabs).insertAdjacentElement('afterend', panel);
     wireChoices(panel);
     button.addEventListener('click', function () {
@@ -303,22 +324,24 @@
     requestAnimationFrame(function () { queued = false; scan(); });
   }
   function start() {
-    try { localStorage.setItem(KEY, JSON.stringify(read())); } catch (_) {}
+    try { localStorage.setItem(KEY, JSON.stringify(readLocal())); } catch (_) {}
     scan();
     void syncAccount();
     document.addEventListener('click', function (event) {
       var trigger = event.target.closest('[data-cosmetics-frame-open]');
       if (trigger) openFrames(trigger);
+      if (event.target.closest('.account-dock') && accountStatus() === 'ready') void syncAccount();
+      if (event.target.closest('.account-dock, [data-cosmetics-table-tab], [data-profile-badges-tab], [data-cosmetics-frame-open]') && accountStatus() === 'unavailable') void syncAccount();
     });
     new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-you', 'data-brasta-username'] });
-    window.addEventListener('storage', function (event) { if (event.key === KEY || event.key === null) { scan(); updateChoices(); document.dispatchEvent(new CustomEvent('brasta-cosmetics-changed', { detail: read() })); } });
+    window.addEventListener('storage', function (event) { if (event.key === AUTH_TOKEN_KEY || event.key === null) void syncAccount(); else if (event.key === KEY) publish(); });
     window.addEventListener('brasta-auth-changed', function () { schedule(); void syncAccount(); });
-    document.addEventListener('brasta-season-pass-equipment-changed', function (event) {
-      if (!event.detail || account.status !== 'ready') return;
-      account.state = event.detail;
-      apply(read());
-      updateChoices();
+    window.addEventListener('brasta-season-pass-equipment-changed', function (event) {
+      if (event.detail?.playerId !== account.state?.playerId || accountStatus() !== 'ready' || account.busy) return;
+      void syncAccount();
     });
+    window.addEventListener('focus', function () { if (token()) void syncAccount(); });
+    window.addEventListener('brasta-competitive-updated', function () { if (token()) void syncAccount(); });
     document.dispatchEvent(new CustomEvent('brasta-cosmetics-ready'));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
