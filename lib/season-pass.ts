@@ -2,6 +2,7 @@ import { seasonTier, type SeasonReward, type SeasonSetId } from './season-catalo
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fhdrywazfmmvgswkdpdb.supabase.co';
 const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_0eLE7QNyW1BpWdu40IOMww_H5otqRzy';
 
 export type SeasonPassSlot = 'card_back' | 'table_felt' | 'avatar_frame' | 'profile_title';
 
@@ -139,6 +140,31 @@ async function rpc<T>(name: string, body: Record<string, unknown>, context: stri
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+async function userRpc<T>(name: string, body: Record<string, unknown>, accessToken: string, context: string): Promise<T> {
+  if (!publishableKey || !accessToken) throw new Error('Season Pass backend is not configured.');
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let detail = text;
+    try {
+      const parsed = JSON.parse(text) as { message?: string; hint?: string; details?: string };
+      detail = parsed.message || parsed.hint || parsed.details || text;
+    } catch {}
+    throw new Error(`${context}: ${detail || `HTTP ${response.status}`}`);
+  }
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
 function boundedInt(value: unknown, fallback = 0): number {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
@@ -194,8 +220,16 @@ function progress(xpValue: unknown, currentSeason: SeasonPassSeason): SeasonPass
   };
 }
 
-export async function getSeasonPassState(playerId: string, seasonId = 'season_1'): Promise<SeasonPassState> {
+export async function getSeasonPassState(playerId: string, seasonId = 'season_1', accessToken = ''): Promise<SeasonPassState> {
   if (!playerId) throw new Error('A player account is required.');
+  if (!secretKey) {
+    return userRpc<SeasonPassState>(
+      'brasta_get_season_pass_state',
+      { p_player_id: playerId, p_season_id: seasonId },
+      accessToken,
+      'Could not load Season Pass account state',
+    );
+  }
   const seasonFilter = encodeURIComponent(seasonId);
   const playerFilter = encodeURIComponent(playerId);
 
@@ -274,17 +308,18 @@ export async function equipSeasonPassReward(options: {
   slot: SeasonPassSlot;
   rewardId: string | null;
   seasonId?: string;
-}): Promise<SeasonPassState> {
+}, accessToken = ''): Promise<SeasonPassState> {
   const seasonId = options.seasonId || 'season_1';
-  await rpc(
-    'brasta_equip_season_pass_reward',
-    {
-      p_player_id: options.playerId,
-      p_season_id: seasonId,
-      p_slot: options.slot,
-      p_reward_id: options.rewardId || null,
-    },
-    'Could not equip Season Pass reward',
-  );
-  return getSeasonPassState(options.playerId, seasonId);
+  const body = {
+    p_player_id: options.playerId,
+    p_season_id: seasonId,
+    p_slot: options.slot,
+    p_reward_id: options.rewardId || null,
+  };
+  if (!secretKey) {
+    await userRpc('brasta_equip_season_pass_reward_for_user', body, accessToken, 'Could not equip Season Pass reward');
+  } else {
+    await rpc('brasta_equip_season_pass_reward', body, 'Could not equip Season Pass reward');
+  }
+  return getSeasonPassState(options.playerId, seasonId, accessToken);
 }

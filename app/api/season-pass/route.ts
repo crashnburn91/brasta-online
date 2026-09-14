@@ -23,7 +23,7 @@ async function stateFor(request: Request) {
   const identity = await verifyBrastaAccessToken(token);
   if (!identity?.userId) return json({ error: 'Your Brasta session has expired.' }, 401);
 
-  return json({ state: await getSeasonPassState(identity.userId) });
+  return json({ state: await getSeasonPassState(identity.userId, 'season_1', token) });
 }
 
 async function equipFor(request: Request, body: Record<string, unknown>) {
@@ -52,14 +52,14 @@ async function equipFor(request: Request, body: Record<string, unknown>) {
       slot,
       rewardId,
       seasonId,
-    }),
+    }, token),
   });
 }
 
 function failure(error: unknown) {
     const message = error instanceof Error ? error.message : 'Season Pass state is unavailable.';
     console.error('[brasta season pass]', error);
-    const status = /sign in|expired|authentication/i.test(message) ? 401
+    const status = /sign in|expired|authentication|not authorized/i.test(message) ? 401
       : /not unlocked|does not fit|reward not found|season not found/i.test(message) ? 403
       : /not configured|backend/i.test(message) ? 503
       : 500;
