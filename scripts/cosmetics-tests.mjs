@@ -8,7 +8,7 @@ const catalogSource = ts.transpileModule(readFileSync('lib/season-catalog.ts', '
 const { SEASON_REWARDS, SEASON_SETS } = await import('data:text/javascript;base64,' + Buffer.from(catalogSource).toString('base64'));
 const slotKinds = { cardBack: 'Card back', tableFelt: 'Table felt', profileTitle: 'Profile title', avatarFrame: 'Avatar frame' };
 
-const storageKey = 'brasta-beta-cosmetics-v1';
+const storageKey = 'brasta-guest-cosmetics-v2';
 const ownSelector = '.player-card[data-you="1"]';
 const badge = { key: 'founder', name: 'Founder', tier: 'standard', icon: 'B', unlocked: true, description: 'An earned title.' };
 const card = (name, self = false) => `<div class="player-chip player-card" data-player-profile="${name}" ${self ? 'data-you="1"' : ''}>
@@ -71,7 +71,9 @@ async function fixture(t, { accountPhoto = '', avatarResponse, saved, equipError
     style.textContent = readFileSync(`public/${file}`, 'utf8');
     document.head.appendChild(style);
   }
-  if (saved) window.localStorage.setItem(storageKey, JSON.stringify(saved));
+  window.localStorage.setItem('brasta-beta-cosmetics-v1', JSON.stringify({profileTitle:'first_seat',avatarFrame:'gilded_frame'}));
+  // Tests of explicit guest previews opt in; production guests start plain.
+  window.localStorage.setItem(storageKey, JSON.stringify(saved || Object.fromEntries(Object.entries(slotKinds).map(([slot,kind]) => [slot,SEASON_REWARDS.find(r=>r.kind===kind&&r.setId==='gilded_court').id]))));
   for (const file of ['player-progression.js', 'profile-badges.js', 'player-card-avatars.js', 'cosmetics.js']) {
     if (file === 'profile-badges.js' && !accountState && !seasonResponse) window.localStorage.removeItem('brasta-auth-access-token');
     window.eval(readFileSync(`public/${file}`, 'utf8'));
@@ -231,10 +233,10 @@ test('retired badges and face choices are removed from saved equipment without c
   }
 });
 
-test('new equipment is Golden Spade and existing choices remain intact', async (t) => {
-  const fresh = await fixture(t);
+test('new guest equipment is Classic and explicit preview choices remain intact', async (t) => {
+  const fresh = await fixture(t, {saved:{}});
   const value = JSON.parse(fresh.window.localStorage.getItem(storageKey));
-  for (const slot of Object.keys(slotKinds)) assert.equal(SEASON_REWARDS.find((item) => item.id === value[slot]).setId, 'gilded_court');
+  for (const slot of Object.keys(slotKinds)) assert.equal(value[slot], null);
   const saved = { cardBack: 'midnight', tableFelt: 'midnight_felt', profileTitle: 'astrology_title', avatarFrame: 'astrology_frame' };
   const existing = await fixture(t, { saved });
   assert.deepEqual(JSON.parse(existing.window.localStorage.getItem(storageKey)), { ...saved, titleSource: 'season' });

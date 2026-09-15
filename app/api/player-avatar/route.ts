@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fhdrywazfmmvgswkdpdb.supabase.co';
-const secretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+// Avatar URLs are public profile fields; this lookup needs no privileged key.
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_0eLE7QNyW1BpWdu40IOMww_H5otqRzy';
 
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
@@ -30,17 +31,16 @@ function safeAvatarUrl(value: unknown): string | null {
 
 export async function POST(request: Request) {
   try {
-    if (!supabaseUrl || !secretKey) return json({ error: 'Player avatars are not configured.' }, 503);
+    if (!supabaseUrl || !publishableKey) return json({ error: 'Player avatars are not configured.' }, 503);
     const body = await request.json().catch(() => ({})) as { username?: unknown };
     const username = cleanUsername(body.username);
     if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) return json({ avatarUrl: null });
 
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?username=ilike.${encodeURIComponent(username)}&select=username,avatar_url&limit=1`,
+      `${supabaseUrl}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=avatar_url&limit=1`,
       {
         headers: {
-          apikey: secretKey,
-          Authorization: `Bearer ${secretKey}`,
+          apikey: publishableKey,
           Accept: 'application/json',
         },
         cache: 'no-store',

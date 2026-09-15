@@ -3,7 +3,8 @@
 (function () {
   'use strict';
   if (window.BrastaCosmetics) return;
-  var KEY = 'brasta-beta-cosmetics-v1';
+  // Do not inherit the old automatically equipped guest preview set.
+  var KEY = 'brasta-guest-cosmetics-v2';
   var AUTH_TOKEN_KEY = 'brasta-auth-access-token';
   var catalog = window.BRASTA_SEASON_CATALOG;
   if (!catalog) return;
@@ -49,7 +50,7 @@
     try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) { saved = {}; }
     var value = {};
     Object.keys(slots).forEach(function (slot) {
-      value[slot] = Object.prototype.hasOwnProperty.call(saved, slot) ? saved[slot] : items(slot).find(function (item) { return item.setId === 'gilded_court'; }).id;
+      value[slot] = Object.prototype.hasOwnProperty.call(saved, slot) ? saved[slot] : null;
       if (!items(slot).some(function (item) { return item.id === value[slot]; })) value[slot] = null;
     });
     // Preserve legacy selections, including the choice to show an earned title.
