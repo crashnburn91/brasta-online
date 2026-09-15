@@ -5,6 +5,7 @@ import { getSupabaseBrowserClient } from '../../lib/supabase-browser';
 import { SEASON_ONE, SEASON_REWARDS, SEASON_SETS, seasonTier, type SeasonReward } from '../../lib/season-catalog';
 import type { SeasonPassState } from '../../lib/season-pass';
 import RewardArtwork from './RewardArtwork';
+import TestCheckout from './TestCheckout';
 
 type AccountState = 'loading' | 'signed-out' | 'ready' | 'unavailable';
 
@@ -183,6 +184,7 @@ export default function SeasonPassPreview() {
       </section>)}
       {groups.length === 0 ? <div className="sp-empty-set" role="status"><p>No rewards in this set match the selected filter.</p><button className="sp-inspect" onClick={() => setFilter('All rewards')}>Show all rewards in this set</button></div> : null}
     </section>
+    {testingAccess ? <TestCheckout key={accessToken} token={accessToken} /> : null}
     <section className="sp-offer"><div><p className="sp-eyebrow">PREMIUM SEASON PASS</p><h2>A little more Brasta.</h2><p>{premiumCount} premium cosmetics, plus the free reward track. Buying later in the season includes premium rewards for tiers you have already reached.</p></div><div><strong>$4.99</strong><span>One purchase · No automatic renewal</span><button disabled>Purchases open at launch</button></div></section>
     <footer className="sp-footer">Season dates, artwork, and XP pacing are proposed. Earned cosmetics stay in your collection after the season ends.</footer>
     <dialog className="sp-detail" ref={detailDialog} aria-labelledby="sp-detail-title" aria-describedby="sp-detail-description">

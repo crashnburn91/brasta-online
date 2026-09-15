@@ -12,7 +12,7 @@
     "start:realtime": "node .realtime-dist/realtime/server.js",
     "verify:rules": "node public/dist/tests-bundle.js && node public/dist/release-tests-bundle.js && node public/dist/bot-tests-bundle.js",
     "verify:client-glue": "node scripts/account-network-tests.mjs && node scripts/match-controls-tests.mjs && node --test scripts/cosmetics-tests.mjs scripts/player-avatar-api-tests.mjs",
-    "test:season-pass": "node --test scripts/season-pass-db-tests.mjs && node --test scripts/season-pass-api-tests.mjs && node --test scripts/season-pass-beta-tests.mjs",
+    "test:season-pass": "node --test scripts/season-pass-db-tests.mjs && node --test scripts/season-pass-api-tests.mjs && node --test scripts/season-pass-beta-tests.mjs scripts/season-pass-checkout-tests.mjs",
     "verify:online": "node .server-test-dist/src/server-integration-tests.js",
     "build": "npm run sync:engine && npm run build:client && npm run verify:rules && npm run verify:client-glue && npm run test:season-pass && npm run build:server-tests && npm run verify:online && npm run compile:realtime && next build",
     "start": "next start",
@@ -31,6 +31,7 @@
     "openskill": "^5.0.1",
     "react": "latest",
     "react-dom": "latest",
+    "stripe": "22.6.2",
     "ws": "latest"
   },
   "devDependencies": {

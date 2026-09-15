@@ -211,3 +211,44 @@ Authenticated test RPCs additionally require an enabled row in private.season_pa
 Administrators can enable a verified player with an explicit allowlist row. Set enabled=false to revoke; the next read/equip uses normal ownership again.
 Test selections persist in private.season_pass_test_equipment, separate from real equipment, XP, reward ownership, and Premium entitlements. No season activation is required. The UI labels this access Beta test.
 Main and other branches always use the regular collection. Test equipment is for the tester's UI; it does not grant public-profile ownership or purchases.
+
+## Stripe sandbox checkout (beta only)
+
+Beta testers now have a Test Premium checkout section on `/season-pass`.
+This is test-mode payment plumbing, not a live sale or Premium entitlement.
+It is enabled only on the Vercel `beta` preview branch, with a Stripe `sk_test_`
+key, a webhook signing secret, and the Supabase server credential configured.
+The account must also have existing beta test access. Other visitors cannot
+start checkout. Production and live Stripe keys are explicitly rejected.
+
+Configure these **server-only** variables for Preview / beta:
+- `STRIPE_SECRET_KEY`: Stripe sandbox/test-mode secret (`sk_test_...`).
+- `STRIPE_WEBHOOK_SECRET`: signing secret for the endpoint below (`whsec_...`).
+- `SUPABASE_SECRET_KEY`: existing server credential.
+
+Register `https://beta.brasta.app/api/season-pass/webhook` in the same Stripe
+sandbox for `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+`checkout.session.async_payment_failed`, and `checkout.session.expired`. Redeploy
+beta after saving the variables. No publishable Stripe key is needed for hosted
+checkout, and no Stripe product/price needs to be created manually.
+
+The server takes the amount and currency from the season catalog ($4.99 USD),
+uses fixed beta return URLs, and binds each order to the authenticated account.
+It reuses pending orders with a stable Stripe idempotency key. Verified webhook
+signatures are required; the handler retrieves current Stripe session state
+and checks mode, account, order, season, amount, currency and payment status.
+Paid receipts are idempotent and cannot be downgraded by delayed unpaid/expired
+events. Failed processing returns 500 for provider retries. Redirects alone
+never mark an order paid. Only service-role RPCs can change test receipt rows.
+
+Test receipts live in `season_pass_checkout_tests`. They have **no connection**
+to real Premium entitlements, reward ownership, or Season XP. A tester can see
+payment status after returning, refocusing, or clicking Refresh status.
+The first successful test receipt stays visible; repeated clicks don't create
+another checkout for an already completed test.
+
+Before enabling real sales: run the hosted Stripe test checkout and webhook
+retry cases, implement refund/dispute reconciliation and the final entitlement
+policy, integrate verified receipts with production grants, verify mobile
+purchase requirements, and approve season dates. These steps are not enabled
+by supplying sandbox credentials.

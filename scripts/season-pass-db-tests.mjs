@@ -296,3 +296,29 @@ test('browser roles cannot grant test access or write test equipment directly',a
     for (const privilege of ['select','insert','update','delete']) assert.equal(await scalar("select has_table_privilege($1,$2,$3)",[role,'private.'+table,privilege]),false);
   }
 });
+
+test('test checkout reuses open orders, deduplicates paid receipts and grants no real ownership',async()=>{
+ await allowTester();
+ const first=await scalar('select brasta_start_checkout_test($1)',[players[0]]);
+ const again=await scalar('select brasta_start_checkout_test($1)',[players[0]]);
+ assert.equal(first.order_id,again.order_id);
+ assert.equal(first.amount_cents,499);
+ for(const status of ['open','paid','paid','expired']) await query('select brasta_update_checkout_test($1,$2,$3,499,\'usd\')',[first.order_id,'cs_test_fixture',status]);
+ assert.equal(await scalar('select status from season_pass_checkout_tests where order_id=$1',[first.order_id]),'paid');
+ assert.equal(await xp(),0);assert.deepEqual(await owned(),[]);
+ assert.equal(await scalar('select count(*)::int from season_pass_entitlements'),0);
+});
+test('test checkout rejects accounts without beta access',async()=>{
+ await assert.rejects(query('select brasta_start_checkout_test($1)',[players[0]]),/Test access required/);
+});
+test('test receipt refuses a changed price',async()=>{
+ await allowTester();const order=await scalar('select brasta_start_checkout_test($1)',[players[0]]);
+ await assert.rejects(query("select brasta_update_checkout_test($1,'cs_test_fixture','paid',1,'usd')",[order.order_id]),/Invalid checkout receipt/);
+});
+test('browser roles cannot create orders or fulfill receipts',async()=>{
+ for(const role of ['anon','authenticated']){
+ assert.equal(await scalar("select has_table_privilege($1,'season_pass_checkout_tests','select')",[role]),false);
+ assert.equal(await scalar("select has_function_privilege($1,'brasta_start_checkout_test(uuid)','execute')",[role]),false);
+ assert.equal(await scalar("select has_function_privilege($1,'brasta_update_checkout_test(uuid,text,text,integer,text)','execute')",[role]),false);
+ }
+});
