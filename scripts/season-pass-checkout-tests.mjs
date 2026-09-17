@@ -24,6 +24,8 @@ test('checkout uses catalog amount, verified player, fixed redirects and stable 
  const f=fixture();const result=await f.startTestCheckout('tester');
  assert.equal(result.url,session.url);
  const create=f.calls.find(c=>c.options);
+ assert.equal(create.body.managed_payments.enabled,false);
+ assert.equal(create.body.payment_method_types[0],'card');
  assert.equal(create.body.line_items[0].price_data.unit_amount,499);
  assert.equal(create.body.client_reference_id,'tester');
  assert.equal(create.body.success_url,'https://beta.brasta.app/season-pass?checkout=returned');

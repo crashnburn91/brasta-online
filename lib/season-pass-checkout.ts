@@ -49,6 +49,8 @@ export async function startTestCheckout(playerId: string) {
   if (order.status === 'paid') return {status:'paid'};
   const session = order.checkout_session_id ? await client.checkout.sessions.retrieve(order.checkout_session_id)
     : await client.checkout.sessions.create({
+      // Keep the isolated card test independent of account-level Managed Payments defaults.
+      managed_payments:{enabled:false},
       mode:'payment',payment_method_types:['card'],client_reference_id:playerId,
       metadata:{brasta_order_id:order.order_id,season_id:order.season_id},
       line_items:[{quantity:1,price_data:{currency:order.currency,unit_amount:order.amount_cents,
