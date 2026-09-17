@@ -15,9 +15,19 @@ async function handle(request:Request,start:boolean) {
   // No client-supplied price, identity, season, mode, or return URL is accepted.
   return start ? json(await startTestCheckout(identity.userId)) : json({enabled:true,order:await latestTestOrder(identity.userId)});
 }
+function reportFailure(error: unknown) {
+  const value = error as {type?: string; code?: string; param?: string; requestId?: string; message?: string};
+  const clean = (input: unknown) => typeof input === 'string' ? input
+    .replace(/(?:sk|rk|pk)_(?:test|live)_[^\s'"<>]+/g, '[redacted-key]')
+    .replace(/whsec_[^\s'"<>]+/g, '[redacted-secret]')
+    .slice(0, 500) : undefined;
+  // Never log request headers, tokens, raw Stripe errors, or payment details.
+  console.error('[brasta test checkout]', {type:clean(value?.type), code:clean(value?.code),
+    param:clean(value?.param), requestId:clean(value?.requestId), message:clean(value?.message)});
+}
 export async function GET(request:Request) {
-  try {return await handle(request,false);} catch {return json({error:'Could not load checkout status.'},503);}
+  try {return await handle(request,false);} catch (error) {reportFailure(error);return json({error:'Could not load checkout status.'},503);}
 }
 export async function POST(request:Request) {
-  try {return await handle(request,true);} catch {return json({error:'Could not start test checkout. Please retry.'},503);}
+  try {return await handle(request,true);} catch (error) {reportFailure(error);return json({error:'Could not start test checkout. Please retry.'},503);}
 }
