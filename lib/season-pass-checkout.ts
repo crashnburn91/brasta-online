@@ -23,6 +23,8 @@ async function db<T>(path: string, body?: Record<string, unknown>): Promise<T> {
     ...(body ? {body:JSON.stringify(body)} : {}), cache:'no-store',
   });
   if (!response.ok) throw new Error(`Checkout storage failed (${response.status}).`);
+  // Void PostgREST RPCs succeed with HTTP 204 and no JSON body.
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 export async function latestTestOrder(playerId: string) {

@@ -13,7 +13,8 @@ function fixture(overrides={},state=session){
  class Client {webhooks=new Stripe('sk_test_fixture').webhooks;checkout={sessions:{create:async(body,options)=>{calls.push({body,options});return state;},retrieve:async()=>state}};}
  runInNewContext(source,{exports,URL,process:{env:{...env,...overrides}},require:()=>Client,fetch:async(url,options)=>{
   calls.push({url,body:options.body?JSON.parse(options.body):undefined});
-  return {ok:true,json:async()=>url.includes('brasta_start')?order:url.includes('brasta_update')?null:[order]};
+  return url.includes('brasta_update') ? new Response(null,{status:204})
+    : Response.json(url.includes('brasta_start')?order:[order]);
  }});return {...exports,calls};
 }
 test('checkout is beta-only and rejects live keys or missing signing setup',()=>{
