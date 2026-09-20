@@ -10,11 +10,11 @@ const session={id:'cs_test_fixture',livemode:false,mode:'payment',client_referen
 const env={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'beta',STRIPE_SECRET_KEY:'sk_test_fixture',STRIPE_WEBHOOK_SECRET:'whsec_fixture',SUPABASE_SECRET_KEY:'server-fixture'};
 function fixture(overrides={},state=session,extra={}){
  const exports={},calls=[];
- class Client {webhooks=new Stripe('sk_test_fixture').webhooks;checkout={sessions:{create:async(body,options)=>{calls.push({body,options});return state;},retrieve:async()=>state,list:async()=>({data:[state]})}};paymentIntents={retrieve:async()=>({id:'pi_fixture',livemode:false,status:'succeeded',amount:499,amount_received:499,currency:'usd',latest_charge:'ch_fixture',...extra.intent})};charges={retrieve:async()=>({id:'ch_fixture',livemode:false,paid:true,captured:true,payment_intent:'pi_fixture',amount:499,amount_captured:499,currency:'usd',amount_refunded:0,...extra.charge})};}
+ class Client {disputes={list:async()=>({data:extra.dispute?[extra.dispute]:[],has_more:false}),retrieve:async()=>extra.dispute};webhooks=new Stripe('sk_test_fixture').webhooks;checkout={sessions:{create:async(body,options)=>{calls.push({body,options});return state;},retrieve:async()=>state,list:async()=>({data:[state]})}};paymentIntents={retrieve:async()=>({id:'pi_fixture',livemode:false,status:'succeeded',amount:499,amount_received:499,currency:'usd',latest_charge:'ch_fixture',...extra.intent})};charges={retrieve:async()=>({id:'ch_fixture',livemode:false,paid:true,captured:true,payment_intent:'pi_fixture',amount:499,amount_captured:499,currency:'usd',amount_refunded:0,created:1700000000,...extra.charge})};}
  runInNewContext(source,{exports,URL,process:{env:{...env,...overrides}},require:()=>Client,fetch:async(url,options)=>{
   calls.push({url,body:options.body?JSON.parse(options.body):undefined});
   if(extra.fetch)return extra.fetch(url,options);
-  return (url.includes('brasta_update')||url.includes('brasta_fulfill')) ? new Response(null,{status:204})
+  return (url.includes('brasta_update')||url.includes('brasta_reconcile_checkout')) ? new Response(null,{status:204})
     : Response.json(url.includes('brasta_start')?order:[order]);
  }});return {...exports,calls};
 }
@@ -50,7 +50,7 @@ test('a completed but unpaid session stays pending; paid session creates only te
  for(const paid of [false,true]){
   const f=fixture({}, {...session,status:'complete',payment_status:paid?'paid':'unpaid'});
   await f.processCheckoutEvent({livemode:false,type:'checkout.session.completed',data:{object:{id:session.id}}});
-  const write=f.calls.find(c=>c.url?.includes(paid?'brasta_fulfill':'brasta_update'));
+  const write=f.calls.find(c=>c.url?.includes(paid?'brasta_reconcile_checkout':'brasta_update'));
   if(paid){assert.equal(write.body.p_intent_id,'pi_fixture');assert.equal(write.body.p_livemode,false);}
   else assert.equal(write.body.p_status,'open');
   assert(f.calls.every(c=>!c.url||!c.url.includes('entitlement')));
@@ -79,7 +79,7 @@ test('refund notifications retrieve current charge and reconcile isolated fulfil
  for(const amount of [99,499]){
   const f=fixture({},paidSession,{charge:{amount_refunded:amount}});
   await f.processCheckoutEvent(event('charge.refunded'));
-  const write=f.calls.find(c=>c.url?.includes('brasta_fulfill'));
+  const write=f.calls.find(c=>c.url?.includes('brasta_reconcile_checkout'));
   assert.equal(write.body.p_refunded,amount);
   assert.equal(write.body.p_session_id,session.id);
   assert(f.calls.every(c=>!c.url?.includes('brasta_reconcile_web')));
@@ -88,7 +88,7 @@ test('refund notifications retrieve current charge and reconcile isolated fulfil
 test('old success event retrieves current refund state instead of granting again',async()=>{
  const f=fixture({},paidSession,{charge:{amount_refunded:499}});
  await f.processCheckoutEvent(event());
- assert.equal(f.calls.find(c=>c.url?.includes('brasta_fulfill')).body.p_refunded,499);
+ assert.equal(f.calls.find(c=>c.url?.includes('brasta_reconcile_checkout')).body.p_refunded,499);
 });
 test('wrong intent, live mode, uncaptured or mismatched charge cannot grant',async()=>{
  for(const extra of [{intent:{id:'pi_other'}},{intent:{status:'processing'}},{intent:{amount_received:1}},
@@ -97,17 +97,17 @@ test('wrong intent, live mode, uncaptured or mismatched charge cannot grant',asy
  {charge:{amount_refunded:-1}},{charge:{amount_refunded:500}}]){
   const f=fixture({},paidSession,extra);
   await assert.rejects(f.processCheckoutEvent(event()));
-  assert(!f.calls.some(c=>c.url?.includes('brasta_fulfill')));
+  assert(!f.calls.some(c=>c.url?.includes('brasta_reconcile_checkout')));
  }
 });
 test('fulfillment storage failure propagates for Stripe retry',async()=>{
- const f=fixture({},paidSession,{fetch:(url)=>url.includes('brasta_fulfill')?new Response(null,{status:503}):Response.json([order])});
+ const f=fixture({},paidSession,{fetch:(url)=>url.includes('brasta_reconcile_checkout')?new Response(null,{status:503}):Response.json([order])});
  await assert.rejects(f.processCheckoutEvent(event()),/storage failed/);
 });
 test('status refresh reconciles a previously paid receipt and returns test Premium only',async()=>{
  let fulfilled=false;
  const f=fixture({},paidSession,{fetch:(url)=>{
-  if(url.includes('brasta_fulfill')){fulfilled=true;return new Response(null,{status:204});}
+  if(url.includes('brasta_reconcile_checkout')){fulfilled=true;return new Response(null,{status:204});}
   return Response.json([{...order,status:'paid',checkout_session_id:session.id,
     fulfillment_status:fulfilled?'active':'none',test_reward_ids:fulfilled?['velvet_club']:[]}]);
  }});
@@ -156,5 +156,74 @@ test('checkout UI distinguishes active, refunded and disabled status without car
   await React.act(async()=>root.unmount());dom.window.close();
   globalThis.window=saved.window;globalThis.document=saved.document;globalThis.IS_REACT_ACT_ENVIRONMENT=saved.act;
   if(originalNodeEnv===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=originalNodeEnv;
+ }
+});
+
+for(const [status,expected] of [['needs_response','open'],['under_review','open'],['won','won'],['lost','lost']])test('verified dispute '+status+' reconciles '+expected,async()=>{
+ const f=fixture({},paidSession,{dispute:{id:'du_fixture',charge:'ch_fixture',payment_intent:'pi_fixture',livemode:false,currency:'usd',status}});
+ await f.processCheckoutEvent({livemode:false,type:'charge.dispute.closed',data:{object:{id:'du_fixture'}}});
+ assert.equal(f.calls.find(c=>c.url?.includes('brasta_reconcile_checkout')).body.p_dispute_state,expected);
+});
+test('mismatched dispute cannot change access',async()=>{
+ const f=fixture({},paidSession,{dispute:{id:'du_fixture',charge:'ch_other',livemode:false,currency:'usd',status:'lost'}});
+ await assert.rejects(f.processCheckoutEvent(event()),/Dispute does not match/);
+});
+
+const liveSource=ts.transpileModule(readFileSync('lib/season-pass-live-checkout.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+function liveFixture(overrides={},sessionOverrides={}){
+ const exports={},calls=[];
+ const liveSession={...paidSession,id:'cs_live_fixture',livemode:true,metadata:{...session.metadata,brasta_mode:'live'},...sessionOverrides};
+ class Client {
+  webhooks=new Stripe('sk_test_fixture').webhooks;
+  checkout={sessions:{create:async(body,options)=>{calls.push({body,options});return liveSession;},retrieve:async()=>liveSession,list:async()=>({data:[liveSession]})}};
+  paymentIntents={retrieve:async()=>({id:'pi_fixture',livemode:true,status:'succeeded',amount:499,amount_received:499,currency:'usd',latest_charge:'ch_fixture'})};
+  charges={retrieve:async()=>({id:'ch_fixture',livemode:true,paid:true,captured:true,payment_intent:'pi_fixture',amount:499,amount_captured:499,currency:'usd',amount_refunded:0,created:1700000000})};
+  disputes={list:async()=>({data:[],has_more:false})};
+ }
+ runInNewContext(liveSource,{exports,URL,process:{env:{VERCEL_ENV:'production',VERCEL_GIT_COMMIT_REF:'main',STRIPE_SECRET_KEY:'sk_live_fixture',STRIPE_LIVE_WEBHOOK_SECRET:'whsec_livefixture',SUPABASE_SECRET_KEY:'server-fixture',BRASTA_LIVE_SEASON_PASS_ENABLED:'true',...overrides}},require:name=>name==='stripe'?Client:fixture(),fetch:async(url,options)=>{
+  calls.push({url,body:options.body?JSON.parse(options.body):undefined});
+  return url.includes('brasta_reconcile')?new Response(null,{status:204}):Response.json(url.includes('brasta_start')?order:[order]);
+ }});return {...exports,calls};
+}
+test('live checkout requires explicit flag, production main, live key and separate signing secret',()=>{
+ assert.equal(liveFixture().liveCheckoutEnabled(),true);
+ for(const override of [{VERCEL_ENV:'preview'},{VERCEL_GIT_COMMIT_REF:'beta'},{STRIPE_SECRET_KEY:'sk_test_fixture'},{STRIPE_LIVE_WEBHOOK_SECRET:''},{BRASTA_LIVE_SEASON_PASS_ENABLED:''}])assert.equal(liveFixture(override).liveCheckoutEnabled(),false);
+});
+test('live checkout uses only server order terms and production return URLs',async()=>{
+ const f=liveFixture({}, {status:'open',payment_status:'unpaid',url:'https://checkout.stripe.com/c/pay/cs_live_fixture'});
+ await f.startLiveCheckout('tester');const create=f.calls.find(c=>c.options);
+ assert.equal(create.body.line_items[0].price_data.unit_amount,499);
+ assert.equal(create.body.success_url,'https://brasta.app/season-pass?checkout=returned');
+ assert.equal(create.body.metadata.brasta_mode,'live');assert.equal(create.options.idempotencyKey,'brasta-live-order:'+order.order_id);
+});
+test('live payment fulfillment keeps processing after new purchases are disabled',async()=>{
+ const f=liveFixture({BRASTA_LIVE_SEASON_PASS_ENABLED:''});
+ assert.equal(f.liveCheckoutEnabled(),false);assert.equal(f.livePaymentsConfigured(),true);
+ await f.processLivePaymentEvent({...event(),livemode:true});
+ const write=f.calls.find(c=>c.url?.includes('brasta_reconcile_web_checkout'));
+ assert.equal(write.body.p_livemode,true);assert.equal(write.body.p_intent_id,'pi_fixture');
+ await assert.rejects(f.startLiveCheckout('tester'),/unavailable/);
+});
+test('live adapter rejects sandbox events and mismatched account/price before fulfillment',async()=>{
+ await assert.rejects(liveFixture().processLivePaymentEvent(event()),/Sandbox/);
+ for(const change of [{amount_total:1},{client_reference_id:'other'},{livemode:false}]){
+  const f=liveFixture({},change);await assert.rejects(f.processLivePaymentEvent({...event(),livemode:true}),/does not match/);
+  assert(!f.calls.some(c=>c.url?.includes('brasta_reconcile')));
+ }
+});
+test('live webhook verifies signatures with its separate endpoint secret',()=>{
+ const f=liveFixture(),stripe=new Stripe('sk_test_fixture'),payload=JSON.stringify({...event(),livemode:true});
+ const signature=stripe.webhooks.generateTestHeaderString({payload,secret:'whsec_livefixture'});
+ assert.equal(f.verifyLivePaymentEvent(payload,signature).livemode,true);
+ assert.throws(()=>f.verifyLivePaymentEvent(payload,stripe.webhooks.generateTestHeaderString({payload,secret:'whsec_fixture'})));
+});
+test('live purchase route rejects unsigned requests and ignores client identity/price',async()=>{
+ const route=ts.transpileModule(readFileSync('app/api/season-pass/purchase/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ for(const state of ['closed','unsigned','signed']){
+  const exports={},started=[];
+  runInNewContext(route,{exports,require:name=>name==='next/server'?{NextResponse:{json:(body,options)=>Response.json(body,options)}}:name.endsWith('supabase-auth')?{verifyBrastaAccessToken:async()=>state==='unsigned'?null:{userId:'verified-player'}}:{liveCheckoutEnabled:()=>state!=='closed',startLiveCheckout:async id=>{started.push(id);return {status:'open'};}}});
+  const response=await exports.POST(new Request('https://brasta.app/api/season-pass/purchase',{method:'POST',headers:{Authorization:'Bearer token'},body:JSON.stringify({playerId:'other',amount:1})}));
+  assert.equal(response.status,state==='closed'?503:state==='unsigned'?401:200);
+  assert.deepEqual(started,state==='signed'?['verified-player']:[]);
  }
 });

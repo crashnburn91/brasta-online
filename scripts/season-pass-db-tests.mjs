@@ -449,3 +449,76 @@ test('only server role can fulfill sandbox receipts',async()=>{
  const order=await sandboxOrder();await db.exec('set local role service_role');await fulfillSandbox(order);
  assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'active');
 });
+
+async function sandboxDispute(order,state,refunded=0){
+ return query("select brasta_reconcile_checkout_test($1,'cs_test_dispute','pi_dispute',499,'usd',$2,false,$3,$4)",[order.order_id,refunded,state==='none'?null:'du_fixture',state]);
+}
+test('sandbox disputes suspend, restore on win, and ignore older snapshots',async()=>{
+ const order=await sandboxOrder();await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await sandboxDispute(order,'open');assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'disputed');
+ await sandboxDispute(order,'none');assert.equal(await scalar('select cardinality(test_reward_ids) from season_pass_checkout_tests'),0);
+ await sandboxDispute(order,'won');await sandboxDispute(order,'open');
+ assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'active');
+ assert.equal(await scalar('select cardinality(test_reward_ids) from season_pass_checkout_tests'),16);
+ assert.equal(await scalar('select count(*)::int from season_pass_entitlements'),0);
+});
+test('lost sandbox dispute stays revoked on old success',async()=>{
+ const order=await sandboxOrder();await sandboxDispute(order,'lost');await sandboxDispute(order,'none');
+ assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'revoked');
+});
+test('refund dominates a won sandbox dispute',async()=>{
+ const order=await sandboxOrder();await sandboxDispute(order,'open',499);await sandboxDispute(order,'won');
+ assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'refunded');
+});
+async function liveOrder(){
+ await activate();await db.exec("update season_pass_sales_settings set enabled=true");
+ return scalar('select brasta_start_web_checkout($1)',[players[0]]);
+}
+async function liveReceipt(order,state='none',refunded=0,options={}){
+ return query("select brasta_reconcile_web_checkout($1,$2,'paid',499,'usd','pi_livefixture',$3,now(),$4,$5,$6)",
+ [order.order_id,options.session||'cs_live_fixture',refunded,options.live??true,state==='none'?null:'du_livefixture',state]);
+}
+test('live sales database gate is closed by default',async()=>{
+ await activate();await assert.rejects(scalar('select brasta_start_web_checkout($1)',[players[0]]));
+});
+test('live orders reject a draft season even when sales switch is enabled',async()=>{
+ await db.exec('update season_pass_sales_settings set enabled=true');await assert.rejects(scalar('select brasta_start_web_checkout($1)',[players[0]]));
+});
+test('live checkout reuses its order, fulfills atomically and prevents duplicate purchases',async()=>{
+ const order=await liveOrder();assert.equal((await scalar('select brasta_start_web_checkout($1)',[players[0]])).order_id,order.order_id);
+ await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await liveReceipt(order);await liveReceipt(order);assert.equal((await owned()).length,20);
+ assert.equal(await scalar('select count(*)::int from season_pass_entitlements'),1);
+ assert.equal((await scalar('select brasta_start_web_checkout($1)',[players[0]])).already_owned,true);
+});
+test('live disputes remove purchased rewards and equipment, restore on win, preserve free rewards',async()=>{
+ const order=await liveOrder();await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await liveReceipt(order);await query("select brasta_equip_season_pass_reward($1,'season_1','card_back','velvet_club')",[players[0]]);
+ await liveReceipt(order,'open');assert.equal((await owned()).length,4);
+ assert.equal(await scalar("select reward_id from season_pass_equipment where slot='card_back'"),null);
+ await liveReceipt(order);assert.equal((await owned()).length,4);
+ await liveReceipt(order,'won');assert.equal((await owned()).length,20);
+ await liveReceipt(order,'open');assert.equal((await owned()).length,20);
+});
+test('live refund remains final after a dispute win and sales closure',async()=>{
+ const order=await liveOrder();await liveReceipt(order,'open',499);
+ await db.exec('update season_pass_sales_settings set enabled=false');await liveReceipt(order,'won');
+ assert.equal(await scalar('select status from season_pass_entitlements'),'refunded');
+ assert.equal(await scalar('select fulfillment_status from season_pass_web_orders'),'refunded');
+});
+test('live lost dispute cannot be restored by stale paid events',async()=>{
+ const order=await liveOrder();await liveReceipt(order,'lost');await liveReceipt(order);
+ assert.equal(await scalar('select status from season_pass_entitlements'),'revoked');
+});
+test('sandbox payments cannot fulfill live orders',async()=>{
+ const order=await liveOrder();await assert.rejects(liveReceipt(order,'none',0,{live:false}));
+});
+test('live order session cannot be replaced',async()=>{
+ const order=await liveOrder();await liveReceipt(order);await assert.rejects(liveReceipt(order,'none',0,{session:'cs_live_other'}));
+});
+test('browser roles cannot create live orders or reconcile payments/disputes',async()=>{
+ for(const role of ['anon','authenticated'])for(const fn of ['brasta_start_web_checkout(uuid)','brasta_reconcile_web_checkout(uuid,text,text,integer,text,text,integer,timestamptz,boolean,text,text)','brasta_reconcile_checkout_test(uuid,text,text,integer,text,integer,boolean,text,text)'])
+ assert.equal(await scalar('select has_function_privilege($1,$2,\'execute\')',[role,fn]),false);
+ const order=await liveOrder();await db.exec('set local role service_role');await liveReceipt(order);
+ assert.equal(await scalar('select status from season_pass_entitlements'),'active');
+});

@@ -316,3 +316,36 @@ Stripe refund delivery still needs the sandbox dashboard test.
 
 Remaining: live checkout/provider adapter, dispute reconciliation, final real
 refund policy, production purchase gates and launch schedule. Season 1 stays draft.
+
+## Disputes and gated live payment backend
+
+Sandbox webhooks also accept `charge.dispute.created`, `charge.dispute.updated`
+and `charge.dispute.closed`. The adapter retrieves current disputes by verified
+charge. Open disputes suspend Premium grants; a won/closed inquiry restores
+eligible grants; lost disputes revoke them. Full refunds always take precedence.
+Database reconciliation preserves terminal dispute outcomes against older
+open/no-dispute snapshots. Multiple disputes or a different dispute ID require
+manual review. Beta preview cosmetic access remains independent.
+
+The live backend is implemented but **not enabled**:
+- `POST /api/season-pass/purchase` verifies the signed-in account and creates/reuses
+  a server-priced order, then redirects to Stripe hosted checkout.
+- `POST /api/season-pass/payment-webhook` verifies the separate live signature,
+  retrieves current session/payment/charge/dispute state and atomically reconciles
+  the live order with real entitlements, reached rewards and equipment cleanup.
+- Live execution requires Vercel production on `main`, `STRIPE_SECRET_KEY` starting
+  with `sk_live_`, `STRIPE_LIVE_WEBHOOK_SECRET`, and the server Supabase credential.
+- New purchases additionally require `BRASTA_LIVE_SEASON_PASS_ENABLED=true` and
+  `season_pass_sales_settings.enabled=true`. The database switch is seeded false.
+  The season must be active, started, and have at least 31 minutes left for checkout.
+- Webhooks continue processing existing purchases after the new-purchase switch
+  is disabled, so refunds/disputes still reconcile. Keep live credentials installed.
+- Test and live orders, signing secrets, routes and idempotency keys are separate.
+  No live credentials or sales switches were configured by this implementation.
+
+Before launch: finalize dates, XP and full/partial refund policy (currently partial
+refunds retain access); finish customer-facing purchase/restore UI; configure and
+verify the separate live webhook destination with the four Checkout events,
+`charge.refunded`, and the three dispute events; review native-app billing; then
+explicitly approve main deployment and sales activation. The live backend is
+covered by isolated database/provider tests, not an actual live Stripe payment.
