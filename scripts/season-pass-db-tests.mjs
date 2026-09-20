@@ -322,3 +322,68 @@ test('browser roles cannot create orders or fulfill receipts',async()=>{
  assert.equal(await scalar("select has_function_privilege($1,'brasta_update_checkout_test(uuid,text,text,integer,text)','execute')",[role]),false);
  }
 });
+
+async function receipt(status='active', options={}) {
+ return scalar("select brasta_reconcile_web_pass_receipt($1,'season_1',$2,$3,$4,$5,now()-interval '1 minute',$6)",
+  [options.player||players[0],options.id||'pi_fixture',status,options.amount??499,options.currency||'usd',options.live??true]);
+}
+test('verified receipt grants reached tiers exactly once and rejects reassignment',async()=>{
+ await activate();for(let i=0;i<10;i++)await record();
+ const id=await receipt();assert.equal(await receipt(),id);
+ assert.equal(await scalar("select count(*)::int from season_pass_entitlements where provider='web'"),1);
+ assert((await owned()).includes('velvet_club'));
+ await assert.rejects(receipt('active',{player:players[1]}),/does not match/);
+});
+test('sandbox receipts and draft season cannot grant Premium',async()=>{
+ await assert.rejects(receipt('active',{live:false}),/Sandbox receipt/);
+});
+test('draft sale is blocked',async()=>{
+ await assert.rejects(receipt(),/outside sale terms/);
+});
+test('receipt validates amount and currency',async()=>{
+ await activate();
+ await assert.rejects(receipt('active',{amount:1}),/outside sale terms/);
+});
+test('receipt rejects incorrect currency',async()=>{
+ await activate();await assert.rejects(receipt('active',{currency:'eur'}),/outside sale terms/);
+});
+test('refund clears purchased cosmetics and equipment, preserves free rewards and XP; replay stays refunded',async()=>{
+ await activate();for(let i=0;i<10;i++)await record();await receipt();
+ await query("select brasta_equip_season_pass_reward($1,'season_1','card_back','velvet_club')",[players[0]]);
+ const beforeXP=await xp();await receipt('refunded');await receipt('active');
+ assert.equal(await xp(),beforeXP);assert(!(await owned()).includes('velvet_club'));assert((await owned()).includes('gilded_suits'));
+ assert.equal(await scalar("select reward_id from season_pass_equipment where player_id=$1 and slot='card_back'",[players[0]]),null);
+ assert.equal(await scalar("select status from season_pass_entitlements where provider_transaction_id='pi_fixture'"),'refunded');
+});
+test('another active entitlement protects rewards until the last purchase is revoked',async()=>{
+ await activate();for(let i=0;i<10;i++)await record();await receipt();await receipt('active',{id:'pi_second'});
+ await receipt('refunded');assert((await owned()).includes('velvet_club'));
+ await receipt('revoked',{id:'pi_second'});assert(!(await owned()).includes('velvet_club'));
+});
+test('refund arriving before success cannot later grant rewards',async()=>{
+ await activate();await receipt('refunded');await receipt('active');
+ assert.equal(await scalar("select status from season_pass_entitlements where provider_transaction_id='pi_fixture'"),'refunded');
+ assert.deepEqual(await owned(),[]);
+});
+test('browser roles cannot reconcile receipts',async()=>{
+ for(const role of ['anon','authenticated']) assert.equal(await scalar("select has_function_privilege($1,'brasta_reconcile_web_pass_receipt(uuid,text,text,text,integer,text,timestamptz,boolean)','execute')",[role]),false);
+});
+test('refund clears seasonal title but preserves independently granted admin cosmetics',async()=>{
+ await activate();await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);await receipt();
+ const title=await scalar("select reward_id from season_pass_rewards where is_premium and kind='Profile title' limit 1");
+ await query("select brasta_equip_season_pass_reward($1,'season_1','profile_title',$2)",[players[0],title]);
+ await query("update season_pass_reward_ownership set source='admin' where player_id=$1 and reward_id='velvet_club'",[players[0]]);
+ await receipt('refunded');assert((await owned()).includes('velvet_club'));
+ const equipment=(await query("select reward_id,title_source from season_pass_equipment where player_id=$1 and slot='profile_title'",[players[0]]))[0];
+ assert.deepEqual(equipment,{reward_id:null,title_source:'none'});
+});
+test('delayed valid receipt after season end grants earned rewards',async()=>{
+ await activate();await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await db.exec("update season_pass_seasons set status='ended',ends_at=now()-interval '30 seconds' where season_id='season_1'");
+ await receipt();assert.equal((await owned()).length,20);
+});
+test('service role can fulfill and refund a verified receipt',async()=>{
+ await activate();await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await db.exec('set local role service_role');await receipt();assert.equal((await owned()).length,20);
+ await receipt('refunded');assert.equal((await owned()).length,4);
+});

@@ -252,3 +252,29 @@ retry cases, implement refund/dispute reconciliation and the final entitlement
 policy, integrate verified receipts with production grants, verify mobile
 purchase requirements, and approve season dates. These steps are not enabled
 by supplying sandbox credentials.
+
+## Verified payment fulfillment foundation
+
+`brasta_reconcile_web_pass_receipt` is a service-role-only, atomic database
+operation for a future verified live Stripe adapter. It is not called by the
+sandbox checkout, and adding this function does not enable sales or activate
+the season. Never call it from a browser or trust client-supplied receipt data.
+The adapter must verify Stripe signatures and retrieve provider state, bind the
+payment intent to a server-created order, and supply its immutable purchase time.
+
+The operation validates sale dates, catalog amount/currency and live mode,
+binds each Stripe payment intent to one player and season, and grants only
+reached tiers through the existing reward function. Duplicate success is safe.
+Delayed delivery after the season ends is supported for purchases made during
+its sale window. Refunded and revoked receipts are terminal: old success events
+cannot restore them. A fresh valid purchase can restore earned Premium rewards.
+
+Refund/revocation removes Premium ownership sourced from purchases only when
+no other active entitlement covers that season. It clears affected equipped
+card backs, felts, frames and seasonal titles; free rewards, XP, independently
+admin-granted ownership and earned achievement badges remain intact.
+
+Pending: live order creation/checkout gate, verified provider adapter, refund
+and dispute event subscriptions/reconciliation, partial-refund policy and
+end-to-end fulfillment testing in an isolated sandbox model. Do not forward
+sandbox receipts into this live function. No production payment flow is enabled.
