@@ -121,7 +121,10 @@ test('unrelated events are ignored and live events are rejected',async()=>{
  await assert.rejects(f.processCheckoutEvent({...event(),livemode:true}),/Live payments/);
 });
 
-test('checkout UI distinguishes active, refunded and failed status without carrying access across accounts',async()=>{
+test('checkout UI distinguishes active, refunded and disabled status without carrying access across accounts',async()=>{
+ // React's act helper is available only in its development/test build, including on CI.
+ const originalNodeEnv=process.env.NODE_ENV;
+ process.env.NODE_ENV='test';
  const React=await import('react');
  const {createRoot}=await import('react-dom/client');
  const {JSDOM}=await import('jsdom');
@@ -152,5 +155,6 @@ test('checkout UI distinguishes active, refunded and failed status without carry
  }finally{
   await React.act(async()=>root.unmount());dom.window.close();
   globalThis.window=saved.window;globalThis.document=saved.document;globalThis.IS_REACT_ACT_ENVIRONMENT=saved.act;
+  if(originalNodeEnv===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=originalNodeEnv;
  }
 });
