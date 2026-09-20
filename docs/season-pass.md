@@ -228,7 +228,7 @@ Configure these **server-only** variables for Preview / beta:
 
 Register `https://beta.brasta.app/api/season-pass/webhook` in the same Stripe
 sandbox for `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-`checkout.session.async_payment_failed`, and `checkout.session.expired`. Redeploy
+`checkout.session.async_payment_failed`, `checkout.session.expired`, and `charge.refunded`. Redeploy
 beta after saving the variables. No publishable Stripe key is needed for hosted
 checkout, and no Stripe product/price needs to be created manually.
 
@@ -244,8 +244,8 @@ never mark an order paid. Only service-role RPCs can change test receipt rows.
 Test receipts live in `season_pass_checkout_tests`. They have **no connection**
 to real Premium entitlements, reward ownership, or Season XP. A tester can see
 payment status after returning, refocusing, or clicking Refresh status.
-The first successful test receipt stays visible; repeated clicks don't create
-another checkout for an already completed test.
+An active paid test receipt is reused; after a full refund a fresh test checkout
+can be created. Status refresh retrieves current Stripe state before reporting fulfillment.
 
 Before enabling real sales: run the hosted Stripe test checkout and webhook
 retry cases, implement refund/dispute reconciliation and the final entitlement
@@ -278,3 +278,41 @@ Pending: live order creation/checkout gate, verified provider adapter, refund
 and dispute event subscriptions/reconciliation, partial-refund policy and
 end-to-end fulfillment testing in an isolated sandbox model. Do not forward
 sandbox receipts into this live function. No production payment flow is enabled.
+
+
+## Sandbox Premium fulfillment and refunds
+
+Beta now reconciles verified sandbox receipts into `fulfillment_status`,
+`payment_intent_id`, `amount_refunded` and `test_reward_ids` on the isolated
+`season_pass_checkout_tests` record. The service-only RPC validates the receipt
+and atomically records payment and test grants. It never calls the live receipt
+function or writes real entitlements, ownership, XP or equipment.
+
+Paid Checkout sessions are checked against the server order, then the current
+PaymentIntent and captured Charge are retrieved. The payment/charge/session
+relationship, test mode, amount and currency must all agree. A `charge.refunded`
+event locates its Checkout session by PaymentIntent, so refunds arriving before
+completion are handled. Provider or database failures return an error for retry.
+GET status performs the same reconciliation, supporting existing receipts and
+recovery from missed notifications. Browsers can only request their own status.
+
+An active test Premium receipt snapshots earned premium reward IDs using the
+account's real Season XP, and later refreshes add newly reached rewards. At zero
+Season XP it is active with zero earned test rewards. Full refunds clear that
+receipt's grants permanently; a late success cannot reactivate it. Partial
+refunds retain access in this **sandbox-only** policy. Cumulative refunded amount
+never decreases. This does not finalize the policy for real purchases.
+
+Tester access to all 20 cosmetic previews remains independent of this payment
+simulation; it is not proof of purchase ownership. No new equipment path is
+introduced. The page explicitly separates test Premium from preview access.
+
+Stripe setup: add `charge.refunded` to the existing **test** webhook destination.
+Then refresh status on the existing paid test, verify **Test Premium active**,
+refund that payment in Stripe's sandbox, and verify **Test payment refunded**.
+A fresh test checkout is available after a full refund. No real refund is issued
+by the app. Automated checks cover these transitions with isolated data; actual
+Stripe refund delivery still needs the sandbox dashboard test.
+
+Remaining: live checkout/provider adapter, dispute reconciliation, final real
+refund policy, production purchase gates and launch schedule. Season 1 stays draft.

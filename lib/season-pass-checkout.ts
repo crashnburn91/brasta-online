@@ -15,6 +15,7 @@ function stripe() {
 export type TestOrder = {
   order_id: string; player_id: string; season_id: string; amount_cents: number;
   currency: string; checkout_session_id: string | null; status: 'created'|'open'|'paid'|'expired'; expires_at: string;
+  fulfillment_status: 'none'|'active'|'refunded'; test_reward_ids: string[]; amount_refunded: number;
 };
 async function db<T>(path: string, body?: Record<string, unknown>): Promise<T> {
   if (!dbKey) throw new Error('Test checkout is not configured.');
@@ -28,8 +29,15 @@ async function db<T>(path: string, body?: Record<string, unknown>): Promise<T> {
   return response.json() as Promise<T>;
 }
 export async function latestTestOrder(playerId: string) {
-  const rows = await db<TestOrder[]>(`season_pass_checkout_tests?player_id=eq.${encodeURIComponent(playerId)}&select=order_id,status&order=created_at.desc&limit=1`);
-  return rows[0] ? {orderId:rows[0].order_id,status:rows[0].status} : null;
+  const path=`season_pass_checkout_tests?player_id=eq.${encodeURIComponent(playerId)}&select=*&order=created_at.desc&limit=1`;
+  let order=(await db<TestOrder[]>(path))[0];
+  // Restore/reconcile existing receipts, including purchases made before fulfillment shipped.
+  if (order?.checkout_session_id) {
+    await saveSession(await stripe().checkout.sessions.retrieve(order.checkout_session_id),order);
+    order=(await db<TestOrder[]>(path))[0];
+  }
+  return order ? {orderId:order.order_id,status:order.status,fulfillmentStatus:order.fulfillment_status,
+    testRewardCount:order.test_reward_ids.length,amountRefunded:order.amount_refunded} : null;
 }
 export function validateTestSession(session: Stripe.Checkout.Session, order: TestOrder) {
   if (session.livemode || session.mode !== 'payment' || session.client_reference_id !== order.player_id
@@ -41,14 +49,38 @@ async function saveSession(session: Stripe.Checkout.Session, order: TestOrder) {
   validateTestSession(session, order);
   const status = session.status === 'complete' && session.payment_status === 'paid' ? 'paid'
     : session.status === 'expired' ? 'expired' : 'open';
-  await db('rpc/brasta_update_checkout_test', {p_order_id:order.order_id,p_session_id:session.id,p_status:status,
-    p_amount:session.amount_total,p_currency:session.currency});
+  if (status==='paid') {
+    const intentId=objectId(session.payment_intent);
+    if (!intentId) throw new Error('Paid checkout has no payment intent.');
+    const client=stripe();
+    const intent=await client.paymentIntents.retrieve(intentId);
+    const chargeId=objectId(intent.latest_charge);
+    if (intent.id!==intentId || intent.livemode!==false || intent.status!=='succeeded'
+      || intent.amount!==order.amount_cents || intent.amount_received!==order.amount_cents
+      || intent.currency!==order.currency || !chargeId) throw new Error('Payment intent does not match its order.');
+    const charge=await client.charges.retrieve(chargeId);
+    if (charge.id!==chargeId || charge.livemode!==false || !charge.paid || !charge.captured
+      || objectId(charge.payment_intent)!==intentId || charge.amount!==order.amount_cents
+      || charge.amount_captured!==order.amount_cents || charge.currency!==order.currency
+      || !Number.isInteger(charge.amount_refunded) || charge.amount_refunded<0
+      || charge.amount_refunded>order.amount_cents) throw new Error('Charge does not match its order.');
+    await db('rpc/brasta_fulfill_checkout_test',{p_order_id:order.order_id,p_session_id:session.id,
+      p_intent_id:intentId,p_amount:order.amount_cents,p_currency:order.currency,
+      p_refunded:charge.amount_refunded,p_livemode:charge.livemode});
+  } else {
+    await db('rpc/brasta_update_checkout_test', {p_order_id:order.order_id,p_session_id:session.id,p_status:status,
+      p_amount:session.amount_total,p_currency:session.currency});
+  }
   return status;
 }
+function objectId(value: string | {id:string} | null) {return typeof value==='string' ? value : value?.id;}
 export async function startTestCheckout(playerId: string) {
   const client = stripe();
   const order = await db<TestOrder>('rpc/brasta_start_checkout_test', {p_player_id:playerId});
-  if (order.status === 'paid') return {status:'paid'};
+  if (order.status === 'paid') {
+    const restored=await latestTestOrder(playerId);
+    return {status:restored?.status||'paid',fulfillmentStatus:restored?.fulfillmentStatus};
+  }
   const session = order.checkout_session_id ? await client.checkout.sessions.retrieve(order.checkout_session_id)
     : await client.checkout.sessions.create({
       // Keep the isolated card test independent of account-level Managed Payments defaults.
@@ -71,10 +103,23 @@ export function verifyCheckoutEvent(body: string, signature: string) {
 }
 export async function processCheckoutEvent(event: Stripe.Event) {
   if (event.livemode) throw new Error('Live payments are not accepted on beta.');
-  if (!['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired'].includes(event.type)) return;
-  const id=(event.data.object as Stripe.Checkout.Session).id;
+  const client=stripe();
+  let id:string;
+  if (event.type==='charge.refunded') {
+    const charge=await client.charges.retrieve((event.data.object as Stripe.Charge).id);
+    if (charge.livemode) throw new Error('Live payments are not accepted on beta.');
+    const intentId=objectId(charge.payment_intent);
+    if (!intentId) return;
+    // Works even if the refund arrives before the checkout completion webhook.
+    const sessions=await client.checkout.sessions.list({payment_intent:intentId,limit:1});
+    if (!sessions.data[0]) return;
+    id=sessions.data[0].id;
+  } else {
+    if (!['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired'].includes(event.type)) return;
+    id=(event.data.object as Stripe.Checkout.Session).id;
+  }
   // Retrieve current provider state: never trust redirect parameters or stale event order.
-  const session=await stripe().checkout.sessions.retrieve(id);
+  const session=await client.checkout.sessions.retrieve(id);
   const orderId=session.metadata?.brasta_order_id;
   if (!orderId || !/^[0-9a-f-]{36}$/i.test(orderId)) return;
   const orders=await db<TestOrder[]>(`season_pass_checkout_tests?order_id=eq.${encodeURIComponent(orderId)}&select=*&limit=1`);

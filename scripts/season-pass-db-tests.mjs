@@ -387,3 +387,65 @@ test('service role can fulfill and refund a verified receipt',async()=>{
  await db.exec('set local role service_role');await receipt();assert.equal((await owned()).length,20);
  await receipt('refunded');assert.equal((await owned()).length,4);
 });
+
+async function sandboxOrder(player=players[0]) {
+ await query('insert into private.season_pass_test_access(player_id,enabled) values($1,true) on conflict(player_id) do update set enabled=true',[player]);
+ return scalar('select brasta_start_checkout_test($1)',[player]);
+}
+async function fulfillSandbox(order,refunded=0,options={}) {
+ return query('select brasta_fulfill_checkout_test($1,$2,$3,$4,$5,$6,$7)',
+ [order.order_id,options.session||'cs_test_sandbox',options.intent||'pi_sandbox',options.amount??499,options.currency||'usd',refunded,options.live??false]);
+}
+test('sandbox payment grants earned test rewards idempotently without real Premium or inventory',async()=>{
+ const order=await sandboxOrder();
+ await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ const inventory=await owned(),beforeXP=await xp();
+ await fulfillSandbox(order);await fulfillSandbox(order);
+ const row=(await query('select * from season_pass_checkout_tests where order_id=$1',[order.order_id]))[0];
+ assert.equal(row.fulfillment_status,'active');assert.equal(row.test_reward_ids.length,16);
+ assert.deepEqual(await owned(),inventory);assert.equal(await xp(),beforeXP);
+ assert.equal(await scalar('select count(*)::int from season_pass_entitlements'),0);
+});
+test('sandbox zero XP activates Premium without unearned grants; later earned tiers reconcile',async()=>{
+ const order=await sandboxOrder();await fulfillSandbox(order);
+ assert.equal(await scalar('select cardinality(test_reward_ids) from season_pass_checkout_tests'),0);
+ await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await fulfillSandbox(order);assert.equal(await scalar('select cardinality(test_reward_ids) from season_pass_checkout_tests'),16);
+});
+test('full sandbox refund clears test rewards and stale success cannot restore them',async()=>{
+ const order=await sandboxOrder();
+ await query("insert into season_pass_progress(player_id,season_id,xp) values($1,'season_1',3000)",[players[0]]);
+ await fulfillSandbox(order);await fulfillSandbox(order,499);await fulfillSandbox(order);
+ const row=(await query('select * from season_pass_checkout_tests where order_id=$1',[order.order_id]))[0];
+ assert.equal(row.fulfillment_status,'refunded');assert.deepEqual(row.test_reward_ids,[]);assert.equal(row.amount_refunded,499);
+ assert.equal(await xp(),3000);
+ const next=await sandboxOrder();assert.notEqual(next.order_id,order.order_id);
+ await fulfillSandbox(next,0,{intent:'pi_new',session:'cs_test_new'});
+ assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests where order_id=$1',[next.order_id]),'active');
+});
+test('sandbox partial refunds keep test Premium and cumulative refund amount cannot decrease',async()=>{
+ const order=await sandboxOrder();await fulfillSandbox(order,100);await fulfillSandbox(order,0);
+ const row=(await query('select * from season_pass_checkout_tests where order_id=$1',[order.order_id]))[0];
+ assert.equal(row.fulfillment_status,'active');assert.equal(row.amount_refunded,100);
+});
+test('sandbox refund before success never grants even on replay',async()=>{
+ const order=await sandboxOrder();await fulfillSandbox(order,499);await fulfillSandbox(order);
+ assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'refunded');
+});
+for(const options of [{amount:1},{currency:'eur'},{live:true}])test('sandbox receipt rejects '+JSON.stringify(options),async()=>{
+ const order=await sandboxOrder();await assert.rejects(fulfillSandbox(order,0,options));
+});
+test('sandbox receipt cannot change its payment intent',async()=>{
+ const order=await sandboxOrder();await fulfillSandbox(order);
+ await assert.rejects(fulfillSandbox(order,0,{intent:'pi_other'}),/does not match/);
+});
+test('sandbox intent cannot be reused for a different player',async()=>{
+ const order=await sandboxOrder();await fulfillSandbox(order);
+ const other=await sandboxOrder(players[1]);
+ await assert.rejects(fulfillSandbox(other,0,{session:'cs_test_other'}),/unique/);
+});
+test('only server role can fulfill sandbox receipts',async()=>{
+ for(const role of ['anon','authenticated'])assert.equal(await scalar("select has_function_privilege($1,'brasta_fulfill_checkout_test(uuid,text,text,integer,text,integer,boolean)','execute')",[role]),false);
+ const order=await sandboxOrder();await db.exec('set local role service_role');await fulfillSandbox(order);
+ assert.equal(await scalar('select fulfillment_status from season_pass_checkout_tests'),'active');
+});
